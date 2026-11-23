@@ -5,6 +5,7 @@
 #include "preferences.hpp"
 #include "ui_mainmenu.h"
 
+#include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QStackedWidget>
@@ -14,6 +15,11 @@ MainMenu::MainMenu(QStackedWidget *parent) : QWidget(parent), ui(new Ui::MainMen
 	ui->setupUi(this);
 	ui->startButton->setMinimumWidth(340);
 	ui->startButton->setMaximumWidth(420);
+	auto *serverStatus = new QLabel(tr("Server stopped"), this);
+	serverStatus->setObjectName("serverStatus");
+	serverStatus->setProperty("role", "caption");
+	serverStatus->setAlignment(Qt::AlignCenter);
+	ui->verticalLayout->insertWidget(ui->verticalLayout->indexOf(ui->subtitleLabel) + 1, serverStatus);
 	ui->settingsButton->setMinimumWidth(164);
 	ui->pushButton_About->setMinimumWidth(164);
 	ui->settingsButton->setMaximumWidth(204);
@@ -50,15 +56,21 @@ void MainMenu::launch_server()
 		activeServer = server;
 		stack->addWidget(server);
 		stack->setCurrentWidget(server);
-		ui->startButton->setText(tr("Return to Server"));
+		ui->startButton->setText(tr("Back to Server"));
 		// The server keeps running while the user visits the home screen
 		connect(server, &Server::homeRequested, this, [this]() { stack->setCurrentWidget(this); });
 		// When the server is stopped, switch back to main menu
 		connect(server, &Server::navigateBack, this, [this]() {
 			stack->setCurrentWidget(this);
 		});
+		connect(server, &Server::statusChanged, this, [this](const QString &text) {
+			if (auto *label = findChild<QLabel *>("serverStatus"))
+				label->setText(text);
+		});
 		connect(server, &QObject::destroyed, this, [this]() {
 			ui->startButton->setText(tr("Start Server"));
+			if (auto *label = findChild<QLabel *>("serverStatus"))
+				label->setText(tr("Server stopped"));
 		});
 	}
 	catch (const std::exception &e)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../settings/settings_singleton.hpp"
 #include "executor.hpp"
 
 #include <QByteArray>
@@ -25,6 +26,7 @@ class Server : public QWidget
   signals:
 	void navigateBack();
 	void homeRequested();
+	void statusChanged(const QString &text);
 
   public:
 	explicit Server(QWidget *parent = nullptr);
@@ -39,6 +41,7 @@ class Server : public QWidget
 	void initServer();
 	void updateClientLabel();
 	void updateSlots();
+	void updateStatus();
 	int pickSlot(const ExecutorInterface *executor) const;
 	void serveClient();
 
@@ -83,6 +86,10 @@ class Server : public QWidget
 	QStringList qrAddresses;
 	bool webQr = false;
 	QLabel *webUrlLabel = nullptr;
+	QLabel *portPill = nullptr;
+	QLabel *countPill = nullptr;
+	ExecutorType serverMode = ExecutorType::KeyboardMouseExecutor;
+	int slotCapacity() const;
 	static constexpr size_t MAX_PHONES = 6;
 	std::vector<std::unique_ptr<Client>> clients;
 	QTcpSocket *clientConnection;

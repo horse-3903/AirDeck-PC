@@ -110,15 +110,16 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 	connect(ui->stopButton, &QPushButton::clicked, this, &Server::destroyServer);
 	auto *homeButton = new QPushButton(tr("Back to Home"), this);
 	homeButton->setCursor(Qt::PointingHandCursor);
-	homeButton->setMinimumWidth(150);
+	homeButton->setMinimumWidth(120);
+	ui->stopButton->setMinimumWidth(120);
 	ui->headerLayout->insertWidget(ui->headerLayout->indexOf(ui->stopButton), homeButton);
 	connect(homeButton, &QPushButton::clicked, this, &Server::homeRequested);
 	{
 		const ExecutorType mode = SettingsSingleton::instance().executorType();
 		const QString modeName =
-			mode == ExecutorType::VigemExecutor		? tr("Virtual Xbox 360 Controller (ViGEm)")
-			: mode == ExecutorType::GamepadExecutor ? tr("Virtual Gamepad (InputInjector)")
-													: tr("Keyboard/Mouse Simulation");
+			mode == ExecutorType::VigemExecutor		? tr("Xbox 360 controller (ViGEm)")
+			: mode == ExecutorType::GamepadExecutor ? tr("Windows virtual gamepad")
+													: tr("Keyboard and mouse");
 		const QString pillStyle =
 			"QLabel { background: #161616; border: 1px solid %1; border-radius: 4px; "
 			"padding: 4px 12px; color: %2; font-weight: 600; }";
@@ -127,6 +128,13 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		auto *pillRow = new QHBoxLayout();
 		pillRow->setSpacing(8);
 		pillRow->addWidget(modePill);
+		serverMode = mode;
+		portPill = new QLabel(this);
+		portPill->setStyleSheet(pillStyle.arg("#3A3A3A", "#D4D4D4"));
+		countPill = new QLabel(this);
+		countPill->setStyleSheet(pillStyle.arg("#3A3A3A", "#D4D4D4"));
+		pillRow->addWidget(portPill);
+		pillRow->addWidget(countPill);
 		if (isElevated())
 		{
 			auto *adminPill = new QLabel(tr("Administrator"), this);
@@ -194,6 +202,8 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 
 	initServer();
 
+	// The home screen connects to statusChanged after construction, so announce the state again
+	QTimer::singleShot(0, this, [this]() { updateStatus(); });
 	qDebug() << "Server widget initialized";
 }
 
@@ -233,6 +243,7 @@ void Server::initServer()
 	ui->IPList->setMaximumHeight(120);
 	ui->QRViewer->setMaximumHeight(290);
 	ui->statusLabel->setText(tr("Server running"));
+	ui->addressTitle->setText(tr("IP address"));
 	ui->portLabel->setText(tr("Port: **%1**").arg(tcpServer->serverPort()));
 	ui->portLabel->setTextFormat(Qt::MarkdownText);
 
@@ -262,7 +273,8 @@ void Server::initServer()
 	{
 		const QHostAddress &entry = candidates.at(i);
 		const QString address = entry.toString();
-		auto *item = new QListWidgetItem(i == 0 ? tr("%1   (recommended)").arg(address) : address);
+		auto *item = new QListWidgetItem(i == 0 ? tr("%1   (recommended)").arg(address)
+												: tr("%1   (other adapter)").arg(address));
 		item->setData(Qt::UserRole, address);
 		ui->IPList->addItem(item);
 		QLabel *QRWidget = new QLabel();
@@ -352,6 +364,13 @@ void Server::initServer()
 				}
 			});
 	connect(tcpServer, &QTcpServer::newConnection, this, &Server::handleConnection);
+	auto *securityNote = new QLabel(
+		tr("Anyone on your network who has this address can connect. The QR code is not a password."), this);
+	securityNote->setProperty("role", "caption");
+	securityNote->setWordWrap(true);
+	securityNote->setAlignment(Qt::AlignCenter);
+	ui->qrLayout->addWidget(securityNote);
+	updateStatus();
 	qInfo() << "Server started successfully on port:" << tcpServer->serverPort();
 }
 
@@ -372,6 +391,32 @@ int Server::pickSlot(const ExecutorInterface *executor) const
 	return 0;
 }
 
+int Server::slotCapacity() const
+{
+	return serverMode == ExecutorType::KeyboardMouseExecutor ? 1 : static_cast<int>(MAX_PHONES);
+}
+
+void Server::updateStatus()
+{
+	const int active = static_cast<int>(std::count_if(
+		clients.begin(), clients.end(), [](const std::unique_ptr<Client> &c) { return c->active; }));
+	const int capacity = slotCapacity();
+	const int port = tcpServer != nullptr ? tcpServer->serverPort() : 0;
+	if (portPill != nullptr)
+		portPill->setText(tr("Port %1").arg(port));
+	if (countPill != nullptr)
+	{
+		countPill->setText(tr("%1 of %2 phones").arg(active).arg(capacity));
+		countPill->setToolTip(serverMode == ExecutorType::VigemExecutor
+								  ? tr("Games that use XInput can only see the first 4 controllers.")
+								  : QString());
+	}
+	emit statusChanged(tr("Server running  |  Port %1  |  %2")
+						   .arg(port)
+						   .arg(active == 0 ? tr("no device connected")
+											: tr("%1 of %2 connected").arg(active).arg(capacity)));
+}
+
 void Server::updateSlots()
 {
 	for (int i = 0; i < static_cast<int>(slotCards.size()); ++i)
@@ -383,6 +428,7 @@ void Server::updateSlots()
 				owner = client.get();
 		}
 		SlotCard &card = slotCards[i];
+		card.frame->setVisible(i < slotCapacity());
 		const bool active = owner != nullptr;
 		card.badge->setStyleSheet(
 			active ? "QLabel { background: #F5F5F5; color: #000000; border-radius: 17px; "
@@ -405,13 +451,16 @@ void Server::updateSlots()
 		{
 			card.title->setText(tr("Controller %1").arg(i + 1));
 			card.title->setStyleSheet("color: #8A8A8A;");
-			card.detail->setText(tr("Waiting for a phone"));
+			card.detail->setText(i >= 4 && serverMode == ExecutorType::VigemExecutor
+									 ? tr("Waiting (games will not see this one)")
+									 : tr("Waiting for a phone"));
 		}
 	}
 }
 
 void Server::updateClientLabel()
 {
+	updateStatus();
 	QStringList names;
 	for (const auto &client : clients)
 	{

@@ -19,6 +19,8 @@
 #include <QDir>
 #include <QFile>
 #include <QInputDialog>
+#include <QTimer>
+#include <QLabel>
 #include <QMessageBox>
 #include <QSlider>
 #include <QStandardPaths>
@@ -106,6 +108,11 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		}
 		saveButton->setStyleSheet("font-size: 10pt; font-weight: 600; padding: 4px 18px; min-height: 20px;");
 		footerLayout->addWidget(restoreButton);
+		auto *footerNotice = new QLabel(footer);
+		footerNotice->setObjectName("footerStatus");
+		footerNotice->setProperty("role", "caption");
+		footerLayout->addSpacing(12);
+		footerLayout->addWidget(footerNotice);
 		footerLayout->addStretch();
 		footerLayout->addWidget(cancelButton);
 		footerLayout->addWidget(saveButton);
@@ -144,14 +151,14 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 			return hint;
 		};
 		ui->executorLayout->removeWidget(ui->executorNotesLabel);
-		ui->executorLayout->insertWidget(1, makeHint(tr("Windows virtual gamepad API. Can crash on some systems.")));
-		ui->executorLayout->insertWidget(3, makeHint(tr("Converts gamepad inputs into keyboard and mouse actions.")));
+		ui->executorLayout->insertWidget(1, makeHint(tr("Experimental. Needs Administrator and Developer Mode. Can crash on some systems.")));
+		ui->executorLayout->insertWidget(3, makeHint(tr("No driver needed. Turns gamepad input into keys and mouse. One phone at a time.")));
 #ifdef _WIN32
 		auto *vigemRadio = new QRadioButton(tr("Virtual Xbox 360 Controller (ViGEm)"), ui->executorGroup);
 		vigemRadio->setObjectName("vigemExecutorRadio");
 		ui->executorLayout->insertWidget(0, vigemRadio);
 		ui->executorLayout->insertWidget(
-			1, makeHint(tr("A real XInput controller for each phone. Needs the ViGEmBus driver.")));
+			1, makeHint(tr("Recommended for most games. A real XInput controller per phone. Needs the ViGEmBus driver.")));
 		connect(vigemRadio, &QRadioButton::toggled, this, &Preferences::executor_type_changed);
 #endif
 		auto *card = new QFrame(ui->executorGroup);
@@ -169,6 +176,7 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 	}
 
 	setup_profile_management();
+	ui->deleteProfileButton->setEnabled(ui->profileComboBox->currentText() != "Default");
 
 	// Load preferences into UI
 	load_port();
@@ -297,8 +305,6 @@ void Preferences::new_profile()
 			ui->profileComboBox->setCurrentText(profileName);
 			currentProfile = profileName;
 
-			QMessageBox::information(this, "Profile Created",
-									 "Profile '" + profileName + "' created successfully");
 		}
 		else
 		{
@@ -320,42 +326,47 @@ void Preferences::delete_profile()
 
 	auto &settings = SettingsSingleton::instance();
 
-	// Don't delete active profile
-	if (profileName == settings.activeProfileName())
-	{
-		QMessageBox::warning(this, "Cannot Delete",
-							 "Cannot delete the active profile. Switch to another profile first.");
+	// The built-in Default profile is never deleted (the button is disabled for it)
+	if (profileName == "Default")
 		return;
-	}
-
-	// Confirm deletion
-	QMessageBox::StandardButton reply;
-	reply = QMessageBox::question(this, "Delete Profile",
-								  "Are you sure you want to delete profile '" + profileName + "'?",
-								  QMessageBox::Yes | QMessageBox::No);
-
-	if (reply == QMessageBox::Yes)
+	
+	QMessageBox confirm(this);
+	confirm.setWindowTitle(tr("Delete profile"));
+	confirm.setIcon(QMessageBox::Question);
+	confirm.setText(tr("Delete the profile \"%1\"?").arg(profileName));
+	confirm.setInformativeText(profileName == settings.activeProfileName()
+			? tr("It is the active profile, so Default becomes active. This cannot be undone.")
+			: tr("This cannot be undone."));
+	auto *deleteButton = confirm.addButton(tr("Delete Profile"), QMessageBox::DestructiveRole);
+	confirm.addButton(tr("Cancel"), QMessageBox::RejectRole);
+	confirm.exec();
+	if (confirm.clickedButton() != deleteButton)
+		return;
+	
+	if (profileName == settings.activeProfileName())
+		ui->profileComboBox->setCurrentText("Default");
+	
+	if (settings.deleteProfile(profileName))
 	{
-		if (settings.deleteProfile(profileName))
-		{
-			qInfo() << "Profile deleted successfully:" << profileName;
-			refresh_profile_list();
-			QMessageBox::information(this, "Profile Deleted",
-									 "Profile '" + profileName + "' deleted successfully");
-		}
-		else
-		{
-			qCritical() << "Failed to delete profile:" << profileName;
-			QMessageBox::warning(this, "Error", "Failed to delete profile '" + profileName + "'");
-		}
+		qInfo() << "Profile deleted successfully:" << profileName;
+		refresh_profile_list();
+		ui->profileComboBox->setCurrentText(settings.activeProfileName());
 	}
-}
-
+	else
+	{
+		qCritical() << "Failed to delete profile:" << profileName;
+		QMessageBox::warning(this, "Error", "Failed to delete profile '" + profileName + "'");
+	}
+	}
+	
 void Preferences::profile_selection_changed(const QString &profileName)
 {
 	if (profileName.isEmpty())
 		return;
 
+	ui->deleteProfileButton->setEnabled(profileName != "Default");
+	ui->deleteProfileButton->setToolTip(profileName == "Default" ? tr("The Default profile cannot be deleted")
+																: QString());
 	qDebug() << "Profile selection changed to:" << profileName;
 
 	auto &settings = SettingsSingleton::instance();
@@ -568,16 +579,17 @@ void Preferences::change_port(int value)
 
 void Preferences::restore_defaults()
 {
-	// Show confirmation dialog
-	QMessageBox::StandardButton reply;
-	reply = QMessageBox::question(
-		this, "Restore Defaults",
-		"Are you sure you want to restore all settings to their default values?",
-		QMessageBox::Yes | QMessageBox::No);
-
-	if (reply != QMessageBox::Yes)
+	QMessageBox confirm(this);
+	confirm.setWindowTitle(tr("Restore defaults"));
+	confirm.setIcon(QMessageBox::Question);
+	confirm.setText(tr("Restore all settings to their defaults?"));
+	confirm.setInformativeText(tr("This resets the port, input mode, pointer speed and the active key mapping."));
+	auto *restoreButton = confirm.addButton(tr("Restore Defaults"), QMessageBox::DestructiveRole);
+	confirm.addButton(tr("Cancel"), QMessageBox::RejectRole);
+	confirm.exec();
+	if (confirm.clickedButton() != restoreButton)
 		return;
-
+	
 	// Delegate to SettingsSingleton to reset the settings
 	auto &settings = SettingsSingleton::instance();
 	settings.resetToDefaults();
@@ -599,9 +611,11 @@ void Preferences::restore_defaults()
 	load_port();
 	load_executor_type();
 
-	QMessageBox::information(this, "Defaults Restored",
-							 "Default settings have been applied.\n"
-							 "Press OK in the preferences dialog to save these changes.");
+	if (auto *notice = findChild<QLabel *>("footerStatus"))
+	{
+		notice->setText(tr("Defaults loaded. Save Changes to keep them."));
+		QTimer::singleShot(6000, notice, [notice]() { notice->clear(); });
+	}
 }
 
 void Preferences::load_executor_type()

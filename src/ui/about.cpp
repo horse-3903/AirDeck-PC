@@ -38,17 +38,12 @@ About::About(QStackedWidget *parent) : QWidget(parent), ui(new Ui::About)
 
 	qDebug() << "Loading GitHub badges for project information";
 
-	// Load badge images directly through the Badge widgets in the UI
-	ui->licenseBadge->loadBadge(
-		"https://raster.shields.io/github/license/kitswas/VirtualGamePad-PC", serverLicenseUrl);
-	ui->starsBadge->loadBadge(
-		"https://raster.shields.io/github/stars/kitswas/VirtualGamePad?style=social", repoUrl);
-	ui->downloadsBadge->loadBadge(
-		"https://raster.shields.io/github/downloads/kitswas/VirtualGamePad-PC/total", releaseUrl);
-	ui->releaseBadge->loadBadge(
-		"https://raster.shields.io/github/v/release/kitswas/VirtualGamePad-PC?logo=github",
-		releaseUrl);
-
+	// Version and license are plain text so the page looks the same offline
+	for (auto *badge : {static_cast<QWidget *>(ui->licenseBadge), static_cast<QWidget *>(ui->starsBadge),
+				static_cast<QWidget *>(ui->downloadsBadge), static_cast<QWidget *>(ui->releaseBadge)})
+		badge->hide();
+	ui->versionLabel->setText(tr("Version %1   |   GPL-3.0 license").arg(QApplication::applicationVersion()));
+	
 	qDebug() << "About dialog initialized successfully";
 }
 
