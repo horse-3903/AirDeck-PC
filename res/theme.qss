@@ -1,4 +1,4 @@
-* {
+﻿* {
 	font-family: "Segoe UI Variable Text", "Segoe UI", "Inter", sans-serif;
 	font-size: 10pt;
 	color: #E2E8F0;
@@ -429,4 +429,23 @@ QDialogButtonBox QPushButton {
 
 QLabel#Pointer, QLabel#label_port {
 	min-width: 120px;
+}
+
+QDialog QPushButton[variant="primary"] {
+	font-size: 10pt;
+	font-weight: 600;
+	padding: 8px 20px;
+}
+
+QGroupBox#executorGroup {
+	padding: 8px 18px 14px 18px;
+}
+
+QGroupBox#executorGroup QRadioButton, QGroupBox#executorGroup QLabel {
+	font-weight: 400;
+}
+
+QLabel#executorNotesLabel {
+	color: #A3A3A3;
+	padding: 2px 0 0 0;
 }

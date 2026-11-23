@@ -6,6 +6,8 @@
 #include "buttoninputbox.hpp"
 #include "ui_preferences.h"
 
+#include <QScrollArea>
+
 #include <QDebug>
 #include <QPushButton>
 #include <QFrame>
@@ -37,10 +39,20 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		connect(sidebar, &QListWidget::currentRowChanged, tabs, &QTabWidget::setCurrentIndex);
 		tabs->tabBar()->hide();
 		ui->verticalLayout->removeWidget(tabs);
-		auto *row = new QHBoxLayout();
-		row->addWidget(sidebar);
+		auto *body = new QWidget();
+		auto *row = new QHBoxLayout(body);
+		row->setContentsMargins(0, 0, 0, 0);
+		row->setSpacing(32);
+		row->addWidget(sidebar, 0, Qt::AlignTop);
 		row->addWidget(tabs, 1);
-		ui->verticalLayout->insertLayout(0, row);
+		auto *bodyScroll = new QScrollArea(this);
+		bodyScroll->setWidgetResizable(true);
+		bodyScroll->setFrameShape(QFrame::NoFrame);
+		bodyScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+		bodyScroll->setStyleSheet("QScrollArea { background: transparent; border: none; } "
+								  "QScrollArea > QWidget > QWidget { background: transparent; }");
+		bodyScroll->setWidget(body);
+		ui->verticalLayout->insertWidget(0, bodyScroll, 1);
 	}
 	setupKeymapTabs();
 	ui->pointerSlider->adjustSize();
@@ -74,6 +86,12 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		auto *saveButton = new QPushButton(tr("Save Changes"), footer);
 		saveButton->setProperty("variant", "primary");
 		saveButton->setMinimumWidth(140);
+		for (QPushButton *button : {restoreButton, cancelButton, saveButton})
+		{
+			button->setStyleSheet("font-size: 10pt; padding: 0 20px; min-height: 0;");
+			button->setFixedHeight(40);
+		}
+		saveButton->setStyleSheet("font-size: 10pt; font-weight: 600; padding: 0 20px; min-height: 0;");
 		footerLayout->addWidget(restoreButton);
 		footerLayout->addStretch();
 		footerLayout->addWidget(cancelButton);
@@ -103,6 +121,31 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 	ui->buttonBox->setCenterButtons(true);
 	ui->pointerSlider->setValue(SettingsSingleton::instance().mouseSensitivity() / 100);
 	ui->executorNotesLabel->setOpenExternalLinks(true);
+	{
+		ui->executorGroup->setMaximumWidth(720);
+		ui->gamepadExecutorRadio->setText(tr("Virtual Gamepad (Experimental)"));
+		auto makeHint = [this](const QString &text) {
+			auto *hint = new QLabel(text, ui->executorGroup);
+			hint->setProperty("role", "caption");
+			hint->setContentsMargins(30, 0, 0, 8);
+			return hint;
+		};
+		ui->executorLayout->removeWidget(ui->executorNotesLabel);
+		ui->executorLayout->insertWidget(1, makeHint(tr("Emulates a gamepad device for supported games.")));
+		ui->executorLayout->insertWidget(3, makeHint(tr("Converts gamepad inputs into keyboard and mouse actions.")));
+		auto *card = new QFrame(ui->executorGroup);
+		card->setStyleSheet("QFrame { background-color: #1A1A1A; border: none; border-radius: 4px; }");
+		auto *cardLayout = new QVBoxLayout(card);
+		cardLayout->setContentsMargins(16, 14, 16, 14);
+		auto *cardTitle = new QLabel(card);
+		cardTitle->setObjectName("executorDetailsTitle");
+		cardTitle->setStyleSheet("font-weight: 600; font-size: 11pt; background: transparent;");
+		cardLayout->addWidget(cardTitle);
+		ui->executorNotesLabel->setParent(card);
+		ui->executorNotesLabel->setMinimumHeight(130);
+		cardLayout->addWidget(ui->executorNotesLabel);
+		ui->executorLayout->addWidget(card);
+	}
 
 	setup_profile_management();
 
@@ -596,8 +639,8 @@ void Preferences::update_executor_notes()
 				"- Enable [app sideloading (developer mode) in Settings](ms-settings:developers)\n"
 				"- Creates a virtual gamepad device\n"
 				"- **Experimental**: "
-				"Known to crash at server launch. [Complain here for "
-				"fix.](https://github.com/microsoft/microsoft-ui-xaml/issues/8639)";
+				"Known to crash at server launch. [View known "
+				"issue.](https://github.com/microsoft/microsoft-ui-xaml/issues/8639)";
 #elif defined(__linux__)
 #else
 		notes = "Platform-specific notes apply for virtual gamepad creation.";
@@ -618,4 +661,7 @@ void Preferences::update_executor_notes()
 	}
 
 	ui->executorNotesLabel->setText(notes);
+	if (auto *title = findChild<QLabel *>("executorDetailsTitle"))
+		title->setText(ui->gamepadExecutorRadio->isChecked() ? tr("Virtual Gamepad")
+															 : tr("Keyboard/Mouse Simulation"));
 }
