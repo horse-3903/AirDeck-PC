@@ -4,5 +4,8 @@
         <file>logos/GamepadIcon.svg</file>
         <file>logos/GamepadIcon_transparent.png</file>
         <file>logos/SquareIcon.png</file>
+        <file>logos/HeroController.png</file>
+        <file>logos/AppIcon.png</file>
+        <file>theme.qss</file>
     </qresource>
 </RCC>

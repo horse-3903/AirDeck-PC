@@ -7,6 +7,9 @@
 #include "ui_preferences.h"
 
 #include <QDebug>
+#include <QHBoxLayout>
+#include <QListWidget>
+#include <QTabBar>
 #include <QDir>
 #include <QFile>
 #include <QInputDialog>
@@ -19,6 +22,23 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 	qDebug() << "Initializing Preferences dialog";
 
 	ui->setupUi(this);
+	{
+		QTabWidget *tabs = ui->preferencesTabWidget;
+		auto *sidebar = new QListWidget(this);
+		sidebar->setObjectName("prefsSidebar");
+		sidebar->setFixedWidth(170);
+		sidebar->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+		for (int i = 0; i < tabs->count(); ++i)
+			sidebar->addItem(tabs->tabText(i));
+		sidebar->setCurrentRow(tabs->currentIndex());
+		connect(sidebar, &QListWidget::currentRowChanged, tabs, &QTabWidget::setCurrentIndex);
+		tabs->tabBar()->hide();
+		ui->verticalLayout->removeWidget(tabs);
+		auto *row = new QHBoxLayout();
+		row->addWidget(sidebar);
+		row->addWidget(tabs, 1);
+		ui->verticalLayout->insertLayout(0, row);
+	}
 	setupKeymapTabs();
 	ui->pointerSlider->adjustSize();
 

@@ -6,16 +6,24 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>640</width>
+    <height>480</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Server</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin"><number>28</number></property>
+   <property name="topMargin"><number>24</number></property>
+   <property name="rightMargin"><number>28</number></property>
+   <property name="bottomMargin"><number>24</number></property>
+   <property name="spacing"><number>16</number></property>
    <item>
     <widget class="QLabel" name="statusLabel">
+     <property name="wordWrap"><bool>true</bool></property>
+     <property name="margin"><number>16</number></property>
+     <property name="role" stdset="0"><string>card</string></property>
      <property name="text">
       <string>Status</string>
      </property>
@@ -34,7 +42,7 @@
     <widget class="QWidget" name="IPwidget" native="true">
      <layout class="QHBoxLayout" name="horizontalLayout">
       <property name="spacing">
-       <number>0</number>
+       <number>16</number>
       </property>
       <item>
        <widget class="QListWidget" name="IPList">
@@ -72,6 +80,8 @@
    </item>
    <item>
     <widget class="QLabel" name="clientLabel">
+     <property name="alignment"><set>Qt::AlignCenter</set></property>
+     <property name="role" stdset="0"><string>pill</string></property>
      <property name="text">
       <string>No device connected</string>
      </property>
@@ -85,6 +95,8 @@
    </item>
    <item>
     <widget class="QPushButton" name="stopButton">
+     <property name="cursor"><cursorShape>PointingHandCursor</cursorShape></property>
+     <property name="variant" stdset="0"><string>danger</string></property>
      <property name="text">
       <string>Stop Server and Return</string>
      </property>

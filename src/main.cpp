@@ -8,6 +8,8 @@
 #include <QFileInfo>
 #include <QLockFile>
 #include <QMutex>
+#include <QIcon>
+#include <QPalette>
 #include <QStandardPaths>
 #include <QStyleFactory>
 #include <memory>
@@ -101,9 +103,34 @@ int main(int argc, char *argv[])
 
 	QApplication a(argc, argv);
 	QApplication::setStyle(QStyleFactory::create("Fusion"));
+
+	QPalette dark;
+	dark.setColor(QPalette::Window, QColor("#000000"));
+	dark.setColor(QPalette::WindowText, QColor("#E2E8F0"));
+	dark.setColor(QPalette::Base, QColor("#0A0A0A"));
+	dark.setColor(QPalette::AlternateBase, QColor("#111111"));
+	dark.setColor(QPalette::Text, QColor("#E2E8F0"));
+	dark.setColor(QPalette::Button, QColor("#1A1A1A"));
+	dark.setColor(QPalette::ButtonText, QColor("#E2E8F0"));
+	dark.setColor(QPalette::ToolTipBase, QColor("#111111"));
+	dark.setColor(QPalette::ToolTipText, QColor("#E2E8F0"));
+	dark.setColor(QPalette::Highlight, QColor("#3A3A3A"));
+	dark.setColor(QPalette::HighlightedText, QColor("#FFFFFF"));
+	dark.setColor(QPalette::Link, QColor("#D4D4D4"));
+	dark.setColor(QPalette::PlaceholderText, QColor("#6B6B6B"));
+	dark.setColor(QPalette::Disabled, QPalette::Text, QColor("#6B6B6B"));
+	dark.setColor(QPalette::Disabled, QPalette::ButtonText, QColor("#6B6B6B"));
+	QApplication::setPalette(dark);
+
+	QFile themeFile(":/theme.qss");
+	if (themeFile.open(QIODevice::ReadOnly | QIODevice::Text))
+	{
+		a.setStyleSheet(QString::fromUtf8(themeFile.readAll()));
+	}
 	QApplication::setOrganizationName("kitswas");
 	QApplication::setOrganizationDomain("io.github.kitswas");
 	QApplication::setApplicationName("VirtualGamePad");
+	QApplication::setWindowIcon(QIcon(":/logos/AppIcon.png"));
 	QApplication::setApplicationVersion(APP_VERSION);
 	qInfo() << "App data directory:" << getAppDataDir();
 

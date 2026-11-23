@@ -2,8 +2,15 @@ cmake_minimum_required(VERSION 3.19)
 
 set(APP_VERSION 0.4.1)
 add_definitions(-DAPP_VERSION="${APP_VERSION}")
+if(WIN32)
+    add_definitions(-DNOMINMAX)
+endif()
 
 project("Virtual Gamepad PC" VERSION ${APP_VERSION} LANGUAGES CXX C)
+if(WIN32)
+    enable_language(RC)
+    list(APPEND PROJECT_SOURCES_WIN res/VGamepad.rc)
+endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -61,6 +68,7 @@ set(QR_CODE_GEN_SOURCES
 )
 
 add_library(QR_Code_Generator SHARED ${QR_CODE_GEN_SOURCES})
+set_target_properties(QR_Code_Generator PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 # Manifest file for the application
 # This file is used to request permissions on Windows
@@ -121,6 +129,7 @@ endif()
 
 qt_add_executable(VGamepadPC
     ${PROJECT_SOURCES}
+    ${PROJECT_SOURCES_WIN}
 )
 
 target_link_libraries(VGamepadPC PRIVATE

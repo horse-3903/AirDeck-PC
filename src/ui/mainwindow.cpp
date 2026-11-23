@@ -10,6 +10,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 	SettingsSingleton::instance().loadAll();
 	ui->setupUi(this);
+	resize(960, 540);
 	ui->stackedWidget->addWidget(new MainMenu(ui->stackedWidget));
 
 	qDebug() << "MainWindow initialized successfully";
