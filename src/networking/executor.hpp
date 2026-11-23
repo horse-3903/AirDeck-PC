@@ -47,6 +47,9 @@ class ExecutorInterface
 
 	// Releases any key or mouse button still held down, e.g. when the device disconnects
 	virtual void release_all() {}
+
+	// The 1 to 4 controller slot this executor occupies, or -1 when it has none
+	virtual int slot() const { return -1; }
 };
 
 class GamepadExecutor : public ExecutorInterface
@@ -89,6 +92,7 @@ class ViGEmExecutor : public ExecutorInterface
 
 	bool inject_gamepad_state(vgp_data_exchange_gamepad_reading const &reading) override;
 	void release_all() override;
+	int slot() const override;
 
   private:
 	_VIGEM_CLIENT_T *m_client = nullptr;

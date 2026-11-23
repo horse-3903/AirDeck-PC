@@ -4,6 +4,8 @@
 
 #include <QByteArray>
 #include <QDialog>
+#include <QFrame>
+#include <QLabel>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTime>
@@ -35,6 +37,8 @@ class Server : public QWidget
   private:
 	void initServer();
 	void updateClientLabel();
+	void updateSlots();
+	int pickSlot(const ExecutorInterface *executor) const;
 	void serveClient();
 
 	Ui::Server *ui;
@@ -43,7 +47,18 @@ class Server : public QWidget
 		QTcpSocket *socket = nullptr;
 		QByteArray buffer;
 		std::unique_ptr<ExecutorInterface> executor;
+		QString name;
+		QString model;
+		int slot = 0;
 	};
+	struct SlotCard
+	{
+		QLabel *badge = nullptr;
+		QLabel *title = nullptr;
+		QLabel *detail = nullptr;
+		QFrame *frame = nullptr;
+	};
+	std::vector<SlotCard> slotCards;
 	static constexpr size_t MAX_PHONES = 4;
 	std::vector<std::unique_ptr<Client>> clients;
 	QTcpSocket *clientConnection;

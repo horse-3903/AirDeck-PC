@@ -109,20 +109,62 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 	connect(homeButton, &QPushButton::clicked, this, &Server::homeRequested);
 	{
 		const ExecutorType mode = SettingsSingleton::instance().executorType();
-		QString details = tr("Input: %1").arg(
+		const QString modeName =
 			mode == ExecutorType::VigemExecutor		? tr("Virtual Xbox 360 Controller (ViGEm)")
-			: mode == ExecutorType::GamepadExecutor ? tr("Virtual Gamepad")
-													: tr("Keyboard/Mouse Simulation"));
+			: mode == ExecutorType::GamepadExecutor ? tr("Virtual Gamepad (InputInjector)")
+													: tr("Keyboard/Mouse Simulation");
+		const QString pillStyle =
+			"QLabel { background: #161616; border: 1px solid %1; border-radius: 4px; "
+			"padding: 4px 12px; color: %2; font-weight: 600; }";
+		auto *modePill = new QLabel(tr("Input mode  |  %1").arg(modeName), this);
+		modePill->setStyleSheet(pillStyle.arg("#5A5A5A", "#F5F5F5"));
+		auto *pillRow = new QHBoxLayout();
+		pillRow->setSpacing(8);
+		pillRow->addWidget(modePill);
 		if (isElevated())
-			details += tr("   |   Administrator");
-		auto *detailsLabel = new QLabel(details, this);
-		detailsLabel->setProperty("role", "caption");
+		{
+			auto *adminPill = new QLabel(tr("Administrator"), this);
+			adminPill->setStyleSheet(pillStyle.arg("#8A6A1F", "#F2C14E"));
+			pillRow->addWidget(adminPill);
+		}
+		pillRow->addStretch();
 		auto *titleColumn = new QVBoxLayout();
-		titleColumn->setSpacing(2);
+		titleColumn->setSpacing(6);
 		ui->headerLayout->removeWidget(ui->statusLabel);
 		titleColumn->addWidget(ui->statusLabel);
-		titleColumn->addWidget(detailsLabel);
+		titleColumn->addLayout(pillRow);
 		ui->headerLayout->insertLayout(0, titleColumn);
+	}
+
+	// One card per controller slot, filled in as phones connect
+	{
+		auto *slotRow = new QHBoxLayout();
+		slotRow->setSpacing(12);
+		for (int i = 0; i < 4; ++i)
+		{
+			SlotCard card;
+			card.frame = new QFrame(this);
+			card.frame->setProperty("role", "card");
+			auto *cardLayout = new QHBoxLayout(card.frame);
+			cardLayout->setContentsMargins(12, 10, 12, 10);
+			cardLayout->setSpacing(10);
+			card.badge = new QLabel(QString::number(i + 1), card.frame);
+			card.badge->setFixedSize(34, 34);
+			card.badge->setAlignment(Qt::AlignCenter);
+			auto *textColumn = new QVBoxLayout();
+			textColumn->setSpacing(1);
+			card.title = new QLabel(card.frame);
+			card.detail = new QLabel(card.frame);
+			card.detail->setProperty("role", "caption");
+			textColumn->addWidget(card.title);
+			textColumn->addWidget(card.detail);
+			cardLayout->addWidget(card.badge);
+			cardLayout->addLayout(textColumn, 1);
+			slotRow->addWidget(card.frame, 1);
+			slotCards.push_back(card);
+		}
+		ui->verticalLayout->insertLayout(2, slotRow);
+		updateSlots();
 	}
 	clientConnection = nullptr;
 	tcpServer = new QTcpServer(this);
@@ -253,6 +295,61 @@ void Server::initServer()
 	qInfo() << "Server started successfully on port:" << tcpServer->serverPort();
 }
 
+int Server::pickSlot(const ExecutorInterface *executor) const
+{
+	const auto used = [this](int slot) {
+		return std::any_of(clients.begin(), clients.end(),
+						   [slot](const std::unique_ptr<Client> &c) { return c->slot == slot; });
+	};
+	const int preferred = executor != nullptr ? executor->slot() : -1;
+	if (preferred >= 1 && preferred <= 4 && !used(preferred))
+		return preferred;
+	for (int slot = 1; slot <= 4; ++slot)
+	{
+		if (!used(slot))
+			return slot;
+	}
+	return 0;
+}
+
+void Server::updateSlots()
+{
+	for (int i = 0; i < static_cast<int>(slotCards.size()); ++i)
+	{
+		const Client *owner = nullptr;
+		for (const auto &client : clients)
+		{
+			if (client->slot == i + 1)
+				owner = client.get();
+		}
+		SlotCard &card = slotCards[i];
+		const bool active = owner != nullptr;
+		card.badge->setStyleSheet(
+			active ? "QLabel { background: #F5F5F5; color: #000000; border-radius: 17px; "
+					 "font-weight: 700; font-size: 11pt; }"
+				   : "QLabel { background: transparent; color: #6B6B6B; border: 2px solid #3A3A3A; "
+					 "border-radius: 17px; font-weight: 700; font-size: 11pt; }");
+		if (active)
+		{
+			const QString name =
+				!owner->name.isEmpty() ? owner->name : owner->socket->peerAddress().toString();
+			card.title->setText(name);
+			card.title->setStyleSheet("font-weight: 600; color: #F5F5F5;");
+			QStringList parts;
+			if (!owner->model.isEmpty() && owner->model != owner->name)
+				parts << owner->model;
+			parts << owner->socket->peerAddress().toString();
+			card.detail->setText(parts.join("  |  "));
+		}
+		else
+		{
+			card.title->setText(tr("Controller %1").arg(i + 1));
+			card.title->setStyleSheet("color: #8A8A8A;");
+			card.detail->setText(tr("Waiting for a phone"));
+		}
+	}
+}
+
 void Server::updateClientLabel()
 {
 	if (clients.empty())
@@ -317,12 +414,23 @@ void Server::handleConnection()
 			return;
 		}
 	}
+	client->slot = pickSlot(client->executor.get());
+	if (client->slot == 0)
+	{
+		qWarning() << "All controller slots are in use, refusing the new device";
+		ui->clientLabel->setText(tr("All 4 controller slots are in use."));
+		socket->close();
+		socket->deleteLater();
+		return;
+	}
+	socket->write("VGPSLOT:" + QByteArray::number(client->slot) + "\n");
 	clients.push_back(std::move(client));
 	clientConnection = socket;
 	isGamepadConnected = true;
 	qInfo() << "Device connected:" << socket->peerAddress().toString() << socket->peerPort()
 			<< "total devices:" << clients.size();
 	updateClientLabel();
+	updateSlots();
 
 	if (!multiPhone || clients.size() >= MAX_PHONES)
 		tcpServer->pauseAccepting();
@@ -341,6 +449,7 @@ void Server::handleConnection()
 		if (clients.empty())
 			clientConnection = nullptr;
 		updateClientLabel();
+		updateSlots();
 		tcpServer->resumeAccepting();
 	});
 	connect(socket, &QAbstractSocket::readyRead, this, &Server::serveClient);
@@ -376,6 +485,21 @@ void Server::serveClient()
 	// Process as many complete packets as we have in the buffer
 	while (!client.buffer.isEmpty())
 	{
+		// A phone introduces itself first: VGPHELLO:<name>|<model>
+		if (client.buffer.startsWith("VGPHELLO:"))
+		{
+			const int end = client.buffer.indexOf('\n');
+			if (end < 0)
+				break;
+			const QStringList parts =
+				QString::fromUtf8(client.buffer.mid(9, end - 9)).split('|');
+			client.name = parts.value(0).trimmed();
+			client.model = parts.value(1).trimmed();
+			client.buffer.remove(0, end + 1);
+			qInfo() << "Device introduced itself:" << client.name << client.model;
+			updateSlots();
+			continue;
+		}
 		ParseResult result = parse_gamepad_state(client.buffer.constData(), client.buffer.size());
 
 		if (!result.success)

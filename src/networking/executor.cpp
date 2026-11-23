@@ -541,6 +541,7 @@ bool GamepadExecutor::inject_gamepad_state(vgp_data_exchange_gamepad_reading con
 
 #ifdef _WIN32
 #include <ViGEm/Client.h>
+#include <cstdio>
 #include <stdexcept>
 
 ViGEmExecutor::ViGEmExecutor()
@@ -558,7 +559,10 @@ ViGEmExecutor::ViGEmExecutor()
 			throw std::runtime_error(
 				"The ViGEmBus driver is not installed. Install it from "
 				"github.com/nefarius/ViGEmBus/releases and try again.");
-		throw std::runtime_error("Could not connect to the ViGEmBus driver.");
+		char code[64];
+		snprintf(code, sizeof(code), "Could not connect to the ViGEmBus driver (error 0x%08X).",
+				 static_cast<unsigned>(connectResult));
+		throw std::runtime_error(code);
 	}
 
 	m_pad = vigem_target_x360_alloc();
@@ -572,9 +576,12 @@ ViGEmExecutor::ViGEmExecutor()
 		vigem_disconnect(m_client);
 		vigem_free(m_client);
 		m_client = nullptr;
-		throw std::runtime_error(addResult == VIGEM_ERROR_NO_FREE_SLOT
-									 ? "No free virtual controller slot (the limit is 4)."
-									 : "Could not create a virtual controller.");
+		if (addResult == VIGEM_ERROR_NO_FREE_SLOT)
+			throw std::runtime_error("No free virtual controller slot (the limit is 4).");
+		char code[64];
+		snprintf(code, sizeof(code), "Could not create a virtual controller (error 0x%08X).",
+				 static_cast<unsigned>(addResult));
+		throw std::runtime_error(code);
 	}
 	qInfo() << "ViGEm virtual Xbox 360 controller created";
 }
@@ -642,6 +649,15 @@ bool ViGEmExecutor::inject_gamepad_state(vgp_data_exchange_gamepad_reading const
 	report.sThumbRX = toStickAxis(reading.right_thumbstick_x, false);
 	report.sThumbRY = toStickAxis(reading.right_thumbstick_y, true);
 	return VIGEM_SUCCESS(vigem_target_x360_update(m_client, m_pad, report));
+}
+
+int ViGEmExecutor::slot() const
+{
+	ULONG index = 0;
+	if (m_client != nullptr && m_pad != nullptr &&
+		VIGEM_SUCCESS(vigem_target_x360_get_user_index(m_client, m_pad, &index)))
+		return static_cast<int>(index) + 1;
+	return -1;
 }
 
 void ViGEmExecutor::release_all()

@@ -74,7 +74,11 @@ class SettingsSingleton : public QObject
 	static constexpr int DEFAULT_MOUSE_SENSITIVITY = 10;
 	static constexpr int MOUSE_SENSITIVITY_MULTIPLIER = 10;
 	static constexpr int DEFAULT_PORT_NUMBER = 0;
+	#ifdef _WIN32
+	static constexpr ExecutorType DEFAULT_EXECUTOR_TYPE = ExecutorType::VigemExecutor;
+#else
 	static constexpr ExecutorType DEFAULT_EXECUTOR_TYPE = ExecutorType::KeyboardMouseExecutor;
+#endif
 
   private:
 	SettingsSingleton();

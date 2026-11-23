@@ -1,4 +1,4 @@
-#include "preferences.hpp"
+﻿#include "preferences.hpp"
 
 #include "../settings/input_types.hpp"
 #include "../settings/settings.hpp"
@@ -90,7 +90,9 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		ui->buttonBox->hide();
 		auto *footer = new QWidget(this);
 		auto *footerLayout = new QHBoxLayout(footer);
-		footerLayout->setContentsMargins(0, 8, 0, 0);
+		footerLayout->setContentsMargins(0, 0, 0, 0);
+		footerLayout->setAlignment(Qt::AlignVCenter);
+		footer->setFixedHeight(48);
 		auto *restoreButton = new QPushButton(tr("Restore Defaults"), footer);
 		restoreButton->setProperty("variant", "ghost");
 		auto *cancelButton = new QPushButton(tr("Cancel"), footer);
@@ -99,10 +101,10 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		saveButton->setMinimumWidth(0);
 		for (QPushButton *button : {restoreButton, cancelButton, saveButton})
 		{
-			button->setStyleSheet("font-size: 10pt; padding: 6px 20px; min-height: 20px;");
-			button->setFixedHeight(38);
+			button->setStyleSheet("font-size: 10pt; padding: 4px 18px; min-height: 20px;");
+			button->setFixedHeight(34);
 		}
-		saveButton->setStyleSheet("font-size: 10pt; font-weight: 600; padding: 6px 20px; min-height: 20px;");
+		saveButton->setStyleSheet("font-size: 10pt; font-weight: 600; padding: 4px 18px; min-height: 20px;");
 		footerLayout->addWidget(restoreButton);
 		footerLayout->addStretch();
 		footerLayout->addWidget(cancelButton);
@@ -134,7 +136,7 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 	ui->executorNotesLabel->setOpenExternalLinks(true);
 	{
 		ui->executorGroup->setMaximumWidth(720);
-		ui->gamepadExecutorRadio->setText(tr("Virtual Gamepad (Experimental)"));
+		ui->gamepadExecutorRadio->setText(tr("InputInjector (Experimental)"));
 		auto makeHint = [this](const QString &text) {
 			auto *hint = new QLabel(text, ui->executorGroup);
 			hint->setProperty("role", "caption");
@@ -142,14 +144,14 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 			return hint;
 		};
 		ui->executorLayout->removeWidget(ui->executorNotesLabel);
-		ui->executorLayout->insertWidget(1, makeHint(tr("Emulates a gamepad device for supported games.")));
+		ui->executorLayout->insertWidget(1, makeHint(tr("Windows virtual gamepad API. Can crash on some systems.")));
 		ui->executorLayout->insertWidget(3, makeHint(tr("Converts gamepad inputs into keyboard and mouse actions.")));
 #ifdef _WIN32
 		auto *vigemRadio = new QRadioButton(tr("Virtual Xbox 360 Controller (ViGEm)"), ui->executorGroup);
 		vigemRadio->setObjectName("vigemExecutorRadio");
-		ui->executorLayout->insertWidget(4, vigemRadio);
+		ui->executorLayout->insertWidget(0, vigemRadio);
 		ui->executorLayout->insertWidget(
-			5, makeHint(tr("A real XInput controller for each phone. Needs the ViGEmBus driver.")));
+			1, makeHint(tr("A real XInput controller for each phone. Needs the ViGEmBus driver.")));
 		connect(vigemRadio, &QRadioButton::toggled, this, &Preferences::executor_type_changed);
 #endif
 		auto *card = new QFrame(ui->executorGroup);
@@ -700,6 +702,6 @@ void Preferences::update_executor_notes()
 	ui->executorNotesLabel->setText(notes);
 	if (auto *title = findChild<QLabel *>("executorDetailsTitle"))
 		title->setText(vigemSelected							  ? tr("Virtual Xbox 360 Controller")
-					   : ui->gamepadExecutorRadio->isChecked() ? tr("Virtual Gamepad")
+					   : ui->gamepadExecutorRadio->isChecked() ? tr("InputInjector")
 															   : tr("Keyboard/Mouse Simulation"));
 }
