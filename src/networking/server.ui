@@ -226,7 +226,7 @@
      <item>
       <widget class="QLabel" name="noteLabel">
        <property name="text">
-        <string>Closing this window stops the server.</string>
+        <string>Closing this window keeps the server running in the tray.</string>
        </property>
        <property name="role" stdset="0">
         <string>caption</string>
