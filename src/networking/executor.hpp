@@ -6,19 +6,9 @@
 #include "../simulation/keyboardSim.hpp"
 #include "../simulation/mouseSim.hpp"
 
-#include <QDateTime>
-#include <QFile>
-#include <QTextStream>
 #include <memory>
 #include <vector>
 
-inline void diagLog(const QString &line)
-{
-	QFile file("keydiag.log");
-	if (file.open(QIODevice::Append | QIODevice::Text))
-		QTextStream(&file) << QDateTime::currentDateTime().toString("hh:mm:ss.zzz") << " " << line
-						   << "\n";
-}
 
 struct ParseResult
 {

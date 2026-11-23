@@ -81,6 +81,7 @@ SET(APP_MANIFEST_FILE "${CMAKE_SOURCE_DIR}/res/VGamepadPC.exe.manifest")
 # Add project files sorted in alphabetical order
 set(PROJECT_SOURCES
     res/icons.qrc
+    res/web.qrc
     src/appdir.hpp
     src/main.cpp
     src/networking/executor.cpp

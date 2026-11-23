@@ -8,6 +8,11 @@
 #include <QApplication>
 #include <QGridLayout>
 #include <QClipboard>
+#include <QCryptographicHash>
+#include <QFile>
+#include <QHash>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QDataStream>
 #include <QHostAddress>
 #include <QList>
@@ -262,9 +267,9 @@ void Server::initServer()
 		ui->IPList->addItem(item);
 		QLabel *QRWidget = new QLabel();
 		QRWidget->setAlignment(Qt::AlignCenter);
-		QRWidget->setPixmap(QPixmap::fromImage(
-			createQR(tr("%1:%2").arg(address).arg(tcpServer->serverPort()))));
 		ui->QRViewer->addWidget(QRWidget);
+		qrLabels.push_back(QRWidget);
+		qrAddresses << address;
 	}
 	if (ui->IPList->count() > 0)
 	{
@@ -276,12 +281,52 @@ void Server::initServer()
 			tr("No network address found. Connect this PC to a network and restart the server."));
 		ui->copyButton->setEnabled(false);
 	}
+	// Two QR codes per address: one for the phone app, one that opens the browser controller
+	{
+		auto *toggleRow = new QHBoxLayout();
+		toggleRow->setSpacing(6);
+		auto *appButton = new QPushButton(tr("App"), this);
+		auto *webButton = new QPushButton(tr("Browser"), this);
+		for (QPushButton *button : {appButton, webButton})
+		{
+			button->setCheckable(true);
+			button->setCursor(Qt::PointingHandCursor);
+			button->setFixedHeight(30);
+			button->setStyleSheet("QPushButton { padding: 2px 14px; min-height: 18px; } "
+				"QPushButton:checked { background-color: #F5F5F5; color: #000000; border-color: #FFFFFF; }");
+		}
+		appButton->setChecked(true);
+		toggleRow->addStretch();
+		toggleRow->addWidget(appButton);
+		toggleRow->addWidget(webButton);
+		toggleRow->addStretch();
+		ui->qrLayout->insertLayout(0, toggleRow);
+		const auto choose = [this, appButton, webButton](bool web) {
+			webQr = web;
+			appButton->setChecked(!web);
+			webButton->setChecked(web);
+			updateQrPixmaps();
+			if (webUrlLabel != nullptr)
+				webUrlLabel->setVisible(web);
+		};
+		connect(appButton, &QPushButton::clicked, this, [choose]() { choose(false); });
+		connect(webButton, &QPushButton::clicked, this, [choose]() { choose(true); });
+
+		webUrlLabel = new QLabel(this);
+		webUrlLabel->setProperty("role", "caption");
+		webUrlLabel->setWordWrap(true);
+		webUrlLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+		webUrlLabel->setVisible(false);
+		ui->connectionLayout->insertWidget(ui->connectionLayout->indexOf(ui->portLabel) + 1, webUrlLabel);
+		updateQrPixmaps();
+	}
 	connect(ui->copyButton, &QPushButton::clicked, this, [this]() {
 		QListWidgetItem *current = ui->IPList->currentItem();
 		if (current == nullptr)
 			return;
-		QApplication::clipboard()->setText(
-			tr("%1:%2").arg(current->data(Qt::UserRole).toString()).arg(tcpServer->serverPort()));
+		const QString address = current->data(Qt::UserRole).toString();
+		QApplication::clipboard()->setText(webQr ? tr("http://%1:%2/").arg(address).arg(tcpServer->serverPort())
+												 : tr("%1:%2").arg(address).arg(tcpServer->serverPort()));
 		ui->copyButton->setText(tr("Copied"));
 		QTimer::singleShot(1500, ui->copyButton, [this]() { ui->copyButton->setText(tr("Copy address")); });
 	});
@@ -289,7 +334,11 @@ void Server::initServer()
 			[this](QListWidgetItem *current, QListWidgetItem *) {
 				if (current != nullptr)
 				{
-					ui->QRViewer->setCurrentIndex(ui->IPList->row(current));
+						ui->QRViewer->setCurrentIndex(ui->IPList->row(current));
+						if (webUrlLabel != nullptr)
+							webUrlLabel->setText(tr("Browser address: http://%1:%2/")
+													 .arg(current->data(Qt::UserRole).toString())
+													 .arg(tcpServer->serverPort()));
 				}
 			});
 	connect(tcpServer, &QTcpServer::newConnection, this, &Server::handleConnection);
@@ -353,26 +402,101 @@ void Server::updateSlots()
 
 void Server::updateClientLabel()
 {
-	if (clients.empty())
+	QStringList names;
+	for (const auto &client : clients)
+	{
+		if (client->active)
+			names << (client->name.isEmpty() ? client->socket->peerAddress().toString() : client->name);
+	}
+	if (names.isEmpty())
 	{
 		ui->clientLabel->setText(tr("○ No device connected"));
 		return;
 	}
-	QStringList names;
-	for (const auto &client : clients)
-		names << client->socket->peerAddress().toString();
-	ui->clientLabel->setText(clients.size() == 1
+	ui->clientLabel->setText(names.size() == 1
 								 ? tr("● Connected to %1").arg(names.first())
-								 : tr("● %1 devices connected: %2").arg(clients.size()).arg(names.join(", ")));
+								 : tr("● %1 devices connected: %2").arg(names.size()).arg(names.join(", ")));
 }
 
-void Server::handleConnection()
+ExecutorInterface *Server::executorFor(Client &client)
+{
+	return client.executor ? client.executor.get() : executor.get();
+}
+
+bool Server::activate(Client &client, QString *failure)
 {
 	// Keyboard/mouse input is shared, so only one phone may drive it.
 	// Virtual gamepads can be created per phone.
 	const ExecutorType mode = SettingsSingleton::instance().executorType();
 	const bool multiPhone =
 		mode == ExecutorType::GamepadExecutor || mode == ExecutorType::VigemExecutor;
+	if (!multiPhone)
+	{
+		for (const auto &other : clients)
+		{
+			if (other.get() != &client && other->active)
+			{
+				*failure = tr("Another phone is already connected. Keyboard/Mouse mode accepts one phone.");
+				return false;
+			}
+		}
+	}
+	else if (mode == ExecutorType::VigemExecutor)
+	{
+#ifdef _WIN32
+		try
+		{
+			client.executor = std::make_unique<ViGEmExecutor>();
+		}
+		catch (const std::exception &e)
+		{
+			*failure = QString::fromUtf8(e.what());
+			return false;
+		}
+#endif
+	}
+	else
+	{
+		bool crashed = false;
+		client.executor.reset(createGamepadGuarded(&crashed));
+		if (!client.executor)
+		{
+			*failure = tr("Could not create a virtual gamepad. Switch to Keyboard/Mouse "
+						  "Simulation or the ViGEm controller in Preferences.");
+			return false;
+		}
+	}
+	client.slot = pickSlot(client.executor.get());
+	if (client.slot == 0)
+	{
+		*failure = tr("All 6 controller slots are in use.");
+		return false;
+	}
+	client.active = true;
+	clientConnection = client.socket;
+	isGamepadConnected = true;
+	qInfo() << "Device connected:" << client.socket->peerAddress().toString()
+			<< "slot" << client.slot << "total devices:" << clients.size();
+	updateClientLabel();
+	updateSlots();
+	return true;
+}
+
+void Server::refuse(Client &client, const QString &why)
+{
+	qWarning() << "Refusing a device:" << why;
+	ui->clientLabel->setText(why);
+	QTcpSocket *socket = client.socket;
+	if (client.protocol == Client::Protocol::WebSocket)
+	{
+		sendWebJson(client, QJsonObject{{"t", "refused"}, {"why", why}});
+		sendWebFrame(socket, QByteArray(), 8);
+	}
+	socket->disconnectFromHost();
+}
+
+void Server::handleConnection()
+{
 	QTcpSocket *socket = tcpServer->nextPendingConnection();
 	if (socket == nullptr)
 		return;
@@ -381,81 +505,36 @@ void Server::handleConnection()
 
 	auto client = std::make_unique<Client>();
 	client->socket = socket;
-	if (multiPhone)
-	{
-		QString failure;
-		if (mode == ExecutorType::VigemExecutor)
-		{
-#ifdef _WIN32
-			try
-			{
-				client->executor = std::make_unique<ViGEmExecutor>();
-			}
-			catch (const std::exception &e)
-			{
-				failure = QString::fromUtf8(e.what());
-			}
-#endif
-		}
-		else
-		{
-			bool crashed = false;
-			client->executor.reset(createGamepadGuarded(&crashed));
-			if (!client->executor)
-				failure = tr("Could not create a virtual gamepad. Switch to Keyboard/Mouse "
-							 "Simulation or the ViGEm controller in Preferences.");
-		}
-		if (!client->executor)
-		{
-			qCritical() << "Failed to create a virtual gamepad for the new device:" << failure;
-			ui->clientLabel->setText(failure.isEmpty() ? tr("Could not create a virtual gamepad.")
-													   : failure);
-			socket->close();
-			socket->deleteLater();
-			return;
-		}
-	}
-	client->slot = pickSlot(client->executor.get());
-	if (client->slot == 0)
-	{
-		qWarning() << "All controller slots are in use, refusing the new device";
-		ui->clientLabel->setText(tr("All 6 controller slots are in use."));
-		socket->close();
-		socket->deleteLater();
-		return;
-	}
-	socket->write("VGPSLOT:" + QByteArray::number(client->slot) + "\n");
 	clients.push_back(std::move(client));
-	clientConnection = socket;
-	isGamepadConnected = true;
-	qInfo() << "Device connected:" << socket->peerAddress().toString() << socket->peerPort()
-			<< "total devices:" << clients.size();
-	updateClientLabel();
-	updateSlots();
-
-	if (!multiPhone || clients.size() >= MAX_PHONES)
-		tcpServer->pauseAccepting();
 
 	connect(socket, &QAbstractSocket::disconnected, this, [this, socket]() {
-		qInfo() << "Device disconnected.";
-		qDebug() << "Average Request Interval" << averageRequestInterval
-				 << "ms, Request Count:" << requestCount;
-		if (executor)
-			executor->release_all();
-		std::erase_if(clients, [socket](const std::unique_ptr<Client> &c) {
-			return c->socket == socket;
-		});
+		const auto it = std::find_if(clients.begin(), clients.end(),
+									 [socket](const std::unique_ptr<Client> &c) { return c->socket == socket; });
+		bool wasActive = false;
+		if (it != clients.end())
+		{
+			wasActive = (*it)->active;
+			if ((*it)->executor)
+				(*it)->executor->release_all();
+			else if (wasActive && executor)
+				executor->release_all();
+			clients.erase(it);
+		}
 		socket->deleteLater();
-		isGamepadConnected = !clients.empty();
-		if (clients.empty())
+		isGamepadConnected = std::any_of(clients.begin(), clients.end(),
+										 [](const std::unique_ptr<Client> &c) { return c->active; });
+		if (!isGamepadConnected)
 			clientConnection = nullptr;
+		if (wasActive)
+		{
+			qInfo() << "Device disconnected.";
+			qDebug() << "Average Request Interval" << averageRequestInterval
+					 << "ms, Request Count:" << requestCount;
+		}
 		updateClientLabel();
 		updateSlots();
-		tcpServer->resumeAccepting();
 	});
 	connect(socket, &QAbstractSocket::readyRead, this, &Server::serveClient);
-
-	qInfo() << "New client connection received";
 }
 
 void Server::serveClient()
@@ -466,20 +545,52 @@ void Server::serveClient()
 	if (clientIt == clients.end())
 		return;
 	Client &client = **clientIt;
-	ExecutorInterface *activeExecutor = client.executor ? client.executor.get() : executor.get();
-	if (activeExecutor == nullptr)
-		return;
-
-#ifdef QT_DEBUG
-	qDebug() << "Received: " << socket->bytesAvailable() << "bytes";
-#endif
-
-	// Append new data to our buffer
 	client.buffer.append(socket->readAll());
 
-#ifdef QT_DEBUG
-	qDebug() << "Buffer contents: " << client.buffer;
-#endif
+	if (client.protocol == Client::Protocol::Unknown)
+	{
+		// Browsers speak HTTP and start with "GET ", the phone app starts with its own text or binary
+		const QByteArray probe("GET ");
+		if (client.buffer.size() < probe.size() && probe.startsWith(client.buffer))
+			return;
+		if (client.buffer.startsWith(probe))
+		{
+			client.protocol = Client::Protocol::Http;
+		}
+		else
+		{
+			client.protocol = Client::Protocol::Native;
+			QString failure;
+			if (!activate(client, &failure))
+			{
+				refuse(client, failure);
+				return;
+			}
+			socket->write("VGPSLOT:" + QByteArray::number(client.slot) + "\n");
+		}
+	}
+
+	switch (client.protocol)
+	{
+	case Client::Protocol::Native:
+		serveNative(client);
+		break;
+	case Client::Protocol::Http:
+		serveHttp(client);
+		break;
+	case Client::Protocol::WebSocket:
+		serveWebSocket(client);
+		break;
+	default:
+		break;
+	}
+}
+
+void Server::serveNative(Client &client)
+{
+	ExecutorInterface *activeExecutor = executorFor(client);
+	if (activeExecutor == nullptr)
+		return;
 
 	QTime currentTime = QTime::currentTime();
 
@@ -527,43 +638,206 @@ void Server::serveClient()
 			break; // Exit the processing loop
 		}
 
-		// Process the gamepad reading
 		requestCount++;
-		// Calculate performance metrics
 		if (lastRequestTime.isValid())
 		{
 			int elapsed = lastRequestTime.msecsTo(currentTime);
-			// Update average request interval, using running average
 			averageRequestInterval += (elapsed - averageRequestInterval) / requestCount;
 		}
 		lastRequestTime = currentTime;
 
-		{
-			const auto &r = result.reading;
-			static QString lastSummary;
-			const QString summary =
-				QStringLiteral("down=%1 up=%2 LS=(%3,%4) RS=(%5,%6) LT=%7 RT=%8")
-					.arg(r.buttons_down).arg(r.buttons_up)
-					.arg(r.left_thumbstick_x, 0, 'f', 2).arg(r.left_thumbstick_y, 0, 'f', 2)
-					.arg(r.right_thumbstick_x, 0, 'f', 2).arg(r.right_thumbstick_y, 0, 'f', 2)
-					.arg(r.left_trigger, 0, 'f', 2).arg(r.right_trigger, 0, 'f', 2);
-			if (summary != lastSummary)
-			{
-				diagLog(QStringLiteral("Frame %1 %2").arg(requestCount).arg(summary));
-				lastSummary = summary;
-			}
-		}
-
 		activeExecutor->inject_gamepad_state(result.reading);
-
-		// Remove the processed data from the buffer
 		client.buffer.remove(0, result.bytes_consumed);
-
-#ifdef QT_DEBUG
-		qDebug() << "Consumed" << result.bytes_consumed
-				 << "bytes, remaining buffer size:" << client.buffer.size();
-#endif
 	}
+}
+
+void Server::serveHttp(Client &client)
+{
+	const int end = client.buffer.indexOf("\r\n\r\n");
+	if (end < 0)
+	{
+		if (client.buffer.size() > 16384)
+			client.socket->disconnectFromHost();
+		return;
+	}
+	const QByteArray head = client.buffer.left(end);
+	client.buffer.remove(0, end + 4);
+
+	const QList<QByteArray> lines = head.split('\n');
+	const QByteArray path = lines.value(0).trimmed().split(' ').value(1);
+	QHash<QByteArray, QByteArray> headers;
+	for (int i = 1; i < lines.size(); ++i)
+	{
+		const int colon = lines[i].indexOf(':');
+		if (colon > 0)
+			headers.insert(lines[i].left(colon).trimmed().toLower(), lines[i].mid(colon + 1).trimmed());
+	}
+
+	if (headers.value("upgrade").toLower() == "websocket" && headers.contains("sec-websocket-key"))
+	{
+		static const QByteArray magic("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+		const QByteArray accept =
+			QCryptographicHash::hash(headers.value("sec-websocket-key") + magic, QCryptographicHash::Sha1)
+				.toBase64();
+		client.socket->write("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
+							 "Connection: Upgrade\r\nSec-WebSocket-Accept: " +
+							 accept + "\r\n\r\n");
+		client.protocol = Client::Protocol::WebSocket;
+		QString failure;
+		if (!activate(client, &failure))
+		{
+			refuse(client, failure);
+			return;
+		}
+		sendWebJson(client, QJsonObject{{"t", "slot"}, {"n", client.slot}});
+		serveWebSocket(client);
+		return;
+	}
+
+	QByteArray response;
+	if (path == "/" || path.startsWith("/?") || path == "/index.html")
+	{
+		QFile page(":/web/controller.html");
+		const QByteArray body = page.open(QIODevice::ReadOnly) ? page.readAll() : QByteArray();
+		response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " +
+				   QByteArray::number(body.size()) +
+				   "\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n" + body;
+	}
+	else if (path == "/favicon.ico")
+	{
+		response = "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n";
+	}
+	else
+	{
+		response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+	}
+	client.socket->write(response);
+	client.socket->disconnectFromHost();
+}
+
+void Server::sendWebFrame(QTcpSocket *socket, const QByteArray &payload, int opcode)
+{
+	QByteArray frame;
+	frame.append(static_cast<char>(0x80 | opcode));
+	if (payload.size() < 126)
+	{
+		frame.append(static_cast<char>(payload.size()));
+	}
+	else
+	{
+		frame.append(static_cast<char>(126));
+		frame.append(static_cast<char>((payload.size() >> 8) & 0xFF));
+		frame.append(static_cast<char>(payload.size() & 0xFF));
+	}
+	frame.append(payload);
+	socket->write(frame);
+}
+
+void Server::sendWebJson(Client &client, const QJsonObject &object)
+{
+	sendWebFrame(client.socket, QJsonDocument(object).toJson(QJsonDocument::Compact));
+}
+
+void Server::serveWebSocket(Client &client)
+{
+	while (client.buffer.size() >= 2)
+	{
+		const auto byteAt = [&client](int i) { return static_cast<quint8>(client.buffer[i]); };
+		const int opcode = byteAt(0) & 0x0F;
+		const bool masked = (byteAt(1) & 0x80) != 0;
+		quint64 length = byteAt(1) & 0x7F;
+		int position = 2;
+		if (length == 126)
+		{
+			if (client.buffer.size() < 4)
+				return;
+			length = (static_cast<quint64>(byteAt(2)) << 8) | byteAt(3);
+			position = 4;
+		}
+		else if (length == 127)
+		{
+			if (client.buffer.size() < 10)
+				return;
+			length = 0;
+			for (int i = 0; i < 8; ++i)
+				length = (length << 8) | byteAt(2 + i);
+			position = 10;
+		}
+		if (!masked || length > 65536)
+		{
+			client.socket->disconnectFromHost();
+			return;
+		}
+		if (static_cast<quint64>(client.buffer.size()) < static_cast<quint64>(position) + 4 + length)
+			return;
+		QByteArray payload = client.buffer.mid(position + 4, static_cast<int>(length));
+		for (int i = 0; i < payload.size(); ++i)
+			payload[i] = payload[i] ^ client.buffer[position + (i % 4)];
+		client.buffer.remove(0, position + 4 + static_cast<int>(length));
+
+		if (opcode == 0x1)
+		{
+			handleWebMessage(client, payload);
+		}
+		else if (opcode == 0x8)
+		{
+			sendWebFrame(client.socket, QByteArray(), 8);
+			client.socket->disconnectFromHost();
+			return;
+		}
+		else if (opcode == 0x9)
+		{
+			sendWebFrame(client.socket, payload, 0xA);
+		}
+	}
+}
+
+void Server::handleWebMessage(Client &client, const QByteArray &payload)
+{
+	const QJsonObject message = QJsonDocument::fromJson(payload).object();
+	const QString type = message.value("t").toString();
+	if (type == "hello")
+	{
+		client.name = message.value("name").toString().left(40).trimmed();
+		client.model = message.value("model").toString().left(60).trimmed();
+		updateSlots();
+		return;
+	}
+	if (type != "state")
+		return;
+
+	ExecutorInterface *activeExecutor = executorFor(client);
+	if (activeExecutor == nullptr)
+		return;
+	const auto axis = [&message](const char *key) {
+		return static_cast<float>(std::clamp(message.value(key).toDouble(), -1.0, 1.0));
+	};
+	const auto trigger = [&message](const char *key) {
+		return static_cast<float>(std::clamp(message.value(key).toDouble(), 0.0, 1.0));
+	};
+	vgp_data_exchange_gamepad_reading reading{};
+	reading.buttons_down = static_cast<uint32_t>(message.value("d").toDouble()) & 0x3FFF;
+	reading.buttons_up = static_cast<uint32_t>(message.value("u").toDouble()) & 0x3FFF;
+	reading.left_thumbstick_x = axis("lx");
+	reading.left_thumbstick_y = axis("ly");
+	reading.right_thumbstick_x = axis("rx");
+	reading.right_thumbstick_y = axis("ry");
+	reading.left_trigger = trigger("lt");
+	reading.right_trigger = trigger("rt");
+	requestCount++;
+	activeExecutor->inject_gamepad_state(reading);
+}
+
+void Server::updateQrPixmaps()
+{
+	for (size_t i = 0; i < qrLabels.size(); ++i)
+	{
+		const QString text = webQr ? tr("http://%1:%2/").arg(qrAddresses[i]).arg(tcpServer->serverPort())
+								   : tr("%1:%2").arg(qrAddresses[i]).arg(tcpServer->serverPort());
+		qrLabels[i]->setPixmap(QPixmap::fromImage(createQR(text)));
+	}
+	ui->qrCaption->setText(webQr ? tr("Scan with the phone camera to open the web controller")
+								 : tr("Scan with the Virtual Gamepad app"));
 }
 
 void Server::destroyServer()

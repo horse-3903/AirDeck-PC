@@ -191,7 +191,6 @@ void KeyboardMouseExecutor::handleButtonDown(const ButtonInput &buttonInput, uin
 	m_held.push_back({buttonInput, source});
 	if (alreadyDown)
 		return;
-	diagLog(QStringLiteral("KEY DOWN vk=%1 mouse=%2").arg(buttonInput.vk).arg(buttonInput.is_mouse_button));
 
 	if (buttonInput.is_mouse_button)
 	{
@@ -233,7 +232,6 @@ void KeyboardMouseExecutor::handleButtonUp(const ButtonInput &buttonInput, uintp
 	m_held.erase(held);
 	if (std::any_of(m_held.begin(), m_held.end(), sameInput))
 		return;
-	diagLog(QStringLiteral("KEY UP vk=%1 mouse=%2").arg(buttonInput.vk).arg(buttonInput.is_mouse_button));
 
 	if (buttonInput.is_mouse_button)
 	{
