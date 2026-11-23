@@ -103,6 +103,9 @@ body:not(.xbox) .xbox-label { display: none; }
 #sheetWrap.open { display: flex; }
 #sheet { background: var(--sheet); border: 1px solid var(--border); border-radius: 8px; width: min(440px, 92vw);
     max-height: 92dvh; overflow: auto; padding: 14px 16px; touch-action: pan-y; }
+#sheetWrap, #sheet, #sheet * { touch-action: pan-y; }
+#sheet { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+#sheet input[type=text] { touch-action: manipulation; }
 #sheet h2 { font-size: 17px; margin: 0; }
 .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .head .act { padding: 6px 14px; }
