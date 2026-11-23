@@ -301,13 +301,23 @@ void Server::initServer()
 		toggleRow->addWidget(webButton);
 		toggleRow->addStretch();
 		ui->qrLayout->insertLayout(0, toggleRow);
-		const auto choose = [this, appButton, webButton](bool web) {
+		const QString appHint = ui->hintLabel->text();
+		const auto choose = [this, appButton, webButton, appHint](bool web) {
 			webQr = web;
 			appButton->setChecked(!web);
 			webButton->setChecked(web);
 			updateQrPixmaps();
 			if (webUrlLabel != nullptr)
+			{
+				if (QListWidgetItem *current = ui->IPList->currentItem())
+					webUrlLabel->setText(tr("http://%1:%2/")
+											 .arg(current->data(Qt::UserRole).toString())
+											 .arg(tcpServer->serverPort()));
 				webUrlLabel->setVisible(web);
+			}
+			if (ui->IPList->count() > 0)
+				ui->hintLabel->setText(web ? tr("Open the address below in the phone's browser, or scan the QR code with its camera.")
+										   : appHint);
 		};
 		connect(appButton, &QPushButton::clicked, this, [choose]() { choose(false); });
 		connect(webButton, &QPushButton::clicked, this, [choose]() { choose(true); });
@@ -336,7 +346,7 @@ void Server::initServer()
 				{
 						ui->QRViewer->setCurrentIndex(ui->IPList->row(current));
 						if (webUrlLabel != nullptr)
-							webUrlLabel->setText(tr("Browser address: http://%1:%2/")
+							webUrlLabel->setText(tr("http://%1:%2/")
 													 .arg(current->data(Qt::UserRole).toString())
 													 .arg(tcpServer->serverPort()));
 				}
