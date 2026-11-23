@@ -72,6 +72,8 @@ body:not(.xbox) .face-xbox { display: none; }
 #view, #start { top: 24dvh; width: 10vw; height: 9dvh; border-radius: 999px; font-size: 2.6dvh; }
 #view { left: 39.5vw; }
 #start { right: 39.5vw; }
+#fsPill { top: 1.5dvh; left: calc(1.5vw + env(safe-area-inset-left)); width: 11vw; height: 5dvh; font-size: 2.2dvh; display: none; }
+#fsPill.show { display: flex; }
 #l2, #r2 { bottom: 4dvh; width: 9vw; height: 24dvh; border-radius: 3dvh; }
 #l2 { left: calc(2vw + env(safe-area-inset-left)); }
 #r2 { right: calc(2vw + env(safe-area-inset-right)); }
@@ -158,6 +160,7 @@ body:not(.xbox) .xbox-label { display: none; }
   <div class="pill" id="l2" data-b="l2" data-trig="lt"><span class="ps-label">L2</span><span class="xbox-label">LT</span></div>
   <div class="pill" id="r2" data-b="r2" data-trig="rt"><span class="ps-label">R2</span><span class="xbox-label">RT</span></div>
 
+  <div class="pill" id="fsPill">Fullscreen</div>
   <div id="badge"><span id="conn" class="wait"></span><span id="slotDots"></span><span id="slotText">Connecting</span></div>
 </div>
 
@@ -347,8 +350,18 @@ body:not(.xbox) .xbox-label { display: none; }
   var touched = false;
   function firstTouch() {
     if (touched) return; touched = true; takeWakeLock();
-    if (!isIOS && document.documentElement.requestFullscreen && !document.fullscreenElement) enterFullscreen(true);
+    if (!isIOS && document.documentElement.requestFullscreen) {
+      var once = function () { document.removeEventListener("pointerup", once, true); if (!document.fullscreenElement) enterFullscreen(true); };
+      document.addEventListener("pointerup", once, true);
+    }
   }
+  function updateFsPill() {
+    var standalone = window.matchMedia && window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches;
+    var can = !isIOS && !!document.documentElement.requestFullscreen && !document.fullscreenElement && !standalone;
+    $("fsPill").classList.toggle("show", can);
+  }
+  document.addEventListener("fullscreenchange", updateFsPill);
+  $("fsPill").addEventListener("click", function () { enterFullscreen(false); });
   function enterFullscreen(quiet) {
     var el = document.documentElement;
     var p = el.requestFullscreen ? el.requestFullscreen({ navigationUI: "hide" }) : null;
@@ -393,7 +406,7 @@ body:not(.xbox) .xbox-label { display: none; }
   $("reconnBtn").addEventListener("click", function () { closeMenu(); reconnect(); });
   $("disconnBtn").addEventListener("click", function () { closeMenu(); disconnect(); toast("Disconnected. Open the menu to reconnect."); });
 
-  applySettings(); renderSlot(); connect();
+  applySettings(); renderSlot(); updateFsPill(); connect();
 })();
 </script>
 </body>
