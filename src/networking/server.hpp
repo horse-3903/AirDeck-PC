@@ -8,6 +8,7 @@
 #include <QTcpSocket>
 #include <QTime>
 #include <memory>
+#include <vector>
 
 namespace Ui
 {
@@ -33,9 +34,18 @@ class Server : public QWidget
 
   private:
 	void initServer();
+	void updateClientLabel();
 	void serveClient();
 
 	Ui::Server *ui;
+	struct Client
+	{
+		QTcpSocket *socket = nullptr;
+		QByteArray buffer;
+		std::unique_ptr<ExecutorInterface> executor;
+	};
+	static constexpr size_t MAX_PHONES = 4;
+	std::vector<std::unique_ptr<Client>> clients;
 	QTcpSocket *clientConnection;
 	bool isGamepadConnected;
 	QTime lastRequestTime;

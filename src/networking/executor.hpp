@@ -6,8 +6,19 @@
 #include "../simulation/keyboardSim.hpp"
 #include "../simulation/mouseSim.hpp"
 
+#include <QDateTime>
+#include <QFile>
+#include <QTextStream>
 #include <memory>
 #include <vector>
+
+inline void diagLog(const QString &line)
+{
+	QFile file("keydiag.log");
+	if (file.open(QIODevice::Append | QIODevice::Text))
+		QTextStream(&file) << QDateTime::currentDateTime().toString("hh:mm:ss.zzz") << " " << line
+						   << "\n";
+}
 
 struct ParseResult
 {
@@ -93,11 +104,16 @@ class KeyboardMouseExecutor : public ExecutorInterface
   private:
 	std::unique_ptr<KeyboardInjector> m_keyboardInjector;
 	std::unique_ptr<MouseInjector> m_mouseInjector;
-	std::vector<ButtonInput> m_held;
+	struct HeldInput
+	{
+		ButtonInput input;
+		uintptr_t source;
+	};
+	std::vector<HeldInput> m_held;
 
-	void handleButtonDown(const ButtonInput &buttonInput);
-	void handleButtonUp(const ButtonInput &buttonInput);
+	void handleButtonDown(const ButtonInput &buttonInput, uintptr_t source);
+	void handleButtonUp(const ButtonInput &buttonInput, uintptr_t source);
 	void handleThumbstickInput(const ThumbstickInput &thumbstick, float x_value, float y_value,
-							   double threshold);
-	void handleTriggerInput(const TriggerInput &trigger, float trigger_value);
+							   double threshold, uintptr_t sourceBase);
+	void handleTriggerInput(const TriggerInput &trigger, float trigger_value, uintptr_t source);
 };

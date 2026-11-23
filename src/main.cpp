@@ -2,6 +2,9 @@
 #include "platform/windows/console.hpp"
 #include "ui/mainwindow.hpp"
 
+#include <QLocalServer>
+#include <QLocalSocket>
+
 #include <QApplication>
 #include <QDir>
 #include <QFile>
@@ -134,7 +137,31 @@ int main(int argc, char *argv[])
 	QApplication::setApplicationVersion(APP_VERSION);
 	qInfo() << "App data directory:" << getAppDataDir();
 
+	// Only one instance may run: a second launch just brings the first one to the front
+	const QString instanceKey = "VirtualGamePadPC-single-instance";
+	{
+		QLocalSocket probe;
+		probe.connectToServer(instanceKey);
+		if (probe.waitForConnected(500))
+		{
+			probe.write("show");
+			probe.waitForBytesWritten(500);
+			qInfo() << "Another instance is already running, exiting.";
+			return 0;
+		}
+	}
+	QLocalServer::removeServer(instanceKey);
+	QLocalServer instanceServer;
+	instanceServer.listen(instanceKey);
+
 	MainWindow w;
+	QObject::connect(&instanceServer, &QLocalServer::newConnection, &w, [&]() {
+		while (QLocalSocket *client = instanceServer.nextPendingConnection())
+		{
+			client->deleteLater();
+		}
+		w.showFromTray();
+	});
 	w.show();
 	qInfo() << "Application initialized successfully. Version:"
 			<< QApplication::applicationVersion();

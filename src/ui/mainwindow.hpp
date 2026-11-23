@@ -16,13 +16,12 @@ class MainWindow final : public QMainWindow
   public:
 	explicit MainWindow(QWidget *parent = nullptr);
 	~MainWindow() override;
+	void showFromTray();
 
   protected:
 	void closeEvent(QCloseEvent *event) override;
 
   private:
-	void showFromTray();
-
 	Ui::MainWindow *ui;
 	QSystemTrayIcon *trayIcon = nullptr;
 	bool quitRequested = false;

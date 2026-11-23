@@ -1,6 +1,7 @@
 #include "server.hpp"
 
 #include "../../third-party-libs/QR-Code-generator/cpp/qrcodegen.hpp"
+#include "../platform/elevation.hpp"
 #include "../settings/settings_singleton.hpp"
 #include "ui_server.h"
 
@@ -60,6 +61,22 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 	homeButton->setMinimumWidth(150);
 	ui->headerLayout->insertWidget(ui->headerLayout->indexOf(ui->stopButton), homeButton);
 	connect(homeButton, &QPushButton::clicked, this, &Server::homeRequested);
+	{
+		const bool gamepadMode =
+			SettingsSingleton::instance().executorType() == ExecutorType::GamepadExecutor;
+		QString details =
+			tr("Input: %1").arg(gamepadMode ? tr("Virtual Gamepad") : tr("Keyboard/Mouse Simulation"));
+		if (isElevated())
+			details += tr("   |   Administrator");
+		auto *detailsLabel = new QLabel(details, this);
+		detailsLabel->setProperty("role", "caption");
+		auto *titleColumn = new QVBoxLayout();
+		titleColumn->setSpacing(2);
+		ui->headerLayout->removeWidget(ui->statusLabel);
+		titleColumn->addWidget(ui->statusLabel);
+		titleColumn->addWidget(detailsLabel);
+		ui->headerLayout->insertLayout(0, titleColumn);
+	}
 	clientConnection = nullptr;
 	tcpServer = new QTcpServer(this);
 	isGamepadConnected = false;
@@ -68,8 +85,8 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 	switch (ExecutorType executorType = SettingsSingleton::instance().executorType())
 	{
 	case ExecutorType::GamepadExecutor:
-		executor = std::make_unique<GamepadExecutor>();
-		qInfo() << "GamepadExecutor initialized successfully";
+		// A virtual gamepad is created for each phone when it connects
+		qInfo() << "GamepadExecutor will be created per connection";
 		break;
 	case ExecutorType::KeyboardMouseExecutor:
 		executor = std::make_unique<KeyboardMouseExecutor>();
@@ -87,12 +104,11 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 Server::~Server()
 {
 	// IMPORTANT: clientConnection should not be accessed when the server is closed
-	if (isGamepadConnected && clientConnection != nullptr)
-	{
-		clientConnection->close(); // Close clientConnection gracefully
-		clientConnection = nullptr;
-		isGamepadConnected = false;
-	}
+	for (auto &client : clients)
+		client->socket->close(); // Close connections gracefully
+	clients.clear();
+	clientConnection = nullptr;
+	isGamepadConnected = false;
 	tcpServer->close(); // And then close the server
 	qInfo() << "Server stopped.";
 	tcpServer->deleteLater();
@@ -189,58 +205,109 @@ void Server::initServer()
 	qInfo() << "Server started successfully on port:" << tcpServer->serverPort();
 }
 
+void Server::updateClientLabel()
+{
+	if (clients.empty())
+	{
+		ui->clientLabel->setText(tr("○ No device connected"));
+		return;
+	}
+	QStringList names;
+	for (const auto &client : clients)
+		names << client->socket->peerAddress().toString();
+	ui->clientLabel->setText(clients.size() == 1
+								 ? tr("● Connected to %1").arg(names.first())
+								 : tr("● %1 devices connected: %2").arg(clients.size()).arg(names.join(", ")));
+}
+
 void Server::handleConnection()
 {
-	clientConnection = tcpServer->nextPendingConnection();
+	// Keyboard/mouse input is shared, so only one phone may drive it.
+	// Virtual gamepads can be created per phone.
+	const bool multiPhone =
+		SettingsSingleton::instance().executorType() == ExecutorType::GamepadExecutor;
+	QTcpSocket *socket = tcpServer->nextPendingConnection();
+	if (socket == nullptr)
+		return;
 	// disable Nagle's algorithm to avoid delay and bunching of small packages
-	clientConnection->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+	socket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+
+	auto client = std::make_unique<Client>();
+	client->socket = socket;
+	if (multiPhone)
+	{
+		try
+		{
+			client->executor = std::make_unique<GamepadExecutor>();
+		}
+		catch (const std::exception &e)
+		{
+			qCritical() << "Failed to create a virtual gamepad for the new device:" << e.what();
+			socket->close();
+			socket->deleteLater();
+			return;
+		}
+	}
+	clients.push_back(std::move(client));
+	clientConnection = socket;
 	isGamepadConnected = true;
-	QString connectionMessage;
-	connectionMessage =
-		tr("● Connected to %1 at `%2 : %3`")
-			.arg(clientConnection->peerName().isEmpty() ? "Unknown device"
-														: clientConnection->peerName(),
-				 clientConnection->peerAddress().toString(),
-				 QString::number(clientConnection->peerPort()));
-	qInfo().noquote() << connectionMessage;
-	ui->clientLabel->setText(connectionMessage);
-	tcpServer->pauseAccepting();
-	connect(clientConnection, &QAbstractSocket::disconnected, clientConnection,
-			&QObject::deleteLater);
-	connect(clientConnection, &QAbstractSocket::disconnected, this, [this]() {
-		ui->clientLabel->setText(tr("○ No device connected"));
+	qInfo() << "Device connected:" << socket->peerAddress().toString() << socket->peerPort()
+			<< "total devices:" << clients.size();
+	updateClientLabel();
+
+	if (!multiPhone || clients.size() >= MAX_PHONES)
+		tcpServer->pauseAccepting();
+
+	connect(socket, &QAbstractSocket::disconnected, this, [this, socket]() {
 		qInfo() << "Device disconnected.";
 		qDebug() << "Average Request Interval" << averageRequestInterval
 				 << "ms, Request Count:" << requestCount;
-		isGamepadConnected = false;
 		if (executor)
 			executor->release_all();
+		std::erase_if(clients, [socket](const std::unique_ptr<Client> &c) {
+			return c->socket == socket;
+		});
+		socket->deleteLater();
+		isGamepadConnected = !clients.empty();
+		if (clients.empty())
+			clientConnection = nullptr;
+		updateClientLabel();
 		tcpServer->resumeAccepting();
 	});
-	connect(clientConnection, &QAbstractSocket::readyRead, this, &Server::serveClient);
+	connect(socket, &QAbstractSocket::readyRead, this, &Server::serveClient);
 
 	qInfo() << "New client connection received";
 }
 
 void Server::serveClient()
 {
+	auto *socket = qobject_cast<QTcpSocket *>(sender());
+	const auto clientIt = std::find_if(clients.begin(), clients.end(),
+									   [socket](const std::unique_ptr<Client> &c) { return c->socket == socket; });
+	if (clientIt == clients.end())
+		return;
+	Client &client = **clientIt;
+	ExecutorInterface *activeExecutor = client.executor ? client.executor.get() : executor.get();
+	if (activeExecutor == nullptr)
+		return;
+
 #ifdef QT_DEBUG
-	qDebug() << "Received: " << clientConnection->bytesAvailable() << "bytes";
+	qDebug() << "Received: " << socket->bytesAvailable() << "bytes";
 #endif
 
 	// Append new data to our buffer
-	dataBuffer.append(clientConnection->readAll());
+	client.buffer.append(socket->readAll());
 
 #ifdef QT_DEBUG
-	qDebug() << "Buffer contents: " << dataBuffer;
+	qDebug() << "Buffer contents: " << client.buffer;
 #endif
 
 	QTime currentTime = QTime::currentTime();
 
 	// Process as many complete packets as we have in the buffer
-	while (!dataBuffer.isEmpty())
+	while (!client.buffer.isEmpty())
 	{
-		ParseResult result = parse_gamepad_state(dataBuffer.constData(), dataBuffer.size());
+		ParseResult result = parse_gamepad_state(client.buffer.constData(), client.buffer.size());
 
 		if (!result.success)
 		{
@@ -252,15 +319,15 @@ void Server::serveClient()
 				break;
 			case SchemaMismatch:
 				qWarning() << "Schema mismatch detected in client data";
-				dataBuffer.remove(0, result.bytes_consumed); // Remove the processed data
+				client.buffer.remove(0, result.bytes_consumed); // Remove the processed data
 				break;
 			case DataTooLarge:
 				qWarning() << "Client sent data that is too large to process";
-				dataBuffer.remove(0, result.bytes_consumed); // Remove the processed data
+				client.buffer.remove(0, result.bytes_consumed); // Remove the processed data
 				break;
 			[[unlikely]] default:
 				qWarning() << "Unknown error occurred while parsing client data";
-				dataBuffer.clear(); // Clear buffer to avoid cascading errors
+				client.buffer.clear(); // Clear buffer to avoid cascading errors
 				break;
 			}
 			break; // Exit the processing loop
@@ -277,14 +344,30 @@ void Server::serveClient()
 		}
 		lastRequestTime = currentTime;
 
-		executor->inject_gamepad_state(result.reading);
+		{
+			const auto &r = result.reading;
+			static QString lastSummary;
+			const QString summary =
+				QStringLiteral("down=%1 up=%2 LS=(%3,%4) RS=(%5,%6) LT=%7 RT=%8")
+					.arg(r.buttons_down).arg(r.buttons_up)
+					.arg(r.left_thumbstick_x, 0, 'f', 2).arg(r.left_thumbstick_y, 0, 'f', 2)
+					.arg(r.right_thumbstick_x, 0, 'f', 2).arg(r.right_thumbstick_y, 0, 'f', 2)
+					.arg(r.left_trigger, 0, 'f', 2).arg(r.right_trigger, 0, 'f', 2);
+			if (summary != lastSummary)
+			{
+				diagLog(QStringLiteral("Frame %1 %2").arg(requestCount).arg(summary));
+				lastSummary = summary;
+			}
+		}
+
+		activeExecutor->inject_gamepad_state(result.reading);
 
 		// Remove the processed data from the buffer
-		dataBuffer.remove(0, result.bytes_consumed);
+		client.buffer.remove(0, result.bytes_consumed);
 
 #ifdef QT_DEBUG
 		qDebug() << "Consumed" << result.bytes_consumed
-				 << "bytes, remaining buffer size:" << dataBuffer.size();
+				 << "bytes, remaining buffer size:" << client.buffer.size();
 #endif
 	}
 }

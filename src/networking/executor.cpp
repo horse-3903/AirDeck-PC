@@ -171,20 +171,27 @@ KeyboardMouseExecutor::KeyboardMouseExecutor()
 void KeyboardMouseExecutor::release_all()
 {
 	const auto held = m_held;
-	for (const ButtonInput &input : held)
-		handleButtonUp(input);
+	for (const HeldInput &entry : held)
+		handleButtonUp(entry.input, entry.source);
 }
 
-void KeyboardMouseExecutor::handleButtonDown(const ButtonInput &buttonInput)
+void KeyboardMouseExecutor::handleButtonDown(const ButtonInput &buttonInput, uintptr_t source)
 {
-	// Only act on transitions so keys that were never pressed are never released
-	// and held keys are not re-pressed on every incoming frame
-	const auto sameInput = [&](const ButtonInput &held) {
-		return held.vk == buttonInput.vk && held.is_mouse_button == buttonInput.is_mouse_button;
+	// Several controls can map to the same key, so a key is only pressed by its first holder
+	// and only released once every control holding it has let go
+	const auto sameInput = [&](const HeldInput &held) {
+		return held.input.vk == buttonInput.vk &&
+			   held.input.is_mouse_button == buttonInput.is_mouse_button;
 	};
-	if (std::any_of(m_held.begin(), m_held.end(), sameInput))
+	if (std::any_of(m_held.begin(), m_held.end(), [&](const HeldInput &held) {
+			return sameInput(held) && held.source == source;
+		}))
 		return;
-	m_held.push_back(buttonInput);
+	const bool alreadyDown = std::any_of(m_held.begin(), m_held.end(), sameInput);
+	m_held.push_back({buttonInput, source});
+	if (alreadyDown)
+		return;
+	diagLog(QStringLiteral("KEY DOWN vk=%1 mouse=%2").arg(buttonInput.vk).arg(buttonInput.is_mouse_button));
 
 	if (buttonInput.is_mouse_button)
 	{
@@ -212,14 +219,21 @@ void KeyboardMouseExecutor::handleButtonDown(const ButtonInput &buttonInput)
 	}
 }
 
-void KeyboardMouseExecutor::handleButtonUp(const ButtonInput &buttonInput)
+void KeyboardMouseExecutor::handleButtonUp(const ButtonInput &buttonInput, uintptr_t source)
 {
-	const auto held = std::find_if(m_held.begin(), m_held.end(), [&](const ButtonInput &entry) {
-		return entry.vk == buttonInput.vk && entry.is_mouse_button == buttonInput.is_mouse_button;
+	const auto sameInput = [&](const HeldInput &held) {
+		return held.input.vk == buttonInput.vk &&
+			   held.input.is_mouse_button == buttonInput.is_mouse_button;
+	};
+	const auto held = std::find_if(m_held.begin(), m_held.end(), [&](const HeldInput &entry) {
+		return sameInput(entry) && entry.source == source;
 	});
 	if (held == m_held.end())
 		return;
 	m_held.erase(held);
+	if (std::any_of(m_held.begin(), m_held.end(), sameInput))
+		return;
+	diagLog(QStringLiteral("KEY UP vk=%1 mouse=%2").arg(buttonInput.vk).arg(buttonInput.is_mouse_button));
 
 	if (buttonInput.is_mouse_button)
 	{
@@ -248,7 +262,8 @@ void KeyboardMouseExecutor::handleButtonUp(const ButtonInput &buttonInput)
 }
 
 void KeyboardMouseExecutor::handleThumbstickInput(const ThumbstickInput &thumbstick, float x_value,
-												  float y_value, double threshold)
+												  float y_value, double threshold,
+												  uintptr_t sourceBase)
 {
 	// Convert circular area to square area
 	auto [squareX, squareY] = circleToSquare(x_value, y_value);
@@ -283,36 +298,37 @@ void KeyboardMouseExecutor::handleThumbstickInput(const ThumbstickInput &thumbst
 	{
 		// Direction handling
 		if (x_value > threshold)
-			handleButtonDown(thumbstick.right);
+			handleButtonDown(thumbstick.right, sourceBase + 0);
 		else if (x_value < -threshold)
-			handleButtonDown(thumbstick.left);
+			handleButtonDown(thumbstick.left, sourceBase + 1);
 		else
 		{
-			handleButtonUp(thumbstick.right);
-			handleButtonUp(thumbstick.left);
+			handleButtonUp(thumbstick.right, sourceBase + 0);
+			handleButtonUp(thumbstick.left, sourceBase + 1);
 		}
 
 		if (y_value > threshold)
-			handleButtonDown(thumbstick.down);
+			handleButtonDown(thumbstick.down, sourceBase + 2);
 		else if (y_value < -threshold)
-			handleButtonDown(thumbstick.up);
+			handleButtonDown(thumbstick.up, sourceBase + 3);
 		else
 		{
-			handleButtonUp(thumbstick.down);
-			handleButtonUp(thumbstick.up);
+			handleButtonUp(thumbstick.down, sourceBase + 2);
+			handleButtonUp(thumbstick.up, sourceBase + 3);
 		}
 	}
 }
 
-void KeyboardMouseExecutor::handleTriggerInput(const TriggerInput &trigger, float trigger_value)
+void KeyboardMouseExecutor::handleTriggerInput(const TriggerInput &trigger, float trigger_value,
+												uintptr_t source)
 {
 	if (trigger_value >= trigger.threshold)
 	{
-		handleButtonDown(trigger.button_input);
+		handleButtonDown(trigger.button_input, source);
 	}
 	else
 	{
-		handleButtonUp(trigger.button_input);
+		handleButtonUp(trigger.button_input, source);
 	}
 }
 
@@ -341,26 +357,26 @@ bool KeyboardMouseExecutor::inject_gamepad_state(vgp_data_exchange_gamepad_readi
 			continue;
 		ButtonInput input{vk, is_mouse_button(vk)};
 		if (reading.buttons_down & button)
-			handleButtonDown(input);
+			handleButtonDown(input, static_cast<uintptr_t>(button));
 		if (reading.buttons_up & button)
-			handleButtonUp(input);
+			handleButtonUp(input, static_cast<uintptr_t>(button));
 	}
 
 	handleThumbstickInput(
 		SettingsSingleton::instance().activeKeymapProfile().thumbstickInput(Thumbstick_Left),
-		reading.left_thumbstick_x, reading.left_thumbstick_y, THRESHOLD);
+		reading.left_thumbstick_x, reading.left_thumbstick_y, THRESHOLD, 1000);
 
 	handleThumbstickInput(
 		SettingsSingleton::instance().activeKeymapProfile().thumbstickInput(Thumbstick_Right),
-		reading.right_thumbstick_x, reading.right_thumbstick_y, THRESHOLD);
+		reading.right_thumbstick_x, reading.right_thumbstick_y, THRESHOLD, 2000);
 
 	handleTriggerInput(
 		SettingsSingleton::instance().activeKeymapProfile().triggerInput(Trigger::Left),
-		reading.left_trigger);
+		reading.left_trigger, 3000);
 
 	handleTriggerInput(
 		SettingsSingleton::instance().activeKeymapProfile().triggerInput(Trigger::Right),
-		reading.right_trigger);
+		reading.right_trigger, 3001);
 
 	return true;
 }

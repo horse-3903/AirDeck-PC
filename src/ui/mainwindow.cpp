@@ -1,6 +1,7 @@
 #include "mainwindow.hpp"
 
 #include "../settings/settings_singleton.hpp"
+#include "../platform/elevation.hpp"
 #include "mainmenu.hpp"
 #include "ui_mainwindow.h"
 
@@ -17,6 +18,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 	SettingsSingleton::instance().loadAll();
 	ui->setupUi(this);
 	resize(960, 540);
+	if (isElevated())
+		setWindowTitle(windowTitle() + tr(" (Administrator)"));
 	ui->stackedWidget->addWidget(new MainMenu(ui->stackedWidget));
 
 	if (QSystemTrayIcon::isSystemTrayAvailable())
