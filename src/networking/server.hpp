@@ -59,7 +59,7 @@ class Server : public QWidget
 		QFrame *frame = nullptr;
 	};
 	std::vector<SlotCard> slotCards;
-	static constexpr size_t MAX_PHONES = 4;
+	static constexpr size_t MAX_PHONES = 6;
 	std::vector<std::unique_ptr<Client>> clients;
 	QTcpSocket *clientConnection;
 	bool isGamepadConnected;

@@ -577,7 +577,7 @@ ViGEmExecutor::ViGEmExecutor()
 		vigem_free(m_client);
 		m_client = nullptr;
 		if (addResult == VIGEM_ERROR_NO_FREE_SLOT)
-			throw std::runtime_error("No free virtual controller slot (the limit is 4).");
+			throw std::runtime_error("No free virtual controller slot.");
 		char code[64];
 		snprintf(code, sizeof(code), "Could not create a virtual controller (error 0x%08X).",
 				 static_cast<unsigned>(addResult));

@@ -6,6 +6,7 @@
 #include "ui_server.h"
 
 #include <QApplication>
+#include <QGridLayout>
 #include <QClipboard>
 #include <QDataStream>
 #include <QHostAddress>
@@ -138,9 +139,9 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 
 	// One card per controller slot, filled in as phones connect
 	{
-		auto *slotRow = new QHBoxLayout();
+		auto *slotRow = new QGridLayout();
 		slotRow->setSpacing(12);
-		for (int i = 0; i < 4; ++i)
+		for (int i = 0; i < 6; ++i)
 		{
 			SlotCard card;
 			card.frame = new QFrame(this);
@@ -160,7 +161,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			textColumn->addWidget(card.detail);
 			cardLayout->addWidget(card.badge);
 			cardLayout->addLayout(textColumn, 1);
-			slotRow->addWidget(card.frame, 1);
+			slotRow->addWidget(card.frame, i / 3, i % 3);
 			slotCards.push_back(card);
 		}
 		ui->verticalLayout->insertLayout(2, slotRow);
@@ -302,9 +303,9 @@ int Server::pickSlot(const ExecutorInterface *executor) const
 						   [slot](const std::unique_ptr<Client> &c) { return c->slot == slot; });
 	};
 	const int preferred = executor != nullptr ? executor->slot() : -1;
-	if (preferred >= 1 && preferred <= 4 && !used(preferred))
+	if (preferred >= 1 && preferred <= 6 && !used(preferred))
 		return preferred;
-	for (int slot = 1; slot <= 4; ++slot)
+	for (int slot = 1; slot <= 6; ++slot)
 	{
 		if (!used(slot))
 			return slot;
@@ -418,7 +419,7 @@ void Server::handleConnection()
 	if (client->slot == 0)
 	{
 		qWarning() << "All controller slots are in use, refusing the new device";
-		ui->clientLabel->setText(tr("All 4 controller slots are in use."));
+		ui->clientLabel->setText(tr("All 6 controller slots are in use."));
 		socket->close();
 		socket->deleteLater();
 		return;
