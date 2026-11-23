@@ -39,20 +39,30 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		connect(sidebar, &QListWidget::currentRowChanged, tabs, &QTabWidget::setCurrentIndex);
 		tabs->tabBar()->hide();
 		ui->verticalLayout->removeWidget(tabs);
-		auto *body = new QWidget();
-		auto *row = new QHBoxLayout(body);
-		row->setContentsMargins(0, 0, 0, 0);
+		auto *row = new QHBoxLayout();
 		row->setSpacing(32);
-		row->addWidget(sidebar, 0, Qt::AlignTop);
-		row->addWidget(tabs, 1);
 		auto *bodyScroll = new QScrollArea(this);
 		bodyScroll->setWidgetResizable(true);
 		bodyScroll->setFrameShape(QFrame::NoFrame);
 		bodyScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 		bodyScroll->setStyleSheet("QScrollArea { background: transparent; border: none; } "
 								  "QScrollArea > QWidget > QWidget { background: transparent; }");
-		bodyScroll->setWidget(body);
-		ui->verticalLayout->insertWidget(0, bodyScroll, 1);
+		auto fitCurrentPage = [tabs](int current) {
+			for (int i = 0; i < tabs->count(); ++i)
+			{
+				QSizePolicy policy = tabs->widget(i)->sizePolicy();
+				policy.setVerticalPolicy(i == current ? QSizePolicy::Preferred
+													  : QSizePolicy::Ignored);
+				tabs->widget(i)->setSizePolicy(policy);
+			}
+			tabs->updateGeometry();
+		};
+		connect(tabs, &QTabWidget::currentChanged, tabs, fitCurrentPage);
+		fitCurrentPage(tabs->currentIndex());
+		bodyScroll->setWidget(tabs);
+		row->addWidget(sidebar, 0, Qt::AlignTop);
+		row->addWidget(bodyScroll, 1);
+		ui->verticalLayout->insertLayout(0, row, 1);
 	}
 	setupKeymapTabs();
 	ui->pointerSlider->adjustSize();
@@ -85,13 +95,13 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		auto *cancelButton = new QPushButton(tr("Cancel"), footer);
 		auto *saveButton = new QPushButton(tr("Save Changes"), footer);
 		saveButton->setProperty("variant", "primary");
-		saveButton->setMinimumWidth(140);
+		saveButton->setMinimumWidth(0);
 		for (QPushButton *button : {restoreButton, cancelButton, saveButton})
 		{
-			button->setStyleSheet("font-size: 10pt; padding: 0 20px; min-height: 0;");
-			button->setFixedHeight(40);
+			button->setStyleSheet("font-size: 10pt; padding: 6px 20px; min-height: 20px;");
+			button->setFixedHeight(38);
 		}
-		saveButton->setStyleSheet("font-size: 10pt; font-weight: 600; padding: 0 20px; min-height: 0;");
+		saveButton->setStyleSheet("font-size: 10pt; font-weight: 600; padding: 6px 20px; min-height: 20px;");
 		footerLayout->addWidget(restoreButton);
 		footerLayout->addStretch();
 		footerLayout->addWidget(cancelButton);
