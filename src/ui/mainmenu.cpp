@@ -20,8 +20,13 @@ MainMenu::MainMenu(QStackedWidget *parent) : QWidget(parent), ui(new Ui::MainMen
 	ui->pushButton_About->setMaximumWidth(204);
 	ui->verticalLayout->setAlignment(ui->startButton, Qt::AlignHCenter);
 	ui->verticalLayout->setAlignment(ui->secondaryLayout, Qt::AlignHCenter);
-	connect(ui->settingsButton, &QPushButton::pressed, this, &MainMenu::launch_preferences);
-	connect(ui->startButton, &QPushButton::pressed, this, &MainMenu::launch_server);
+	for (QPushButton *button : {ui->startButton, ui->settingsButton, ui->pushButton_About})
+	{
+		button->setAutoDefault(false);
+		button->setFocusPolicy(Qt::NoFocus);
+	}
+	connect(ui->settingsButton, &QPushButton::clicked, this, &MainMenu::launch_preferences);
+	connect(ui->startButton, &QPushButton::clicked, this, &MainMenu::launch_server);
 	connect(ui->pushButton_About, &QPushButton::clicked, this, &MainMenu::launch_about);
 }
 
@@ -32,16 +37,28 @@ MainMenu::~MainMenu()
 
 void MainMenu::launch_server()
 {
+	if (activeServer)
+	{
+		stack->setCurrentWidget(activeServer);
+		return;
+	}
 	qInfo() << "Launching server from main menu";
 
 	try
 	{
 		auto *server = new Server(stack);
+		activeServer = server;
 		stack->addWidget(server);
 		stack->setCurrentWidget(server);
-		// When server is closed, switch back to main menu
+		ui->startButton->setText(tr("Return to Server"));
+		// The server keeps running while the user visits the home screen
+		connect(server, &Server::homeRequested, this, [this]() { stack->setCurrentWidget(this); });
+		// When the server is stopped, switch back to main menu
 		connect(server, &Server::navigateBack, this, [this]() {
 			stack->setCurrentWidget(this);
+		});
+		connect(server, &QObject::destroyed, this, [this]() {
+			ui->startButton->setText(tr("Start Server"));
 		});
 	}
 	catch (const std::exception &e)

@@ -7,6 +7,7 @@
 #include "../simulation/mouseSim.hpp"
 
 #include <memory>
+#include <vector>
 
 struct ParseResult
 {
@@ -32,6 +33,9 @@ class ExecutorInterface
 	virtual ~ExecutorInterface() = default;
 
 	virtual bool inject_gamepad_state(vgp_data_exchange_gamepad_reading const &reading) = 0;
+
+	// Releases any key or mouse button still held down, e.g. when the device disconnects
+	virtual void release_all() {}
 };
 
 class GamepadExecutor : public ExecutorInterface
@@ -69,7 +73,7 @@ class KeyboardMouseExecutor : public ExecutorInterface
 	static constexpr double THRESHOLD = 0.5;
 
 	KeyboardMouseExecutor();
-	~KeyboardMouseExecutor() override = default;
+	~KeyboardMouseExecutor() override { release_all(); }
 
 	// Delete copy and move operations
 	KeyboardMouseExecutor(const KeyboardMouseExecutor &) = delete;
@@ -84,10 +88,12 @@ class KeyboardMouseExecutor : public ExecutorInterface
 	 * @return true if the input was processed successfully, false otherwise.
 	 */
 	bool inject_gamepad_state(vgp_data_exchange_gamepad_reading const &reading) override;
+	void release_all() override;
 
   private:
 	std::unique_ptr<KeyboardInjector> m_keyboardInjector;
 	std::unique_ptr<MouseInjector> m_mouseInjector;
+	std::vector<ButtonInput> m_held;
 
 	void handleButtonDown(const ButtonInput &buttonInput);
 	void handleButtonUp(const ButtonInput &buttonInput);

@@ -168,8 +168,24 @@ KeyboardMouseExecutor::KeyboardMouseExecutor()
 	}
 }
 
+void KeyboardMouseExecutor::release_all()
+{
+	const auto held = m_held;
+	for (const ButtonInput &input : held)
+		handleButtonUp(input);
+}
+
 void KeyboardMouseExecutor::handleButtonDown(const ButtonInput &buttonInput)
 {
+	// Only act on transitions so keys that were never pressed are never released
+	// and held keys are not re-pressed on every incoming frame
+	const auto sameInput = [&](const ButtonInput &held) {
+		return held.vk == buttonInput.vk && held.is_mouse_button == buttonInput.is_mouse_button;
+	};
+	if (std::any_of(m_held.begin(), m_held.end(), sameInput))
+		return;
+	m_held.push_back(buttonInput);
+
 	if (buttonInput.is_mouse_button)
 	{
 #ifdef WIN32
@@ -198,6 +214,13 @@ void KeyboardMouseExecutor::handleButtonDown(const ButtonInput &buttonInput)
 
 void KeyboardMouseExecutor::handleButtonUp(const ButtonInput &buttonInput)
 {
+	const auto held = std::find_if(m_held.begin(), m_held.end(), [&](const ButtonInput &entry) {
+		return entry.vk == buttonInput.vk && entry.is_mouse_button == buttonInput.is_mouse_button;
+	});
+	if (held == m_held.end())
+		return;
+	m_held.erase(held);
+
 	if (buttonInput.is_mouse_button)
 	{
 #ifdef WIN32

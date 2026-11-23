@@ -55,6 +55,11 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 	ui->IPList->viewport()->setAutoFillBackground(false);
 	// delete this when stop button is clicked
 	connect(ui->stopButton, &QPushButton::clicked, this, &Server::destroyServer);
+	auto *homeButton = new QPushButton(tr("Back to Home"), this);
+	homeButton->setCursor(Qt::PointingHandCursor);
+	homeButton->setMinimumWidth(150);
+	ui->headerLayout->insertWidget(ui->headerLayout->indexOf(ui->stopButton), homeButton);
+	connect(homeButton, &QPushButton::clicked, this, &Server::homeRequested);
 	clientConnection = nullptr;
 	tcpServer = new QTcpServer(this);
 	isGamepadConnected = false;
@@ -208,6 +213,8 @@ void Server::handleConnection()
 		qDebug() << "Average Request Interval" << averageRequestInterval
 				 << "ms, Request Count:" << requestCount;
 		isGamepadConnected = false;
+		if (executor)
+			executor->release_all();
 		tcpServer->resumeAccepting();
 	});
 	connect(clientConnection, &QAbstractSocket::readyRead, this, &Server::serveClient);

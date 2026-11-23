@@ -20,6 +20,7 @@ class Server : public QWidget
 
   signals:
 	void navigateBack();
+	void homeRequested();
 
   public:
 	explicit Server(QWidget *parent = nullptr);
