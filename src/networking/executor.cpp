@@ -538,3 +538,116 @@ bool GamepadExecutor::inject_gamepad_state(vgp_data_exchange_gamepad_reading con
 
 	return true;
 }
+
+#ifdef _WIN32
+#include <ViGEm/Client.h>
+#include <stdexcept>
+
+ViGEmExecutor::ViGEmExecutor()
+{
+	m_client = vigem_alloc();
+	if (m_client == nullptr)
+		throw std::runtime_error("Could not allocate a ViGEm client.");
+
+	const VIGEM_ERROR connectResult = vigem_connect(m_client);
+	if (!VIGEM_SUCCESS(connectResult))
+	{
+		vigem_free(m_client);
+		m_client = nullptr;
+		if (connectResult == VIGEM_ERROR_BUS_NOT_FOUND)
+			throw std::runtime_error(
+				"The ViGEmBus driver is not installed. Install it from "
+				"github.com/nefarius/ViGEmBus/releases and try again.");
+		throw std::runtime_error("Could not connect to the ViGEmBus driver.");
+	}
+
+	m_pad = vigem_target_x360_alloc();
+	const VIGEM_ERROR addResult =
+		m_pad != nullptr ? vigem_target_add(m_client, m_pad) : VIGEM_ERROR_INVALID_TARGET;
+	if (!VIGEM_SUCCESS(addResult))
+	{
+		if (m_pad != nullptr)
+			vigem_target_free(m_pad);
+		m_pad = nullptr;
+		vigem_disconnect(m_client);
+		vigem_free(m_client);
+		m_client = nullptr;
+		throw std::runtime_error(addResult == VIGEM_ERROR_NO_FREE_SLOT
+									 ? "No free virtual controller slot (the limit is 4)."
+									 : "Could not create a virtual controller.");
+	}
+	qInfo() << "ViGEm virtual Xbox 360 controller created";
+}
+
+ViGEmExecutor::~ViGEmExecutor()
+{
+	if (m_client != nullptr)
+	{
+		if (m_pad != nullptr)
+		{
+			vigem_target_remove(m_client, m_pad);
+			vigem_target_free(m_pad);
+		}
+		vigem_disconnect(m_client);
+		vigem_free(m_client);
+	}
+}
+
+static SHORT toStickAxis(float value, bool invert)
+{
+	const float clamped = std::clamp(invert ? -value : value, -1.0f, 1.0f);
+	return static_cast<SHORT>(clamped * 32767.0f);
+}
+
+bool ViGEmExecutor::inject_gamepad_state(vgp_data_exchange_gamepad_reading const &reading)
+{
+	struct Mapping
+	{
+		uint32_t button;
+		unsigned short bit;
+	};
+	static const Mapping mappings[] = {
+		{GamepadButtons_Menu, XUSB_GAMEPAD_START},
+		{GamepadButtons_View, XUSB_GAMEPAD_BACK},
+		{GamepadButtons_A, XUSB_GAMEPAD_A},
+		{GamepadButtons_B, XUSB_GAMEPAD_B},
+		{GamepadButtons_X, XUSB_GAMEPAD_X},
+		{GamepadButtons_Y, XUSB_GAMEPAD_Y},
+		{GamepadButtons_DPadUp, XUSB_GAMEPAD_DPAD_UP},
+		{GamepadButtons_DPadDown, XUSB_GAMEPAD_DPAD_DOWN},
+		{GamepadButtons_DPadLeft, XUSB_GAMEPAD_DPAD_LEFT},
+		{GamepadButtons_DPadRight, XUSB_GAMEPAD_DPAD_RIGHT},
+		{GamepadButtons_LeftShoulder, XUSB_GAMEPAD_LEFT_SHOULDER},
+		{GamepadButtons_RightShoulder, XUSB_GAMEPAD_RIGHT_SHOULDER},
+		{GamepadButtons_LeftThumbstick, XUSB_GAMEPAD_LEFT_THUMB},
+		{GamepadButtons_RightThumbstick, XUSB_GAMEPAD_RIGHT_THUMB},
+	};
+	for (const Mapping &mapping : mappings)
+	{
+		if (reading.buttons_down & mapping.button)
+			m_buttons |= mapping.bit;
+		if (reading.buttons_up & mapping.button)
+			m_buttons &= static_cast<unsigned short>(~mapping.bit);
+	}
+
+	XUSB_REPORT report{};
+	report.wButtons = m_buttons;
+	report.bLeftTrigger =
+		static_cast<BYTE>(std::clamp(reading.left_trigger, 0.0f, 1.0f) * 255.0f);
+	report.bRightTrigger =
+		static_cast<BYTE>(std::clamp(reading.right_trigger, 0.0f, 1.0f) * 255.0f);
+	// The phone reports Y growing downwards, XInput expects it growing upwards
+	report.sThumbLX = toStickAxis(reading.left_thumbstick_x, false);
+	report.sThumbLY = toStickAxis(reading.left_thumbstick_y, true);
+	report.sThumbRX = toStickAxis(reading.right_thumbstick_x, false);
+	report.sThumbRY = toStickAxis(reading.right_thumbstick_y, true);
+	return VIGEM_SUCCESS(vigem_target_x360_update(m_client, m_pad, report));
+}
+
+void ViGEmExecutor::release_all()
+{
+	m_buttons = 0;
+	if (m_client != nullptr && m_pad != nullptr)
+		vigem_target_x360_update(m_client, m_pad, XUSB_REPORT{});
+}
+#endif

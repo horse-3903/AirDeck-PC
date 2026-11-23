@@ -67,6 +67,36 @@ class GamepadExecutor : public ExecutorInterface
 	GamepadInjector m_injector;
 };
 
+#ifdef _WIN32
+struct _VIGEM_CLIENT_T;
+struct _VIGEM_TARGET_T;
+
+/**
+ * @brief Presents the phone as a virtual Xbox 360 controller through the ViGEmBus driver.
+ *
+ * @details Each instance owns one controller, so every connected phone gets its own.
+ * The constructor throws std::runtime_error with a readable message when the driver is
+ * missing or no controller slot is free.
+ */
+class ViGEmExecutor : public ExecutorInterface
+{
+  public:
+	ViGEmExecutor();
+	~ViGEmExecutor() override;
+
+	ViGEmExecutor(const ViGEmExecutor &) = delete;
+	ViGEmExecutor &operator=(const ViGEmExecutor &) = delete;
+
+	bool inject_gamepad_state(vgp_data_exchange_gamepad_reading const &reading) override;
+	void release_all() override;
+
+  private:
+	_VIGEM_CLIENT_T *m_client = nullptr;
+	_VIGEM_TARGET_T *m_pad = nullptr;
+	unsigned short m_buttons = 0;
+};
+#endif
+
 /**
  * @brief Executes gamepad input by converting it to keyboard and mouse actions.
  *

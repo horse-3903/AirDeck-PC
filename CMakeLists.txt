@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+﻿cmake_minimum_required(VERSION 3.19)
 
 set(APP_VERSION 0.4.1)
 add_definitions(-DAPP_VERSION="${APP_VERSION}")
@@ -66,6 +66,10 @@ set(QR_CODE_GEN_SOURCES
     third-party-libs/QR-Code-generator/cpp/qrcodegen.cpp
     third-party-libs/QR-Code-generator/cpp/qrcodegen.hpp
 )
+
+if(WIN32)
+    add_subdirectory(third-party-libs/ViGEmClient EXCLUDE_FROM_ALL)
+endif()
 
 add_library(QR_Code_Generator SHARED ${QR_CODE_GEN_SOURCES})
 set_target_properties(QR_Code_Generator PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -145,6 +149,8 @@ if(WIN32)
     target_link_libraries(VGamepadPC PRIVATE
         cppwinrt
         WindowsApp
+        ViGEmClient
+        setupapi
     )
 elseif(LINUX)
     target_link_libraries(VGamepadPC PRIVATE

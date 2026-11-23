@@ -15,7 +15,8 @@
 enum class ExecutorType
 {
 	GamepadExecutor,
-	KeyboardMouseExecutor
+	KeyboardMouseExecutor,
+	VigemExecutor
 };
 
 class SettingsSingleton : public QObject

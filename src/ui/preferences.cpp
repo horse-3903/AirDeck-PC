@@ -6,6 +6,7 @@
 #include "buttoninputbox.hpp"
 #include "ui_preferences.h"
 
+#include <QRadioButton>
 #include <QScrollArea>
 
 #include <QDebug>
@@ -143,6 +144,14 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		ui->executorLayout->removeWidget(ui->executorNotesLabel);
 		ui->executorLayout->insertWidget(1, makeHint(tr("Emulates a gamepad device for supported games.")));
 		ui->executorLayout->insertWidget(3, makeHint(tr("Converts gamepad inputs into keyboard and mouse actions.")));
+#ifdef _WIN32
+		auto *vigemRadio = new QRadioButton(tr("Virtual Xbox 360 Controller (ViGEm)"), ui->executorGroup);
+		vigemRadio->setObjectName("vigemExecutorRadio");
+		ui->executorLayout->insertWidget(4, vigemRadio);
+		ui->executorLayout->insertWidget(
+			5, makeHint(tr("A real XInput controller for each phone. Needs the ViGEmBus driver.")));
+		connect(vigemRadio, &QRadioButton::toggled, this, &Preferences::executor_type_changed);
+#endif
 		auto *card = new QFrame(ui->executorGroup);
 		card->setStyleSheet("QFrame { background-color: #1A1A1A; border: none; border-radius: 4px; }");
 		auto *cardLayout = new QVBoxLayout(card);
@@ -184,6 +193,9 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		ExecutorType executorType = ui->gamepadExecutorRadio->isChecked()
 										? ExecutorType::GamepadExecutor
 										: ExecutorType::KeyboardMouseExecutor;
+		if (auto *vigemRadio = findChild<QRadioButton *>("vigemExecutorRadio");
+			vigemRadio != nullptr && vigemRadio->isChecked())
+			executorType = ExecutorType::VigemExecutor;
 		settings.setExecutorType(executorType);
 
 		// Update key mapping in the active profile
@@ -594,7 +606,12 @@ void Preferences::load_executor_type()
 {
 	ExecutorType executorType = SettingsSingleton::instance().executorType();
 
-	if (executorType == ExecutorType::GamepadExecutor)
+	auto *vigemRadio = findChild<QRadioButton *>("vigemExecutorRadio");
+	if (executorType == ExecutorType::VigemExecutor && vigemRadio != nullptr)
+	{
+		vigemRadio->setChecked(true);
+	}
+	else if (executorType == ExecutorType::GamepadExecutor)
 	{
 		ui->gamepadExecutorRadio->setChecked(true);
 	}
@@ -640,7 +657,17 @@ void Preferences::update_executor_notes()
 	}
 #endif
 
-	if (ui->gamepadExecutorRadio->isChecked())
+	auto *vigemRadio = findChild<QRadioButton *>("vigemExecutorRadio");
+	const bool vigemSelected = vigemRadio != nullptr && vigemRadio->isChecked();
+	if (vigemSelected)
+	{
+		notes = "- Windows 10 or later\n"
+				"- Needs the [ViGEmBus driver](https://github.com/nefarius/ViGEmBus/releases) "
+				"installed once\n"
+				"- Each phone becomes its own Xbox 360 controller (up to 4)\n"
+				"- Works with any game that supports XInput";
+	}
+	else if (ui->gamepadExecutorRadio->isChecked())
 	{
 		// notes for GamepadExecutor
 #ifdef _WIN32
@@ -672,6 +699,7 @@ void Preferences::update_executor_notes()
 
 	ui->executorNotesLabel->setText(notes);
 	if (auto *title = findChild<QLabel *>("executorDetailsTitle"))
-		title->setText(ui->gamepadExecutorRadio->isChecked() ? tr("Virtual Gamepad")
-															 : tr("Keyboard/Mouse Simulation"));
+		title->setText(vigemSelected							  ? tr("Virtual Xbox 360 Controller")
+					   : ui->gamepadExecutorRadio->isChecked() ? tr("Virtual Gamepad")
+															   : tr("Keyboard/Mouse Simulation"));
 }

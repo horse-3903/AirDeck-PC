@@ -16,6 +16,52 @@
 #include <QTimer>
 #include <algorithm>
 
+
+#ifdef _WIN32
+#include <windows.h>
+// Creating the Windows virtual gamepad can hit a native access violation on some systems
+// (see https://github.com/microsoft/microsoft-ui-xaml/issues/8639). C++ exceptions cannot catch
+// it, so creation is wrapped in structured exception handling to keep the server alive.
+static GamepadExecutor *createGamepadCpp()
+{
+	try
+	{
+		return new GamepadExecutor();
+	}
+	catch (...)
+	{
+		return nullptr;
+	}
+}
+
+static GamepadExecutor *createGamepadGuarded(bool *crashed)
+{
+	GamepadExecutor *result = nullptr;
+	__try
+	{
+		result = createGamepadCpp();
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		*crashed = true;
+		result = nullptr;
+	}
+	return result;
+}
+#else
+static GamepadExecutor *createGamepadGuarded(bool *crashed)
+{
+	try
+	{
+		return new GamepadExecutor();
+	}
+	catch (...)
+	{
+		return nullptr;
+	}
+}
+#endif
+
 /**
  * @brief Creates a QR code from a string
  *
@@ -62,10 +108,11 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 	ui->headerLayout->insertWidget(ui->headerLayout->indexOf(ui->stopButton), homeButton);
 	connect(homeButton, &QPushButton::clicked, this, &Server::homeRequested);
 	{
-		const bool gamepadMode =
-			SettingsSingleton::instance().executorType() == ExecutorType::GamepadExecutor;
-		QString details =
-			tr("Input: %1").arg(gamepadMode ? tr("Virtual Gamepad") : tr("Keyboard/Mouse Simulation"));
+		const ExecutorType mode = SettingsSingleton::instance().executorType();
+		QString details = tr("Input: %1").arg(
+			mode == ExecutorType::VigemExecutor		? tr("Virtual Xbox 360 Controller (ViGEm)")
+			: mode == ExecutorType::GamepadExecutor ? tr("Virtual Gamepad")
+													: tr("Keyboard/Mouse Simulation"));
 		if (isElevated())
 			details += tr("   |   Administrator");
 		auto *detailsLabel = new QLabel(details, this);
@@ -84,6 +131,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 	// Initialize the executor with try-catch for better error handling
 	switch (ExecutorType executorType = SettingsSingleton::instance().executorType())
 	{
+	case ExecutorType::VigemExecutor:
 	case ExecutorType::GamepadExecutor:
 		// A virtual gamepad is created for each phone when it connects
 		qInfo() << "GamepadExecutor will be created per connection";
@@ -224,8 +272,9 @@ void Server::handleConnection()
 {
 	// Keyboard/mouse input is shared, so only one phone may drive it.
 	// Virtual gamepads can be created per phone.
+	const ExecutorType mode = SettingsSingleton::instance().executorType();
 	const bool multiPhone =
-		SettingsSingleton::instance().executorType() == ExecutorType::GamepadExecutor;
+		mode == ExecutorType::GamepadExecutor || mode == ExecutorType::VigemExecutor;
 	QTcpSocket *socket = tcpServer->nextPendingConnection();
 	if (socket == nullptr)
 		return;
@@ -236,13 +285,33 @@ void Server::handleConnection()
 	client->socket = socket;
 	if (multiPhone)
 	{
-		try
+		QString failure;
+		if (mode == ExecutorType::VigemExecutor)
 		{
-			client->executor = std::make_unique<GamepadExecutor>();
+#ifdef _WIN32
+			try
+			{
+				client->executor = std::make_unique<ViGEmExecutor>();
+			}
+			catch (const std::exception &e)
+			{
+				failure = QString::fromUtf8(e.what());
+			}
+#endif
 		}
-		catch (const std::exception &e)
+		else
 		{
-			qCritical() << "Failed to create a virtual gamepad for the new device:" << e.what();
+			bool crashed = false;
+			client->executor.reset(createGamepadGuarded(&crashed));
+			if (!client->executor)
+				failure = tr("Could not create a virtual gamepad. Switch to Keyboard/Mouse "
+							 "Simulation or the ViGEm controller in Preferences.");
+		}
+		if (!client->executor)
+		{
+			qCritical() << "Failed to create a virtual gamepad for the new device:" << failure;
+			ui->clientLabel->setText(failure.isEmpty() ? tr("Could not create a virtual gamepad.")
+													   : failure);
 			socket->close();
 			socket->deleteLater();
 			return;
