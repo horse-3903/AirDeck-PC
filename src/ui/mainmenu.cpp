@@ -12,6 +12,14 @@
 MainMenu::MainMenu(QStackedWidget *parent) : QWidget(parent), ui(new Ui::MainMenu), stack(parent)
 {
 	ui->setupUi(this);
+	ui->startButton->setMinimumWidth(340);
+	ui->startButton->setMaximumWidth(420);
+	ui->settingsButton->setMinimumWidth(164);
+	ui->pushButton_About->setMinimumWidth(164);
+	ui->settingsButton->setMaximumWidth(204);
+	ui->pushButton_About->setMaximumWidth(204);
+	ui->verticalLayout->setAlignment(ui->startButton, Qt::AlignHCenter);
+	ui->verticalLayout->setAlignment(ui->secondaryLayout, Qt::AlignHCenter);
 	connect(ui->settingsButton, &QPushButton::pressed, this, &MainMenu::launch_preferences);
 	connect(ui->startButton, &QPushButton::pressed, this, &MainMenu::launch_server);
 	connect(ui->pushButton_About, &QPushButton::clicked, this, &MainMenu::launch_about);

@@ -4,12 +4,16 @@
 #include "../settings/settings_singleton.hpp"
 #include "ui_server.h"
 
+#include <QApplication>
+#include <QClipboard>
 #include <QDataStream>
 #include <QHostAddress>
 #include <QList>
 #include <QMessageBox>
 #include <QNetworkInterface>
 #include <QThread>
+#include <QTimer>
+#include <algorithm>
 
 /**
  * @brief Creates a QR code from a string
@@ -22,7 +26,7 @@
  * @param scalingFactor The scaling factor for the final image
  * @return QImage
  */
-QImage createQR(const QString &data, const int border = 1, const uint scalingFactor = 10)
+QImage createQR(const QString &data, const int border = 1, const uint scalingFactor = 8)
 {
 	char *str = data.toUtf8().data();
 	qrcodegen::QrCode qr = qrcodegen::QrCode::encodeText(str, qrcodegen::QrCode::Ecc::HIGH);
@@ -109,29 +113,66 @@ void Server::initServer()
 		tcpServer->close();
 		return;
 	}
-	QString message = tr("**Warning:** The server will stop if you close this window.\n\n");
-	message += tr("The server is running on\n\nPort: `%1`\n\nAt the following IP Address(es):\n\n")
-				   .arg(tcpServer->serverPort());
-	const QList<QHostAddress> ipAddressesList = QNetworkInterface::allAddresses();
-	for (const QHostAddress &entry : ipAddressesList)
+	ui->IPList->setMaximumHeight(120);
+	ui->QRViewer->setMaximumHeight(290);
+	ui->statusLabel->setText(tr("Server running"));
+	ui->portLabel->setText(tr("Port: **%1**").arg(tcpServer->serverPort()));
+	ui->portLabel->setTextFormat(Qt::MarkdownText);
+
+	// Most phones join the same Wi-Fi as this PC, which is almost always a private range.
+	// Show those first and mark the most likely one so virtual adapters are not mistaken for it.
+	auto rank = [](const QHostAddress &address) {
+		const QString text = address.toString();
+		if (text.startsWith("192.168."))
+			return 0;
+		if (text.startsWith("10."))
+			return 1;
+		if (text.startsWith("172."))
+			return 2;
+		return 3;
+	};
+	QList<QHostAddress> candidates;
+	for (const QHostAddress &entry : QNetworkInterface::allAddresses())
 	{
-		if (entry.isGlobal())
-		{
-			ui->IPList->addItem(tr("%1").arg(entry.toString()));
-			QLabel *QRWidget = new QLabel();
-			QRWidget->setPixmap(QPixmap::fromImage(
-				createQR(tr("%1:%2").arg(entry.toString()).arg(tcpServer->serverPort()))));
-			ui->QRViewer->addWidget(QRWidget);
-		}
+		if (entry.isGlobal() && entry.protocol() == QAbstractSocket::IPv4Protocol)
+			candidates.append(entry);
+	}
+	std::stable_sort(candidates.begin(), candidates.end(),
+					 [&rank](const QHostAddress &a, const QHostAddress &b) {
+						 return rank(a) < rank(b);
+					 });
+	for (int i = 0; i < candidates.size(); ++i)
+	{
+		const QHostAddress &entry = candidates.at(i);
+		const QString address = entry.toString();
+		auto *item = new QListWidgetItem(i == 0 ? tr("%1   (recommended)").arg(address) : address);
+		item->setData(Qt::UserRole, address);
+		ui->IPList->addItem(item);
+		QLabel *QRWidget = new QLabel();
+		QRWidget->setAlignment(Qt::AlignCenter);
+		QRWidget->setPixmap(QPixmap::fromImage(
+			createQR(tr("%1:%2").arg(address).arg(tcpServer->serverPort()))));
+		ui->QRViewer->addWidget(QRWidget);
 	}
 	if (ui->IPList->count() > 0)
 	{
-		// Select the first row
 		ui->IPList->setCurrentRow(0);
-		// And grab the focus
-		ui->IPList->setFocus(Qt::OtherFocusReason);
 	}
-	ui->statusLabel->setText(message);
+	else
+	{
+		ui->hintLabel->setText(
+			tr("No network address found. Connect this PC to a network and restart the server."));
+		ui->copyButton->setEnabled(false);
+	}
+	connect(ui->copyButton, &QPushButton::clicked, this, [this]() {
+		QListWidgetItem *current = ui->IPList->currentItem();
+		if (current == nullptr)
+			return;
+		QApplication::clipboard()->setText(
+			tr("%1:%2").arg(current->data(Qt::UserRole).toString()).arg(tcpServer->serverPort()));
+		ui->copyButton->setText(tr("Copied"));
+		QTimer::singleShot(1500, ui->copyButton, [this]() { ui->copyButton->setText(tr("Copy address")); });
+	});
 	connect(ui->IPList, &QListWidget::currentItemChanged, this,
 			[this](QListWidgetItem *current, QListWidgetItem *) {
 				if (current != nullptr)
@@ -151,7 +192,7 @@ void Server::handleConnection()
 	isGamepadConnected = true;
 	QString connectionMessage;
 	connectionMessage =
-		tr("Connected to %1 at `%2 : %3`")
+		tr("● Connected to %1 at `%2 : %3`")
 			.arg(clientConnection->peerName().isEmpty() ? "Unknown device"
 														: clientConnection->peerName(),
 				 clientConnection->peerAddress().toString(),
@@ -162,7 +203,7 @@ void Server::handleConnection()
 	connect(clientConnection, &QAbstractSocket::disconnected, clientConnection,
 			&QObject::deleteLater);
 	connect(clientConnection, &QAbstractSocket::disconnected, this, [this]() {
-		ui->clientLabel->setText(tr("No device connected"));
+		ui->clientLabel->setText(tr("○ No device connected"));
 		qInfo() << "Device disconnected.";
 		qDebug() << "Average Request Interval" << averageRequestInterval
 				 << "ms, Request Count:" << requestCount;

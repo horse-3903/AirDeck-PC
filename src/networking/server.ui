@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>640</width>
-    <height>480</height>
+    <width>760</width>
+    <height>460</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,99 +15,228 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="leftMargin"><number>28</number></property>
-   <property name="topMargin"><number>24</number></property>
+   <property name="topMargin"><number>20</number></property>
    <property name="rightMargin"><number>28</number></property>
-   <property name="bottomMargin"><number>24</number></property>
-   <property name="spacing"><number>16</number></property>
+   <property name="bottomMargin"><number>20</number></property>
+   <property name="spacing"><number>14</number></property>
    <item>
-    <widget class="QLabel" name="statusLabel">
-     <property name="wordWrap"><bool>true</bool></property>
-     <property name="margin"><number>16</number></property>
-     <property name="role" stdset="0"><string>card</string></property>
-     <property name="text">
-      <string>Status</string>
-     </property>
-     <property name="textFormat">
-      <enum>Qt::MarkdownText</enum>
-     </property>
-     <property name="openExternalLinks">
-      <bool>true</bool>
-     </property>
-     <property name="textInteractionFlags">
-      <set>Qt::TextBrowserInteraction</set>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="headerLayout">
+     <item>
+      <widget class="QLabel" name="statusLabel">
+       <property name="text">
+        <string>Server running</string>
+       </property>
+       <property name="role" stdset="0">
+        <string>heading</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="headerSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="stopButton">
+       <property name="minimumSize">
+        <size>
+         <width>150</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="text">
+        <string>Stop Server</string>
+       </property>
+       <property name="variant" stdset="0">
+        <string>danger</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
-    <widget class="QWidget" name="IPwidget" native="true">
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <property name="spacing">
-       <number>16</number>
-      </property>
-      <item>
-       <widget class="QListWidget" name="IPList">
-        <property name="frameShape">
-         <enum>QFrame::NoFrame</enum>
-        </property>
-        <property name="horizontalScrollBarPolicy">
-         <enum>Qt::ScrollBarAlwaysOff</enum>
-        </property>
-        <property name="sizeAdjustPolicy">
-         <enum>QAbstractScrollArea::AdjustToContents</enum>
-        </property>
-        <property name="editTriggers">
-         <set>QAbstractItemView::NoEditTriggers</set>
-        </property>
-        <property name="showDropIndicator" stdset="0">
-         <bool>false</bool>
-        </property>
-        <property name="selectionMode">
-         <enum>QAbstractItemView::SingleSelection</enum>
-        </property>
-        <property name="selectionBehavior">
-         <enum>QAbstractItemView::SelectRows</enum>
-        </property>
-        <property name="textElideMode">
-         <enum>Qt::ElideNone</enum>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QStackedWidget" name="QRViewer"/>
-      </item>
-     </layout>
-    </widget>
+    <layout class="QHBoxLayout" name="contentLayout">
+     <property name="spacing"><number>16</number></property>
+     <item>
+      <widget class="QFrame" name="connectionCard">
+       <property name="role" stdset="0">
+        <string>card</string>
+       </property>
+       <layout class="QVBoxLayout" name="connectionLayout">
+        <property name="leftMargin"><number>18</number></property>
+        <property name="topMargin"><number>16</number></property>
+        <property name="rightMargin"><number>18</number></property>
+        <property name="bottomMargin"><number>16</number></property>
+        <property name="spacing"><number>8</number></property>
+        <item>
+         <widget class="QLabel" name="connectTitle">
+          <property name="text">
+           <string>Connect your phone</string>
+          </property>
+          <property name="role" stdset="0">
+           <string>heading</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="hintLabel">
+          <property name="text">
+           <string>Join the same Wi-Fi network as this PC, then scan the QR code or enter the address in the app.</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+          <property name="role" stdset="0">
+           <string>caption</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="portLabel">
+          <property name="text">
+           <string>Port</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="addressTitle">
+          <property name="text">
+           <string>Network address</string>
+          </property>
+          <property name="role" stdset="0">
+           <string>caption</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QListWidget" name="IPList">
+          <property name="frameShape">
+           <enum>QFrame::NoFrame</enum>
+          </property>
+          <property name="horizontalScrollBarPolicy">
+           <enum>Qt::ScrollBarAlwaysOff</enum>
+          </property>
+          <property name="editTriggers">
+           <set>QAbstractItemView::NoEditTriggers</set>
+          </property>
+          <property name="showDropIndicator" stdset="0">
+           <bool>false</bool>
+          </property>
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SingleSelection</enum>
+          </property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="textElideMode">
+           <enum>Qt::ElideNone</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="copyButton">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="text">
+           <string>Copy address</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="qrCard">
+       <property name="minimumSize">
+        <size>
+         <width>300</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="role" stdset="0">
+        <string>card</string>
+       </property>
+       <layout class="QVBoxLayout" name="qrLayout">
+        <property name="leftMargin"><number>18</number></property>
+        <property name="topMargin"><number>16</number></property>
+        <property name="rightMargin"><number>18</number></property>
+        <property name="bottomMargin"><number>16</number></property>
+        <property name="spacing"><number>10</number></property>
+        <item>
+         <widget class="QStackedWidget" name="QRViewer"/>
+        </item>
+        <item>
+         <widget class="QLabel" name="qrCaption">
+          <property name="text">
+           <string>Scan with the Virtual Gamepad app</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+          <property name="role" stdset="0">
+           <string>caption</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
-    <widget class="QLabel" name="clientLabel">
-     <property name="alignment"><set>Qt::AlignCenter</set></property>
-     <property name="role" stdset="0"><string>pill</string></property>
-     <property name="text">
-      <string>No device connected</string>
-     </property>
-     <property name="textFormat">
-      <enum>Qt::MarkdownText</enum>
-     </property>
-     <property name="textInteractionFlags">
-      <set>Qt::TextBrowserInteraction</set>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="stopButton">
-     <property name="cursor"><cursorShape>PointingHandCursor</cursorShape></property>
-     <property name="variant" stdset="0"><string>danger</string></property>
-     <property name="text">
-      <string>Stop Server and Return</string>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="footerLayout">
+     <item>
+      <widget class="QLabel" name="clientLabel">
+       <property name="text">
+        <string>○ No device connected</string>
+       </property>
+       <property name="textFormat">
+        <enum>Qt::MarkdownText</enum>
+       </property>
+       <property name="role" stdset="0">
+        <string>pill</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="footerSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="noteLabel">
+       <property name="text">
+        <string>Closing this window stops the server.</string>
+       </property>
+       <property name="role" stdset="0">
+        <string>caption</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
   </layout>
  </widget>
  <resources/>
  <connections/>
- <slots>
-  <slot>accept()</slot>
-  <slot>reject()</slot>
- </slots>
 </ui>

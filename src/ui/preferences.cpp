@@ -7,6 +7,9 @@
 #include "ui_preferences.h"
 
 #include <QDebug>
+#include <QPushButton>
+#include <QFrame>
+#include <QDoubleSpinBox>
 #include <QHBoxLayout>
 #include <QListWidget>
 #include <QTabBar>
@@ -41,6 +44,51 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 	}
 	setupKeymapTabs();
 	ui->pointerSlider->adjustSize();
+	ui->pointerSlider->setMaximumWidth(320);
+	ui->portSpinBox->setMaximumWidth(140);
+	ui->portSpinBox->setSpecialValueText(tr("Auto"));
+	ui->profileComboBox->setMaximumWidth(320);
+	if (auto *profilesRow = qobject_cast<QHBoxLayout *>(ui->profilesGroup->layout()))
+		profilesRow->addStretch();
+	const auto mappingFields = findChildren<ButtonInputBox *>();
+	for (ButtonInputBox *field : mappingFields)
+		field->setMaximumWidth(360);
+	const auto thresholds = findChildren<QDoubleSpinBox *>();
+	for (QDoubleSpinBox *spin : thresholds)
+		spin->setMaximumWidth(140);
+
+	if (QPushButton *save = ui->buttonBox->button(QDialogButtonBox::Ok))
+		save->setText(tr("Save Changes"));
+	ui->buttonBox->setCenterButtons(false);
+
+	// Replace the centered standard button group with a footer that separates the destructive
+	// "Restore Defaults" action from the Cancel / Save Changes pair.
+	{
+		ui->buttonBox->hide();
+		auto *footer = new QWidget(this);
+		auto *footerLayout = new QHBoxLayout(footer);
+		footerLayout->setContentsMargins(0, 8, 0, 0);
+		auto *restoreButton = new QPushButton(tr("Restore Defaults"), footer);
+		restoreButton->setProperty("variant", "ghost");
+		auto *cancelButton = new QPushButton(tr("Cancel"), footer);
+		auto *saveButton = new QPushButton(tr("Save Changes"), footer);
+		saveButton->setProperty("variant", "primary");
+		saveButton->setMinimumWidth(140);
+		footerLayout->addWidget(restoreButton);
+		footerLayout->addStretch();
+		footerLayout->addWidget(cancelButton);
+		footerLayout->addWidget(saveButton);
+		auto *divider = new QFrame(this);
+		divider->setFrameShape(QFrame::HLine);
+		ui->verticalLayout->addWidget(divider);
+		ui->verticalLayout->addWidget(footer);
+		connect(restoreButton, &QPushButton::clicked, this,
+				[this] { ui->buttonBox->button(QDialogButtonBox::RestoreDefaults)->click(); });
+		connect(cancelButton, &QPushButton::clicked, this,
+				[this] { ui->buttonBox->button(QDialogButtonBox::Cancel)->click(); });
+		connect(saveButton, &QPushButton::clicked, this,
+				[this] { ui->buttonBox->button(QDialogButtonBox::Ok)->click(); });
+	}
 
 	connect(ui->buttonBox, &QDialogButtonBox::rejected, this, [this] {
 		load_keys();
@@ -147,9 +195,14 @@ void Preferences::refresh_profile_list()
 
 void Preferences::new_profile()
 {
-	bool ok;
-	QString profileName = QInputDialog::getText(this, "New Profile",
-												"Enter profile name:", QLineEdit::Normal, "", &ok);
+	QInputDialog dialog(this);
+	dialog.setWindowTitle(tr("New Profile"));
+	dialog.setLabelText(tr("Profile name"));
+	dialog.setOkButtonText(tr("Create Profile"));
+	dialog.setCancelButtonText(tr("Cancel"));
+	dialog.setMinimumWidth(400);
+	const bool ok = dialog.exec() == QDialog::Accepted;
+	const QString profileName = dialog.textValue().trimmed();
 	auto &settings = SettingsSingleton::instance();
 
 	if (ok && !profileName.isEmpty())

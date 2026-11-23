@@ -20,7 +20,13 @@ About::About(QStackedWidget *parent) : QWidget(parent), ui(new Ui::About)
 						   "href='https://github.com/kitswas/VirtualGamePad-PC/issues/new/"
 						   "choose'>GitHub Issues</a>.</p>");
 
-	ui->descriptionBox->setHtml(aboutText);
+	ui->descriptionBox->setHtml("<div align='center'>" + aboutText + "</div>");
+	ui->descriptionBox->setMaximumWidth(620);
+	ui->descriptionBox->setFixedHeight(190);
+	ui->descriptionBox->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	ui->verticalLayout->setAlignment(ui->descriptionBox, Qt::AlignHCenter);
+	ui->backButton->setMaximumWidth(180);
+	ui->verticalLayout->setAlignment(ui->backButton, Qt::AlignHCenter);
 	ui->descriptionBox->setOpenExternalLinks(true);
 	ui->descriptionBox->setReadOnly(true);
 
