@@ -1,6 +1,7 @@
 #include "appdir.hpp"
 #include "platform/windows/console.hpp"
 #include "ui/mainwindow.hpp"
+#include "ui/shotrunner.hpp"
 
 #include <QLocalServer>
 #include <QLocalSocket>
@@ -137,12 +138,20 @@ int main(int argc, char *argv[])
 	QApplication::setApplicationVersion(APP_VERSION);
 	qInfo() << "App data directory:" << getAppDataDir();
 
+	// Developer tool: --ui-shots <folder> saves a PNG of every page and dialog
+	QString shotsFolder;
+	for (int i = 1; i + 1 < argc; ++i)
+	{
+		if (QString(argv[i]) == "--ui-shots")
+			shotsFolder = QString::fromLocal8Bit(argv[i + 1]);
+	}
+
 	// Only one instance may run: a second launch just brings the first one to the front
 	const QString instanceKey = "VirtualGamePadPC-single-instance";
 	{
 		QLocalSocket probe;
 		probe.connectToServer(instanceKey);
-		if (probe.waitForConnected(500))
+		if (shotsFolder.isEmpty() && probe.waitForConnected(500))
 		{
 			probe.write("show");
 			probe.waitForBytesWritten(500);
@@ -162,7 +171,19 @@ int main(int argc, char *argv[])
 		}
 		w.showFromTray();
 	});
-	w.show();
+	if (!shotsFolder.isEmpty())
+	{
+		// Keep the window away from the screen and never take focus from what the user is doing
+		w.setAttribute(Qt::WA_ShowWithoutActivating);
+		w.move(-6000, 100);
+		w.show();
+		auto *runner = new ShotRunner(&w, shotsFolder);
+		runner->start();
+	}
+	else
+	{
+		w.show();
+	}
 	qInfo() << "Application initialized successfully. Version:"
 			<< QApplication::applicationVersion();
 	int result = QApplication::exec();

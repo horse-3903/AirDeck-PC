@@ -112,6 +112,8 @@ set(PROJECT_SOURCES
     src/ui/preferences.cpp
     src/ui/preferences.hpp
     src/ui/preferences.ui
+    src/ui/shotrunner.cpp
+    src/ui/shotrunner.hpp
 )
 
 # Platform-specific simulation sources
