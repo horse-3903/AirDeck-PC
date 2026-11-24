@@ -28,6 +28,7 @@ class ControllerTester : public QWidget
   private:
 	void drawReadouts(QPainter &p);
 	void drawController(QPainter &p);
+	void drawDs4(QPainter &p);
 	int m_slot = 1;
 	bool m_compact = false;
 	bool m_ps4 = false;
