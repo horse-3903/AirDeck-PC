@@ -122,13 +122,20 @@ body:not(.xbox) .xbox-label { display: none; }
 #top .pill { position: static; width: 8dvh; height: 7dvh; border-radius: 1.4dvh; color: var(--muted); }
 #fsPill { display: none; }
 #fsPill.show { display: flex; }
-#badge { min-width: 15dvh; height: 7dvh; display: flex; align-items: center; justify-content: center; padding: 0 2.4dvh;
+#badge { min-width: 9dvh; height: 7dvh; display: flex; align-items: center; justify-content: center; padding: 0 2.4dvh;
     border-radius: 1.4dvh; font-size: 2.8dvh; font-weight: 700; letter-spacing: .02em; white-space: nowrap;
     color: var(--bad); background: rgba(208, 48, 48, .16); }
 #badge.ok { color: var(--ok); background: rgba(26, 157, 74, .16); }
 #badge.wait { color: var(--warn); background: rgba(201, 138, 0, .16); }
 #badge.bad { color: var(--bad); background: rgba(208, 48, 48, .16); }
 #conn, #slotDots { display: none; }
+.sico { width: 4.2dvh; height: 4.2dvh; display: block; flex: none; }
+#sIcon { display: flex; }
+#slotText:empty { display: none; }
+#slotText { margin-left: 1dvh; }
+#hIcon { display: inline-flex; vertical-align: middle; margin-right: 8px; }
+#hIcon .sico { width: 20px; height: 20px; }
+#connHint { vertical-align: middle; }
 
 #rotate { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
     flex-direction: column; background: var(--bg); text-align: center; padding: 8vw; z-index: 20; gap: 12px; }
@@ -247,7 +254,7 @@ body:not(.xbox) .xbox-label { display: none; }
   </div>
   <div id="top">
   <div class="pill" id="fsPill" aria-label="Fullscreen"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></div>
-    <div id="badge" class="wait"><span id="conn" class="wait"></span><span id="slotDots"></span><span id="slotText">Connecting</span></div>
+    <div id="badge" class="wait"><span id="conn" class="wait"></span><span id="slotDots"></span><span id="sIcon"></span><span id="slotText"></span></div>
     <div class="pill" id="menuBtn" data-nav="menu" aria-label="Settings"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></div>
   </div>
 </div>
@@ -268,7 +275,7 @@ body:not(.xbox) .xbox-label { display: none; }
       </div>
       <button class="iconbtn" id="editName" aria-label="Rename"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg></button>
     </div>
-    <div class="statusrow"><span class="spill wait" id="connHint"></span><button class="link" id="retryBtn">Retry</button></div>
+    <div class="statusrow"><span class="spill wait"><span id="hIcon"></span><span id="connHint"></span></span><button class="link" id="retryBtn">Retry</button></div>
   </div>
 
   <div class="sec">Appearance</div>
@@ -371,13 +378,21 @@ body:not(.xbox) .xbox-label { display: none; }
   }
 
   // ---- network ----
+  var STATUS_ICONS = {
+    ok: '<svg class="sico" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6"><g transform="translate(12 12) rotate(-45)"><rect x="-10.6" y="-3.2" width="8.4" height="6.4" rx="3.2" fill-opacity=".2" /><rect x="2.2" y="-3.2" width="8.4" height="6.4" rx="3.2" fill-opacity=".2" /><rect x="-4.8" y="-1.3" width="9.6" height="2.6" rx="1.3" fill-opacity="1" stroke="none" /></g></svg>',
+    bad: '<svg class="sico" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6"><g transform="translate(12 12) rotate(-45)"><rect x="-11.4" y="-3.2" width="8.4" height="6.4" rx="3.2" fill-opacity=".2" /><rect x="3.0" y="-3.2" width="8.4" height="6.4" rx="3.2" fill-opacity=".2" /><rect x="-5.6" y="-1.3" width="4.0" height="2.6" rx="1.1" fill-opacity="1" stroke="none" /><rect x="1.6" y="-1.3" width="4.0" height="2.6" rx="1.1" fill-opacity="1" stroke="none" /></g></svg>',
+    wait: '<svg class="sico" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6"><path d="M7.2 4.2C7.2 8.2 10.6 10.2 10.6 12C10.6 13.8 7.2 15.8 7.2 19.8H16.8C16.8 15.8 13.4 13.8 13.4 12C13.4 10.2 16.8 8.2 16.8 4.2Z" fill-opacity=".2" /><rect x="5.5" y="2.2" width="13" height="2" rx="1" fill-opacity=".45" /><rect x="5.5" y="19.8" width="13" height="2" rx="1" fill-opacity=".45" /><path d="M8.7 6.5Q12 7.8 15.3 6.5C14.7 8.8 13 10.1 12.3 11.4H11.7C11 10.1 9.3 8.8 8.7 6.5Z" fill-opacity=".85" stroke="none" /><path d="M8.2 19.1C9.5 18.6 11.1 16.1 12 16.1C12.9 16.1 14.5 18.6 15.8 19.1Z" fill-opacity=".85" stroke="none" /></svg>'
+  };
   var connKind = "wait";
   function setStatus(kind, text, hint) {
     connKind = kind;
     $("conn").className = kind;
     $("badge").className = kind;
-    $("connHint").className = "spill " + kind;
-    $("slotText").textContent = text;
+    $("connHint").parentNode.className = "spill " + kind;
+    var icon = kind === "ok" ? STATUS_ICONS.ok : (kind === "wait" || text === "Reconnecting") ? STATUS_ICONS.wait : STATUS_ICONS.bad;
+    $("sIcon").innerHTML = icon; $("hIcon").innerHTML = icon;
+    $("badge").title = hint || text;
+    $("slotText").textContent = kind === "ok" ? text : "";
     $("connHint").textContent = hint || text;
     $("retryBtn").style.display = kind === "ok" ? "none" : "";
     $("disconnBtn").style.display = wantConnection ? "" : "none";
