@@ -146,7 +146,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 	ui->setupUi(this);
 	ui->IPList->viewport()->setAutoFillBackground(false);
 	// delete this when stop button is clicked
-	connect(ui->stopButton, &QPushButton::clicked, this, &Server::destroyServer);
+	connect(ui->stopButton, &QPushButton::clicked, this, &Server::stopServer);
 	{
 		const qreal dpr = devicePixelRatioF();
 		const QString neutral = "QPushButton { background: #17171B; border: 1px solid #2C2C33; border-radius: 10px; padding: 0; } "
@@ -735,6 +735,11 @@ void Server::updateStatus()
 		tabCount->setText(QString::number(active));
 	if (!userPickedTab && pages != nullptr)
 		showTab(active > 0 ? 0 : 1);
+	if (stopped)
+	{
+		emit statusChanged(tr("Server stopped"));
+		return;
+	}
 	emit statusChanged(tr("Server running  |  Port %1  |  %2")
 						   .arg(port)
 						   .arg(active == 0 ? tr("no device connected")
@@ -834,36 +839,8 @@ bool Server::listenServer()
 	return tcpServer->listen(QHostAddress::AnyIPv4, port) || (port != 0 && tcpServer->listen(QHostAddress::AnyIPv4, 0));
 }
 
-void Server::restartServer()
+void Server::dropClients()
 {
-	if (restarting)
-		return;
-	const int active = static_cast<int>(std::count_if(
-		clients.begin(), clients.end(), [](const std::unique_ptr<Client> &c) { return c->active; }));
-	if (active > 0)
-	{
-		QMessageBox confirm(this);
-		confirm.setWindowTitle(tr("Restart server"));
-		confirm.setIcon(QMessageBox::Question);
-		confirm.setText(tr("Restart the server?"));
-		confirm.setInformativeText(tr("%n connected controller(s) will be disconnected for a moment. Browser controllers reconnect on their own.", "", active));
-		auto *go = confirm.addButton(tr("Restart"), QMessageBox::AcceptRole);
-		confirm.addButton(tr("Cancel"), QMessageBox::RejectRole);
-		confirm.exec();
-		if (confirm.clickedButton() != go)
-			return;
-	}
-	restarting = true;
-	const auto lock = [this](bool enabled) {
-		homeBtn->setEnabled(enabled);
-		restartBtn->setEnabled(enabled);
-		ui->stopButton->setEnabled(enabled);
-	};
-	lock(false);
-	ui->statusLabel->setText(tr("Restarting server"));
-	setServerState(1);
-	debugLog(QStringLiteral("Restarting server"));
-
 	// Release every virtual controller first so no input stays held
 	for (auto &client : clients)
 	{
@@ -884,6 +861,54 @@ void Server::restartServer()
 	tcpServer->close();
 	updateClientLabel();
 	updateSlots();
+}
+
+void Server::stopServer()
+{
+	if (restarting || stopped)
+		return;
+	dropClients();
+	stopped = true;
+	ui->statusLabel->setText(tr("Server stopped"));
+	setServerState(2);
+	ui->stopButton->setEnabled(false);
+	restartBtn->setToolTip(tr("Start server"));
+	restartBtn->setAccessibleName(tr("Start server"));
+	debugLog(QStringLiteral("Server stopped"));
+	updateStatus();
+}
+
+void Server::restartServer()
+{
+	if (restarting)
+		return;
+	const int active = static_cast<int>(std::count_if(
+		clients.begin(), clients.end(), [](const std::unique_ptr<Client> &c) { return c->active; }));
+	if (active > 0 && !stopped)
+	{
+		QMessageBox confirm(this);
+		confirm.setWindowTitle(tr("Restart server"));
+		confirm.setIcon(QMessageBox::Question);
+		confirm.setText(tr("Restart the server?"));
+		confirm.setInformativeText(tr("%n connected controller(s) will be disconnected for a moment. Browser controllers reconnect on their own.", "", active));
+		auto *go = confirm.addButton(tr("Restart"), QMessageBox::AcceptRole);
+		confirm.addButton(tr("Cancel"), QMessageBox::RejectRole);
+		confirm.exec();
+		if (confirm.clickedButton() != go)
+			return;
+	}
+	restarting = true;
+	const auto lock = [this](bool enabled) {
+		homeBtn->setEnabled(enabled);
+		restartBtn->setEnabled(enabled);
+		ui->stopButton->setEnabled(enabled);
+	};
+	lock(false);
+	ui->statusLabel->setText(stopped ? tr("Starting server") : tr("Restarting server"));
+	setServerState(1);
+	debugLog(QStringLiteral("Restarting server"));
+
+	dropClients();
 	updateStatus();
 
 	QTimer::singleShot(700, this, [this, lock]() {
@@ -894,6 +919,8 @@ void Server::restartServer()
 			QMessageBox::warning(this, tr("Restart server"), tr("The server could not start again: %1.").arg(tcpServer->errorString()));
 			restarting = false;
 			lock(true);
+			if (stopped)
+				ui->stopButton->setEnabled(false);
 			return;
 		}
 		ui->portLabel->setText(tr("Port: **%1**").arg(tcpServer->serverPort()));
@@ -905,6 +932,9 @@ void Server::restartServer()
 		updateQrPixmaps();
 		ui->statusLabel->setText(tr("Server running"));
 		setServerState(0);
+		stopped = false;
+		restartBtn->setToolTip(tr("Restart server"));
+		restartBtn->setAccessibleName(tr("Restart server"));
 		restarting = false;
 		lock(true);
 		updateStatus();
