@@ -357,6 +357,7 @@ body:not(.xbox) .xbox-label { display: none; }
   })();
   function guessModel() { return devInfo.label + (devInfo.screen ? " (" + devInfo.screen + ")" : ""); }
   function defaultName() { return devInfo.model || (isIOS ? "iPhone" : devInfo.os ? devInfo.os + " device" : "Browser"); }
+  var PAGE_V = "__VGP_V__";
   var settings = {
     name: store.get("vgp-name", defaultName()),
     style: store.get("vgp-style", "ps"),
@@ -429,6 +430,11 @@ body:not(.xbox) .xbox-label { display: none; }
     };
     ws.onmessage = function (ev) {
       var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.v && PAGE_V.charAt(0) !== "_" && m.v !== PAGE_V && store.get("vgp-reloaded", "") !== m.v) {
+        store.set("vgp-reloaded", m.v);
+        location.replace(location.pathname + "?v=" + m.v);
+        return;
+      }
       if (m.t === "slot") { slot = m.n | 0; renderSlot(); setStatus("ok", "P" + slot, "Connected as controller " + slot); }
       else if (m.t === "refused") {
         wantConnection = true; refusedUntil = Date.now() + 5000;

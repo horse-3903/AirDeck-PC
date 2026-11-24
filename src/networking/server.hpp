@@ -125,6 +125,7 @@ class Server : public QWidget
 	QPushButton *modeButton = nullptr;
 	bool debugEnabled() const;
 	QString debugLogPath() const;
+	static QString webPageVersion();
 	void debugLog(const QString &line, bool force = false);
 	QString deviceKey(const Client &client) const;
 	bool testMode = false;

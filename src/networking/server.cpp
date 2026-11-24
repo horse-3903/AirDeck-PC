@@ -648,6 +648,17 @@ bool Server::debugEnabled() const
 	return SettingsSingleton::instance().qsettings()->value("server/debug", false).toBool();
 }
 
+QString Server::webPageVersion()
+{
+	static const QString version = [] {
+		QFile page(":/web/controller.html");
+		if (!page.open(QIODevice::ReadOnly))
+			return QString();
+		return QString::fromLatin1(QCryptographicHash::hash(page.readAll(), QCryptographicHash::Md5).toHex().left(12));
+	}();
+	return version;
+}
+
 QString Server::debugLogPath() const
 {
 	return QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("debug.log");
@@ -1002,7 +1013,7 @@ void Server::refuse(Client &client, const QString &why)
 	QTcpSocket *socket = client.socket;
 	if (client.protocol == Client::Protocol::WebSocket)
 	{
-		sendWebJson(client, QJsonObject{{"t", "refused"}, {"why", why}});
+		sendWebJson(client, QJsonObject{{"t", "refused"}, {"why", why}, {"v", webPageVersion()}});
 		sendWebFrame(socket, QByteArray(), 8);
 	}
 	socket->disconnectFromHost();
@@ -1204,7 +1215,7 @@ void Server::serveHttp(Client &client)
 			refuse(client, failure);
 			return;
 		}
-		sendWebJson(client, QJsonObject{{"t", "slot"}, {"n", client.slot}});
+		sendWebJson(client, QJsonObject{{"t", "slot"}, {"n", client.slot}, {"v", webPageVersion()}});
 		serveWebSocket(client);
 		return;
 	}
@@ -1213,7 +1224,8 @@ void Server::serveHttp(Client &client)
 	if (path == "/" || path.startsWith("/?") || path == "/index.html")
 	{
 		QFile page(":/web/controller.html");
-		const QByteArray body = page.open(QIODevice::ReadOnly) ? page.readAll() : QByteArray();
+		QByteArray body = page.open(QIODevice::ReadOnly) ? page.readAll() : QByteArray();
+		body.replace("__VGP_V__", webPageVersion().toUtf8());
 		response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " +
 				   QByteArray::number(body.size()) +
 				   "\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n" + body;
