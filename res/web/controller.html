@@ -24,10 +24,13 @@
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
     -webkit-user-select: none; user-select: none; touch-action: none; }
-html, body { margin: 0; height: 100%; background: color-mix(in srgb, var(--bg) 91%, var(--slotc, var(--bg))); transition: background .4s; color: var(--fg); overflow: hidden;
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     overscroll-behavior: none; position: fixed; inset: 0; width: 100%; }
 #app { position: fixed; inset: 0; height: 100vh; height: 100dvh; }
+#app::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0; transition: opacity .5s;
+    box-shadow: inset 0 0 12dvh 2dvh color-mix(in srgb, var(--slotc, transparent) 60%, transparent); }
+html.glow #app::after { opacity: 1; }
 
 .btn, .pill, .stick { background: var(--panel); border: 2px solid var(--border); }
 .btn.on, .pill.on { background: var(--panel-on); border-color: var(--fg); transform: scale(.97); }
@@ -387,7 +390,8 @@ body:not(.xbox) .xbox-label { display: none; }
     var on = slot && connKind === "ok", c = on ? SLOT_COLORS[slot - 1] : "";
     $("slotText").textContent = on ? "P" + slot : "\u2014";
     $("slotText").style.color = c;
-    if (c) document.documentElement.style.setProperty("--slotc", c); else document.documentElement.style.removeProperty("--slotc");
+    if (c) document.documentElement.style.setProperty("--slotc", c);
+    document.documentElement.classList.toggle("glow", !!c);
   }
   function connect() {
     if (!wantConnection || (ws && ws.readyState <= 1)) return;
