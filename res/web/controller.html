@@ -737,15 +737,15 @@ body:not(.xbox) .xbox-label { display: none; }
     keep.play().then(function () { updateMedia(connKind === "ok" ? "ok" : connKind === "wait" ? "wait" : "bad"); }).catch(function () { keepStarted = false; });
     if ("mediaSession" in navigator) {
       navigator.mediaSession.setActionHandler("play", function () { reconnect(); });
-      navigator.mediaSession.setActionHandler("pause", function () { disconnect(); });
-      navigator.mediaSession.setActionHandler("stop", function () { disconnect(); });
+      // Pausing must not drop the connection: keep the track running so the page stays alive
+      navigator.mediaSession.setActionHandler("pause", function () { if (keep && wantConnection) keep.play().catch(function () {}); });
     }
   }
   function updateMedia(st) {
     if (!("mediaSession" in navigator) || !keepStarted) return;
     var title = st === "ok" ? "Connected as P" + slot : st === "wait" ? "Connecting" : "Disconnected";
     try {
-      navigator.mediaSession.metadata = new MediaMetadata({ title: title, artist: "Virtual Gamepad", album: "Tap play to reconnect, pause to disconnect" });
+      navigator.mediaSession.metadata = new MediaMetadata({ title: title, artist: "Virtual Gamepad", album: "Tap the status in the controller to disconnect" });
       navigator.mediaSession.playbackState = wantConnection ? "playing" : "paused";
     } catch (e) {}
     if (keep) { if (wantConnection) { if (keep.paused) keep.play().catch(function () {}); } else keep.pause(); }
