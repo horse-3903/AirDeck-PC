@@ -179,10 +179,12 @@ body:not(.xbox) .xbox-label { display: none; }
 .link { border: 0; background: transparent; color: var(--fg); font-size: 14px; font-weight: 700; padding: 6px 4px; }
 .sec { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 6px; }
 .label { font-size: 15px; font-weight: 700; margin: 6px 0; }
-.styles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.stylecard { border: 1px solid var(--border); background: var(--card); border-radius: 12px; padding: 14px 8px; text-align: center; font-size: 15px; font-weight: 700; }
+.styles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stylecard { border: 1px solid var(--border); background: var(--card); border-radius: 12px; padding: 14px 8px; box-sizing: border-box; height: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; text-align: center; font-size: 15px; line-height: 20px; font-weight: 700; }
 .stylecard.sel { background: var(--panel-on); border-color: var(--fg); }
-.syms { display: flex; justify-content: center; align-items: center; gap: 14px; font-size: 20px; margin-bottom: 8px; font-weight: 400; height: 26px; }
+.syms { display: flex; justify-content: center; align-items: center; gap: 14px; height: 26px; width: 100%; flex: none; }
+.syms svg { width: 26px; height: 26px; display: block; flex: none; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--border); font-size: 15px; font-weight: 700; }
 .row:first-of-type { border-top: 0; }
 .row .hint { display: block; color: var(--muted); font-size: 13px; font-weight: 400; margin-top: 2px; }
@@ -283,8 +285,8 @@ body:not(.xbox) .xbox-label { display: none; }
   <div class="sec">Appearance</div>
   <div class="label">Button style</div>
   <div class="styles" id="styleSeg">
-    <div class="stylecard" data-v="ps"><div class="syms"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 L21 19 H3 Z" stroke="#3fb68b"/></svg><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linejoin="round"><rect x="4.5" y="4.5" width="15" height="15" rx="1" stroke="#d96ba6"/></svg><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4"><circle cx="12" cy="12" r="8" stroke="#e5484d"/></svg><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round"><path d="M5 5 L19 19 M19 5 L5 19" stroke="#3e8ef7"/></svg></div>PlayStation</div>
-    <div class="stylecard" data-v="xbox"><div class="syms"><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5.5 4 L12 13 L18.5 4 M12 13 V20.5"/></svg><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3e8ef7" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 4 L19 20 M19 4 L5 20"/></svg><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e5484d" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M7 4 V20 M7 4 H12 A4 4 0 0 1 12 12 H7 M7 12 H13 A4 4 0 0 1 13 20 H7"/></svg><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#30a46c" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M4.5 20.5 L12 3.5 L19.5 20.5 M7.8 14.5 H16.2"/></svg></div>Xbox</div>
+    <div class="stylecard" data-v="ps"><div class="syms"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 L21 19 H3 Z" stroke="#3fb68b"/></svg><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linejoin="round"><rect x="4.5" y="4.5" width="15" height="15" rx="1" stroke="#d96ba6"/></svg><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4"><circle cx="12" cy="12" r="8" stroke="#e5484d"/></svg><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round"><path d="M5 5 L19 19 M19 5 L5 19" stroke="#3e8ef7"/></svg></div><span>PlayStation</span></div>
+    <div class="stylecard" data-v="xbox"><div class="syms"><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5.5 4 L12 13 L18.5 4 M12 13 V20.5"/></svg><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3e8ef7" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 4 L19 20 M19 4 L5 20"/></svg><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e5484d" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M7 4 V20 M7 4 H12 A4 4 0 0 1 12 12 H7 M7 12 H13 A4 4 0 0 1 13 20 H7"/></svg><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#30a46c" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M4.5 20.5 L12 3.5 L19.5 20.5 M7.8 14.5 H16.2"/></svg></div><span>Xbox</span></div>
   </div>
 
   <div class="sec">Input behaviour</div>
