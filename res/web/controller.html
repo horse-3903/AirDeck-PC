@@ -622,11 +622,14 @@ body:not(.xbox) .xbox-label { display: none; }
   }
   function updateFsPill() {
     var standalone = window.matchMedia && window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches;
-    var can = !isIOS && !!document.documentElement.requestFullscreen && !document.fullscreenElement && !standalone;
+    var can = !isIOS && !!document.documentElement.requestFullscreen && !standalone;
     $("fsPill").classList.toggle("show", can);
+    var fs = !!document.fullscreenElement, path = $("fsPill").querySelector("path");
+    path.setAttribute("d", fs ? "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" : "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5");
+    $("fsPill").setAttribute("aria-label", fs ? "Exit fullscreen" : "Fullscreen");
   }
   document.addEventListener("fullscreenchange", updateFsPill);
-  $("fsPill").addEventListener("click", function () { enterFullscreen(false); });
+  $("fsPill").addEventListener("click", function () { if (document.fullscreenElement) document.exitFullscreen(); else enterFullscreen(false); });
   function enterFullscreen(quiet) {
     var el = document.documentElement;
     var p = el.requestFullscreen ? el.requestFullscreen({ navigationUI: "hide" }) : null;
