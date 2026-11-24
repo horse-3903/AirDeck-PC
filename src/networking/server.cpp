@@ -288,6 +288,9 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		controllersStack->addWidget(testerPage);
 
 		pages = new QStackedWidget(this);
+		// Wrapped labels report a very tall minimum at narrow widths, which forced the whole page to scroll
+		pages->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Ignored);
+		pages->setMinimumHeight(480);
 		pages->addWidget(controllersStack);
 		pages->addWidget(connectPage);
 
@@ -315,6 +318,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		ui->verticalLayout->insertLayout(1, tabRow);
 		ui->verticalLayout->insertWidget(2, pages, 1);
 		ui->clientLabel->clear();
+		ui->clientLabel->hide();
 		showTab(1);
 		updateSlots();
 	}
@@ -389,6 +393,9 @@ void Server::initServer()
 	}
 	ui->IPList->setFixedHeight(120);
 	ui->QRViewer->setFixedHeight(290);
+	// Same container size for the App and Browser codes
+	ui->QRViewer->setFixedWidth(344);
+	ui->qrCard->setFixedWidth(380);
 	{
 		const int twoLines = ui->hintLabel->fontMetrics().lineSpacing() * 2 + 6;
 		ui->hintLabel->setMinimumHeight(twoLines);

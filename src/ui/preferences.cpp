@@ -94,7 +94,7 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		auto *footerLayout = new QHBoxLayout(footer);
 		footerLayout->setContentsMargins(0, 0, 0, 0);
 		footerLayout->setAlignment(Qt::AlignVCenter);
-		footer->setFixedHeight(48);
+		footer->setMinimumHeight(60);
 		auto *restoreButton = new QPushButton(tr("Restore Defaults"), footer);
 		restoreButton->setProperty("variant", "ghost");
 		auto *cancelButton = new QPushButton(tr("Cancel"), footer);
@@ -104,9 +104,11 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		for (QPushButton *button : {restoreButton, cancelButton, saveButton})
 		{
 			button->setStyleSheet("font-size: 10pt; padding: 4px 18px; min-height: 20px;");
-			button->setFixedHeight(34);
+			button->setFixedHeight(44);
 		}
-		saveButton->setStyleSheet("font-size: 10pt; font-weight: 600; padding: 4px 18px; min-height: 20px;");
+		saveButton->setStyleSheet("font-size: 10pt; font-weight: 600; padding: 12px 22px; min-height: 24px;");
+		for (QPushButton *button : {restoreButton, cancelButton, saveButton})
+			button->setFixedHeight(50);
 		footerLayout->addWidget(restoreButton);
 		auto *footerNotice = new QLabel(footer);
 		footerNotice->setObjectName("footerStatus");
@@ -187,6 +189,29 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 			&Preferences::executor_type_changed);
 	connect(ui->keyboardMouseExecutorRadio, &QRadioButton::toggled, this,
 			&Preferences::executor_type_changed);
+
+	// The keymap only applies when keys and mouse are simulated
+	{
+		auto *sidebar = findChild<QListWidget *>("prefsSidebar");
+		auto applyKeymapState = [this, sidebar]() {
+			if (sidebar == nullptr)
+				return;
+			const bool enabled = ui->keyboardMouseExecutorRadio->isChecked();
+			for (int i = 0; i < sidebar->count(); ++i)
+			{
+				QListWidgetItem *item = sidebar->item(i);
+				if (item->text() != tr("Keymap") && item->text() != QStringLiteral("Keymap"))
+					continue;
+				item->setFlags(enabled ? (item->flags() | Qt::ItemIsEnabled) : (item->flags() & ~Qt::ItemIsEnabled));
+				item->setToolTip(enabled ? QString() : tr("Only used in Keyboard/Mouse mode"));
+				item->setForeground(enabled ? QBrush() : QBrush(QColor("#5A5A60")));
+				if (!enabled && sidebar->currentRow() == i)
+					sidebar->setCurrentRow(0);
+			}
+		};
+		connect(ui->keyboardMouseExecutorRadio, &QRadioButton::toggled, this, applyKeymapState);
+		applyKeymapState();
+	}
 
 	// No immediate save connections - only save when OK is clicked
 	disconnect(ui->buttonBox, &QDialogButtonBox::accepted, nullptr, nullptr);

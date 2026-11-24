@@ -16,6 +16,8 @@ QMenuBar {
 QStatusBar {
 	background: #000000;
 	color: #A3A3A3;
+	min-height: 0px;
+	max-height: 12px;
 }
 
 QToolTip {
@@ -394,6 +396,11 @@ QListWidget#prefsSidebar::item {
 	font-size: 10pt;
 	border-radius: 4px;
 	border: none;
+}
+
+QListWidget#prefsSidebar::item:disabled {
+	color: #55555C;
+	background: transparent;
 }
 
 QListWidget#prefsSidebar::item:selected {

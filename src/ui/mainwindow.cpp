@@ -17,6 +17,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 	SettingsSingleton::instance().loadAll();
 	ui->setupUi(this);
+	ui->statusbar->hide();
 	resize(1200, 760);
 	if (isElevated())
 		setWindowTitle(windowTitle() + tr(" (Administrator)"));
