@@ -6,6 +6,9 @@
 #include "ui_mainmenu.h"
 
 #include <QLabel>
+#include <QPainter>
+#include <QPixmap>
+#include <QSvgRenderer>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QStackedWidget>
@@ -13,6 +16,20 @@
 MainMenu::MainMenu(QStackedWidget *parent) : QWidget(parent), ui(new Ui::MainMenu), stack(parent)
 {
 	ui->setupUi(this);
+
+	// The logo is an SVG, drawn at the label height so it stays sharp on any display scale
+	{
+		QSvgRenderer renderer(QStringLiteral(":/logos/HeroController.svg"));
+		const qreal dpr = devicePixelRatioF();
+		const QSize logical(static_cast<int>(170 * 260.0 / 166.0), 170);
+		QPixmap logo(logical * dpr);
+		logo.setDevicePixelRatio(dpr);
+		logo.fill(Qt::transparent);
+		QPainter painter(&logo);
+		renderer.render(&painter, QRectF(QPointF(0, 0), QSizeF(logical)));
+		painter.end();
+		ui->logoLabel->setPixmap(logo);
+	}
 	ui->startButton->setMinimumWidth(340);
 	ui->startButton->setMaximumWidth(420);
 	auto *serverStatus = new QLabel(tr("Server stopped"), this);
