@@ -223,7 +223,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			card.deviceIcon->setMinimumSize(10, 80);
 			card.deviceIcon->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 			card.deviceIcon->installEventFilter(this);
-			cardLayout->addWidget(card.deviceIcon, 2);
+			cardLayout->addWidget(card.deviceIcon, 3);
 
 			// Everything below the icon only exists while a device is connected, but keeps its space
 			card.details = new QWidget(card.frame);
@@ -260,9 +260,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			chips->addWidget(makeChip(card.outText));
 			chips->addStretch();
 			detailsLayout->addWidget(card.chips);
-			QSizePolicy keepChips = card.chips->sizePolicy();
-			keepChips.setRetainSizeWhenHidden(true);
-			card.chips->setSizePolicy(keepChips);
+			
 
 			card.test = new QPushButton(tr("Test controller"), card.details);
 			card.test->setCursor(Qt::PointingHandCursor);
@@ -280,7 +278,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			QSizePolicy keep = card.details->sizePolicy();
 			keep.setRetainSizeWhenHidden(true);
 			card.details->setSizePolicy(keep);
-			cardLayout->addWidget(card.details, 1);
+			cardLayout->addWidget(card.details, 2);
 			// Live view that replaces the artwork and text while testing
 			card.live = new ControllerTester(card.frame);
 			card.live->setCompact(true);
@@ -780,7 +778,9 @@ void Server::updateSlots()
 			card.live->setState(owner->held, owner->lx, owner->ly, owner->rx, owner->ry, owner->lt, owner->rt);
 		}
 
+		// Only the status text remains in an empty tile, so it can sit midway between the artwork and the button
 		card.chips->setVisible(active);
+		card.detail->setVisible(active);
 		card.test->setText(tr("+  Connect device"));
 		card.test->setVisible(!active);
 		card.test->setStyleSheet("QPushButton { color: #F5F5F5; border: 1px solid #4A4A52; border-radius: 4px; background: transparent; } "
