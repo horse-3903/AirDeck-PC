@@ -27,4 +27,4 @@ If applicable, add screenshots to help explain your problem.
 Add any other context about the problem here.
 
 **Log File**
-Attach `LogFile.log` from the same folder as `VGamepadPC.exe`.
+Attach `LogFile.log` from the same folder as `AirDeck.exe`.

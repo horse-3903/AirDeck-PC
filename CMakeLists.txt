@@ -1,15 +1,15 @@
 ﻿cmake_minimum_required(VERSION 3.19)
 
-set(APP_VERSION 0.4.1)
+set(APP_VERSION 0.5.0)
 add_definitions(-DAPP_VERSION="${APP_VERSION}")
 if(WIN32)
     add_definitions(-DNOMINMAX)
 endif()
 
-project("Virtual Gamepad PC" VERSION ${APP_VERSION} LANGUAGES CXX C)
+project("AirDeck" VERSION ${APP_VERSION} LANGUAGES CXX C)
 if(WIN32)
     enable_language(RC)
-    list(APPEND PROJECT_SOURCES_WIN res/VGamepad.rc)
+    list(APPEND PROJECT_SOURCES_WIN res/AirDeck.rc)
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -76,7 +76,7 @@ set_target_properties(QR_Code_Generator PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON
 
 # Manifest file for the application
 # This file is used to request permissions on Windows
-SET(APP_MANIFEST_FILE "${CMAKE_SOURCE_DIR}/res/VGamepadPC.exe.manifest")
+SET(APP_MANIFEST_FILE "${CMAKE_SOURCE_DIR}/res/AirDeck.exe.manifest")
 
 # Add project files sorted in alphabetical order
 set(PROJECT_SOURCES
@@ -143,12 +143,12 @@ elseif(LINUX)
     )
 endif()
 
-qt_add_executable(VGamepadPC
+qt_add_executable(AirDeck
     ${PROJECT_SOURCES}
     ${PROJECT_SOURCES_WIN}
 )
 
-target_link_libraries(VGamepadPC PRIVATE
+target_link_libraries(AirDeck PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Network
@@ -159,28 +159,28 @@ target_link_libraries(VGamepadPC PRIVATE
 
 # Platform-specific linking and include directories
 if(WIN32)
-    target_link_libraries(VGamepadPC PRIVATE
+    target_link_libraries(AirDeck PRIVATE
         cppwinrt
         WindowsApp
         ViGEmClient
         setupapi
     )
 elseif(LINUX)
-    target_link_libraries(VGamepadPC PRIVATE
+    target_link_libraries(AirDeck PRIVATE
         ${UINPUT_LIBRARIES}
     )
-    target_include_directories(VGamepadPC PRIVATE
+    target_include_directories(AirDeck PRIVATE
         ${UINPUT_INCLUDE_DIRS}
     )
 endif()
 
-set_target_properties(VGamepadPC PROPERTIES
+set_target_properties(AirDeck PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
 set(CMAKE_INSTALL_DIR "${CMAKE_SOURCE_DIR}/dist")
 
-install(TARGETS VGamepadPC Data_Exchange QR_Code_Generator
+install(TARGETS AirDeck Data_Exchange QR_Code_Generator
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -190,7 +190,7 @@ install(TARGETS VGamepadPC Data_Exchange QR_Code_Generator
 if(WIN32)
     # Manifest file for the application
     # This file is used to request permissions on Windows
-    SET(APP_MANIFEST_FILE "${CMAKE_SOURCE_DIR}/res/VGamepadPC.exe.manifest")
+    SET(APP_MANIFEST_FILE "${CMAKE_SOURCE_DIR}/res/AirDeck.exe.manifest")
 
     # Windows deployment tool
     if(NOT DEFINED WINDEPLOYQT_EXECUTABLE)
@@ -211,17 +211,17 @@ if(WIN32)
     )
 
     install(
-        CODE "execute_process(COMMAND \"${WINDEPLOYQT_EXECUTABLE}\" \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/VGamepadPC.exe\")"
+        CODE "execute_process(COMMAND \"${WINDEPLOYQT_EXECUTABLE}\" \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/AirDeck.exe\")"
     )
 elseif(LINUX)
     # https://cmake.org/cmake/help/latest/prop_tgt/INSTALL_RPATH.html
-    set_target_properties(VGamepadPC PROPERTIES
+    set_target_properties(AirDeck PROPERTIES
         INSTALL_RPATH_USE_LINK_PATH TRUE
         INSTALL_RPATH "$ORIGIN/../lib"
         BUILD_WITH_INSTALL_RPATH FALSE
     )
     qt_generate_deploy_app_script(
-        TARGET VGamepadPC
+        TARGET AirDeck
         OUTPUT_SCRIPT deploy_script
     )
     message(STATUS "Deploy script generated: ${deploy_script}")
@@ -234,8 +234,8 @@ if(WIN32)
     # This is done by adding a custom command as a post-build step
     # The CMake Cache variable WINDEPLOYQT_EXECUTABLE should contain the path to windeployqt
     add_custom_command(
-        TARGET VGamepadPC POST_BUILD
-        COMMAND ${WINDEPLOYQT_EXECUTABLE} $<TARGET_FILE:VGamepadPC>
+        TARGET AirDeck POST_BUILD
+        COMMAND ${WINDEPLOYQT_EXECUTABLE} $<TARGET_FILE:AirDeck>
         COMMENT "Running windeployqt to copy Qt dependencies to output directory"
         VERBATIM
     )
@@ -243,10 +243,10 @@ if(WIN32)
     # Configure the executable to use the manifest
     # Just place the manifest in the output directory and Windows will use it
     add_custom_command(
-        TARGET VGamepadPC POST_BUILD
+        TARGET AirDeck POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${APP_MANIFEST_FILE}
-            $<TARGET_FILE_DIR:VGamepadPC>/VGamepadPC.exe.manifest
+            $<TARGET_FILE_DIR:AirDeck>/AirDeck.exe.manifest
         COMMENT "Copying manifest file to output directory"
         VERBATIM
     )

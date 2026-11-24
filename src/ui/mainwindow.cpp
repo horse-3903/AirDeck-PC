@@ -30,7 +30,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 	{
 		QApplication::setQuitOnLastWindowClosed(false);
 		trayIcon = new QSystemTrayIcon(windowIcon(), this);
-		trayIcon->setToolTip(tr("Virtual Gamepad"));
+		trayIcon->setToolTip(tr("AirDeck"));
 		auto *menu = new QMenu(this);
 		menu->addAction(tr("Show"), this, [this]() { showFromTray(); });
 		menu->addAction(tr("Stop server"), this, [this]() { stopServerAndQuit(); });
@@ -81,7 +81,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 		if (!trayHintShown)
 		{
 			trayHintShown = true;
-			const QString title = tr("Virtual Gamepad is still running");
+			const QString title = tr("AirDeck is still running");
 			const QString body = tr("The server keeps running in the background. Open the tray icon to reopen the window.");
 			if (!showNativeToast(title, body, tr("Stop server")))
 			{

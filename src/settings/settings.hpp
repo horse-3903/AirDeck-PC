@@ -67,7 +67,7 @@ enum trigger_keys
 
 /**
  * A Qmap to map the keys in namespace to corresponding settings name in string format.
- * Used for profile .ini files only, not for VirtualGamePad.ini.
+ * Used for profile .ini files only, not for AirDeck.ini.
  */
 const inline QMap<setting_keys::button_keys, QString> button_settings = {
 	{setting_keys::button_keys::A, "buttons/A"},
@@ -87,7 +87,7 @@ const inline QMap<setting_keys::button_keys, QString> button_settings = {
 
 /**
  * A QMap to map thumbstick keys to corresponding settings names in string format.
- * Used for profile .ini files only, not for VirtualGamePad.ini.
+ * Used for profile .ini files only, not for AirDeck.ini.
  */
 const inline QMap<setting_keys::thumbstick_keys, QString> thumbstick_settings = {
 	{setting_keys::thumbstick_keys::LeftThumbstick, "thumbsticks/LeftThumbstickMode"},
@@ -103,7 +103,7 @@ const inline QMap<setting_keys::thumbstick_keys, QString> thumbstick_settings = 
 
 /**
  * A QMap to map trigger keys to corresponding settings names in string format.
- * Used for profile .ini files only, not for VirtualGamePad.ini.
+ * Used for profile .ini files only, not for AirDeck.ini.
  */
 const inline QMap<setting_keys::trigger_keys, QString> trigger_settings = {
 	{setting_keys::trigger_keys::LeftTriggerKey, "triggers/LeftTriggerKey"},

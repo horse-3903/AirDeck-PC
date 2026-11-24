@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Gamepad">
 <meta name="theme-color" content="#000000">
 
-<title>Virtual Gamepad</title>
+<title>AirDeck</title>
 <style>
 :root {
   --u: 1dvh; --w: 1vw;
@@ -768,7 +768,7 @@ body:not(.xbox) .xbox-label { display: none; }
     if (!("mediaSession" in navigator) || !keepStarted) return;
     var title = st === "ok" ? "Connected as P" + slot : st === "wait" ? "Connecting" : "Disconnected";
     try {
-      navigator.mediaSession.metadata = new MediaMetadata({ title: title, artist: "Virtual Gamepad", album: "Tap the status in the controller to disconnect" });
+      navigator.mediaSession.metadata = new MediaMetadata({ title: title, artist: "AirDeck", album: "Tap the status in the controller to disconnect" });
       navigator.mediaSession.playbackState = wantConnection ? "playing" : "paused";
     } catch (e) {}
     if (keep) { if (wantConnection) { if (keep.paused) keep.play().catch(function () {}); } else keep.pause(); }

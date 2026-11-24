@@ -21,12 +21,12 @@
 #include <memory>
 
 #if defined(QT_DEBUG)
-const QString logFilePath = "virtualgamepad.log";
+const QString logFilePath = "airdeck.log";
 #elif defined(_WIN32)
-const QString logFilePath = "virtualgamepad.log";
+const QString logFilePath = "airdeck.log";
 #elif defined(__linux__)
 const QString logFilePath =
-	QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/virtualgamepad.log";
+	QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/airdeck.log";
 #endif
 
 /**
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 	attachToParentConsole();
 #endif
 
-	// Try to find a free log file slot (virtualgamepad.1.log, virtualgamepad.2.log, etc.)
+	// Try to find a free log file slot (airdeck.1.log, airdeck.2.log, etc.)
 	static std::unique_ptr<QLockFile> lockFile;
 	QFileInfo baseInfo(logFilePath);
 	QString baseName = baseInfo.completeBaseName();
@@ -133,9 +133,9 @@ int main(int argc, char *argv[])
 	{
 		a.setStyleSheet(QString::fromUtf8(themeFile.readAll()));
 	}
-	QApplication::setOrganizationName("kitswas");
-	QApplication::setOrganizationDomain("io.github.kitswas");
-	QApplication::setApplicationName("VirtualGamePad");
+	QApplication::setOrganizationName("horse-3903");
+	QApplication::setOrganizationDomain("io.github.horse3903");
+	QApplication::setApplicationName("AirDeck");
 	QApplication::setWindowIcon(QIcon(":/logos/AppIcon.png"));
 	QApplication::setApplicationVersion(APP_VERSION);
 	qInfo() << "App data directory:" << getAppDataDir();
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Only one instance may run: a second launch just brings the first one to the front
-	const QString instanceKey = "VirtualGamePadPC-single-instance";
+	const QString instanceKey = "AirDeck-single-instance";
 	{
 		QLocalSocket probe;
 		probe.connectToServer(instanceKey);

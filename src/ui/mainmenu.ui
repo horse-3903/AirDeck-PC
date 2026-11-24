@@ -64,7 +64,7 @@
    <item>
     <widget class="QLabel" name="titleLabel">
      <property name="text">
-      <string>Virtual Gamepad</string>
+      <string>AirDeck</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>

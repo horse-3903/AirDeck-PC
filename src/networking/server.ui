@@ -180,7 +180,7 @@
         <item>
          <widget class="QLabel" name="qrCaption">
           <property name="text">
-           <string>Scan with the Virtual Gamepad app</string>
+           <string>Scan with the AirDeck app</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignCenter</set>

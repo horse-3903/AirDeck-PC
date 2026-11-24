@@ -12,12 +12,12 @@ About::About(QStackedWidget *parent) : QWidget(parent), ui(new Ui::About)
 
 	// Setup text description
 	QString aboutText = tr("<p>This is a part of the <a "
-						   "href='https://kitswas.github.io/VirtualGamePad/'>Virtual Gamepad "
-						   "project</a>.</p>"
+						   "href='https://horse-3903.github.io/showcase/airdeck/'>AirDeck "
+						   "project</a>, based on <a href='https://kitswas.github.io/VirtualGamePad/'>VirtualGamePad</a> by kitswas.</p>"
 						   "<p>The source code is available on <a "
-						   "href='https://github.com/Kitswas/VirtualGamePad-PC'>GitHub</a>.</p>"
+						   "href='https://github.com/horse-3903/AirDeck-PC'>GitHub</a>.</p>"
 						   "Report bugs or request features at <a "
-						   "href='https://github.com/kitswas/VirtualGamePad-PC/issues/new/"
+						   "href='https://github.com/horse-3903/AirDeck-PC/issues/new/"
 						   "choose'>GitHub Issues</a>.</p>");
 
 	ui->descriptionBox->setHtml("<div align='center'>" + aboutText + "</div>");
@@ -31,10 +31,10 @@ About::About(QStackedWidget *parent) : QWidget(parent), ui(new Ui::About)
 	ui->descriptionBox->setReadOnly(true);
 
 	// GitHub URLs
-	const QString repoUrl = "https://github.com/kitswas/VirtualGamePad/";
+	const QString repoUrl = "https://github.com/horse-3903/AirDeck-PC/";
 	const QString serverLicenseUrl =
-		"https://github.com/kitswas/VirtualGamePad-PC/blob/main/LICENCE.TXT";
-	const QString releaseUrl = "https://github.com/kitswas/VirtualGamePad-PC/releases/latest";
+		"https://github.com/horse-3903/AirDeck-PC/blob/modern-ui/LICENCE.TXT";
+	const QString releaseUrl = "https://github.com/horse-3903/AirDeck-PC/releases/latest";
 
 	qDebug() << "Loading GitHub badges for project information";
 

@@ -14,7 +14,7 @@
 
 namespace
 {
-constexpr const wchar_t *kAppId = L"VirtualGamepad.PC";
+constexpr const wchar_t *kAppId = L"AirDeck.App";
 
 void setRegString(const std::wstring &key, const wchar_t *name, const std::wstring &value)
 {
@@ -28,12 +28,12 @@ void initToastIdentity()
 	SetCurrentProcessExplicitAppUserModelID(kAppId);
 
 	const std::wstring exe = QDir::toNativeSeparators(QCoreApplication::applicationFilePath()).toStdWString();
-	setRegString(L"Software\\Classes\\AppUserModelId\\VirtualGamepad.PC", L"DisplayName", L"Virtual Gamepad");
-	setRegString(L"Software\\Classes\\AppUserModelId\\VirtualGamepad.PC", L"IconBackgroundColor", L"FF202020");
+	setRegString(L"Software\\Classes\\AppUserModelId\\AirDeck.App", L"DisplayName", L"AirDeck");
+	setRegString(L"Software\\Classes\\AppUserModelId\\AirDeck.App", L"IconBackgroundColor", L"FF202020");
 
-	setRegString(L"Software\\Classes\\vgp-stop", nullptr, L"URL:Virtual Gamepad");
-	setRegString(L"Software\\Classes\\vgp-stop", L"URL Protocol", L"");
-	setRegString(L"Software\\Classes\\vgp-stop\\shell\\open\\command", nullptr, L"\"" + exe + L"\" \"%1\"");
+	setRegString(L"Software\\Classes\\airdeck-stop", nullptr, L"URL:AirDeck");
+	setRegString(L"Software\\Classes\\airdeck-stop", L"URL Protocol", L"");
+	setRegString(L"Software\\Classes\\airdeck-stop\\shell\\open\\command", nullptr, L"\"" + exe + L"\" \"%1\"");
 }
 
 bool showNativeToast(const QString &title, const QString &text, const QString &actionLabel)

@@ -7,7 +7,7 @@
 #include <QDebug>
 
 SettingsSingleton::SettingsSingleton()
-	: settings(QDir::toNativeSeparators(getAppDataDir() + "/VirtualGamePad.ini"),
+	: settings(QDir::toNativeSeparators(getAppDataDir() + "/AirDeck.ini"),
 			   QSettings::IniFormat),
 	  executor_type(DEFAULT_EXECUTOR_TYPE)
 {

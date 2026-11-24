@@ -531,7 +531,7 @@ void Server::initServer()
 	// A fixed port that is already taken falls back to a free one instead of failing
 	if (!tcpServer->listen(QHostAddress::AnyIPv4, port) && !(port != 0 && tcpServer->listen(QHostAddress::AnyIPv4, 0)))
 	{
-		QMessageBox::critical(this, tr("VGamepad Server"),
+		QMessageBox::critical(this, tr("AirDeck Server"),
 							  tr("Unable to start the server: %1.").arg(tcpServer->errorString()));
 		close(); // Close the error dialog
 		tcpServer->close();
@@ -1666,7 +1666,7 @@ void Server::updateQrPixmaps()
 		qrLabels[i]->setPixmap(QPixmap::fromImage(createQR(text)));
 	}
 	ui->qrCaption->setText(webQr ? tr("Scan with the phone camera to open the web controller")
-								 : tr("Scan with the Virtual Gamepad app"));
+								 : tr("Scan with the AirDeck app"));
 	flattenLabels();
 }
 

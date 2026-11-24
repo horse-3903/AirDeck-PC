@@ -1,4 +1,4 @@
-# AGENTS.md - Virtual Gamepad (PC server + Android app + web controller)
+# AGENTS.md - AirDeck (PC server + Android app + web controller)
 
 This file is the working memory for agents on the two forks below. Read it before changing anything.
 Everything here was verified in the codebase or in a test run unless it says "untested". The same file is kept in both repositories.
@@ -14,12 +14,12 @@ Turn a phone into a game controller for a Windows PC.
 The app and the browser page are meant to look and behave the same. When you change one layout, shape or default, check the other.
 
 Upstream projects: kitswas/VirtualGamePad-PC (v0.4.1) and kitswas/VirtualGamePad-Mobile (v0.4.2).
-The forks hold all our work on a branch called `modern-ui`.
+The project was renamed AirDeck (formerly VirtualGamePad) once the changes were large. The forks hold all our work on a branch called `modern-ui`.
 
 | Thing | Where |
 |---|---|
-| PC fork | https://github.com/horse-3903/VirtualGamePad-PC (branch `modern-ui`) |
-| Mobile fork | https://github.com/horse-3903/VirtualGamePad-Mobile (branch `modern-ui`) |
+| PC repo | https://github.com/horse-3903/AirDeck-PC (branch `modern-ui`, default `main`) |
+| Mobile repo | https://github.com/horse-3903/AirDeck-Mobile (branch `modern-ui`, default `main`) |
 | PC working tree (build here) | `C:\Users\chong\Desktop\Coding\Github\vgp-build\VirtualGamePad-PC-0.4.1` |
 | Mobile working tree (build here) | `C:\Users\chong\Desktop\Coding\Github\vgp-mobile\VirtualGamePad-Mobile-0.4.2` |
 | Fork clones (commit and push from here) | `C:\Users\chong\Desktop\Coding\Github\forks\pc` and `...\forks\mobile` |
@@ -49,12 +49,12 @@ No encryption or login. Anyone on the LAN with the address can connect.
 ## 3. PC app (Qt 6.8.3, C++20, CMake + Ninja Multi-Config, MSVC 2022)
 
 Key files in `src/`:
-- `main.cpp`: palette and QSS load, single-instance lock (QLocalServer/QLocalSocket named `VirtualGamePadPC-single-instance`), `--ui-shots <folder>` developer mode.
+- `main.cpp`: palette and QSS load, single-instance lock (QLocalServer/QLocalSocket named `AirDeck-single-instance`), `--ui-shots <folder>` developer mode.
 - `ui/mainwindow.*`: 1200x760 default, tray icon (closing the window while the server runs hides to tray; Quit in tray exits), admin tag in the title.
 - `ui/mainmenu.*`: home. After Start the button becomes "Return to Server".
 - `networking/server.*`: the server page and the TCP server. Per-client `Client` struct (protocol, slot, name, model, executor). Details below.
 - `networking/executor.*`: `KeyboardMouseExecutor` (tracks held keys per source so keys are only pressed and released on transitions; releases all on disconnect), `GamepadExecutor` (Windows InputInjector), `ViGEmExecutor` (virtual Xbox 360 pad via ViGEmBus).
-- `settings/*`: `ExecutorType {GamepadExecutor, KeyboardMouseExecutor, VigemExecutor}`. Default on Windows is ViGEm. Settings and profiles live next to the exe (`VirtualGamePad.ini`, `profiles/`).
+- `settings/*`: `ExecutorType {GamepadExecutor, KeyboardMouseExecutor, VigemExecutor}`. Default on Windows is ViGEm. Settings and profiles live next to the exe (`AirDeck.ini`, `profiles/`).
 - `ui/preferences.*`: sidebar (pinned) + scrolling pages, footer pinned (Restore Defaults left, Cancel and Save Changes right). General has the port, the executor group and the Debug mode checkbox (`server/debug`).
 - `ui/shotrunner.*`: dev tool that saves a PNG of every page and dialog. Finds buttons by text or accessible name. Polls `shot.flag` and `quit.flag` in its folder.
 - `res/theme.qss`: monochrome dark theme. `res/web/controller.html` + `res/web.qrc`: the browser controller.
@@ -64,7 +64,7 @@ Server page (`server.cpp`), all built in code:
 - Header: a 48 px status tile (green running, yellow restarting or starting, red stopped or failed), title, subtitle (mode and port), and three 40 px icon buttons (Home, Restart, Stop) drawn from inline SVG strings via `QSvgRenderer`.
 - `stopServer()` closes clients and the listener but stays on the page. The Restart button then reads "Start server". `restartServer()` confirms if clients are connected, drops them (`dropClients()`), waits 700 ms, listens again on the configured port and refreshes the port label and QR codes.
 - Tabs: Controllers (with a count badge) and Connect device, drawn as flat buttons with an underline. The Status and Input test switch is a segmented control in the summary row. No layout shift between them.
-- `activate()` enforces one controller per device address unless debug mode is on. `debugLog()` writes to `debug.log` under `%APPDATA%\kitswas\VirtualGamePad` and the console.
+- `activate()` enforces one controller per device address unless debug mode is on. `debugLog()` writes to `debug.log` under `%APPDATA%\horse-3903\AirDeck` and the console.
 
 Input modes:
 | Mode | Needs | Phones | Notes |
@@ -81,11 +81,11 @@ cmake --build build-windows --config Release
 cmake --install build-windows --config Release --prefix dist
 ```
 First configure only: `cmake -S . -B build-windows -G "Ninja Multi-Config" -DCMAKE_PREFIX_PATH=...\Qt\6.8.3\msvc2022_64 -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl`.
-Output: `dist\bin\VGamepadPC.exe` (windeployqt runs during install; `vc_redist.x64.exe` is included). Stop `VGamepadPC.exe` before installing, otherwise the install is blocked and `dist` is half deleted. The `vswhere.exe is not recognized` line in the log is harmless.
+Output: `dist\bin\AirDeck.exe` (windeployqt runs during install; `vc_redist.x64.exe` is included). Stop `AirDeck.exe` before installing (and delete `dist` after a rename so the old exe does not linger), otherwise the install is blocked and `dist` is half deleted. The `vswhere.exe is not recognized` line in the log is harmless.
 
 ## 4. Android app (Kotlin, Compose, Material 3, Gradle)
 
-Package `io.github.kitswas.virtualgamepadmobile`, min SDK 26, target 34, compile SDK 36. Key files under `app/src/main/java/io/github/kitswas/virtualgamepadmobile/`:
+Package `io.github.horse3903.airdeck` (renamed from `io.github.kitswas.virtualgamepadmobile`, so it installs as a separate app), min SDK 26, target 34, compile SDK 36. Key files under `app/src/main/java/io/github/horse3903/airdeck/`:
 - `network/ConnectionHub.kt`: process-wide `ConnectionViewModel` so the connection outlives the activity.
 - `network/ConnectionViewModel.kt`: command queue, socket, sends `VGPHELLO`, reader thread parses `VGPSLOT`, detects when the PC closes. `connect()` after a `disconnect()` restarts the command processor.
 - `network/ConnectionService.kt`: foreground service (`connectedDevice`), Wi-Fi and partial wake locks, persistent notification showing state and "Controller N".
@@ -109,7 +109,7 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 ```
 `signing.properties not found` in the output is expected for debug builds. The submodule `VGP_Data_Exchange` must be present (cloned over HTTPS).
 
-Emulator: AVD `Medium_Phone_API_37.0`. The package is `io.github.kitswas.virtualgamepadmobile`. Reach the PC at `10.0.2.2:<port>`. `adb shell settings put system user_rotation 1` forces landscape. A cold boot (`-no-snapshot-load`) can revert the installed app, so reinstall the APK after one. Its window has been seen opening off screen at y -601: move it with `MoveWindow` on the `qemu-system-x86_64` process. Mouse clicks only landed after a cold boot with `-gpu swiftshader_indirect`.
+Emulator: AVD `Medium_Phone_API_37.0`. The package is `io.github.horse3903.airdeck`. Reach the PC at `10.0.2.2:<port>`. `adb shell settings put system user_rotation 1` forces landscape. A cold boot (`-no-snapshot-load`) can revert the installed app, so reinstall the APK after one. Its window has been seen opening off screen at y -601: move it with `MoveWindow` on the `qemu-system-x86_64` process. Mouse clicks only landed after a cold boot with `-gpu swiftshader_indirect`.
 
 Fake PC for screenshots without the real server: a few lines of Python that accept a TCP connection, read the hello, reply `VGPSLOT:1\n` and keep reading. Point the emulator at `10.0.2.2:<port>` and the app reaches the controller screen with slot 1. Typing the address: tap the field, `adb shell input text`, press Back to hide the keyboard before tapping Connect.
 
@@ -130,19 +130,19 @@ Single self-contained page: `res/web/controller.html` (no external requests). Po
 
 ## 6. Testing recipes (safe on the user's machine)
 
-- PC UI screenshots without touching the screen: copy `dist\bin` to a scratch folder (own settings), run `VGamepadPC.exe --ui-shots <outdir>`. It writes `stage-a-done.txt` and `port.txt` when the pages are done, ends in keyboard mode with the server running.
+- PC UI screenshots without touching the screen: copy `dist\bin` to a scratch folder (own settings), run `AirDeck.exe --ui-shots <outdir>`. It writes `stage-a-done.txt` and `port.txt` when the pages are done, ends in keyboard mode with the server running.
 - Never run input-producing tests against a Keyboard/Mouse server on the user's PC: stick moves become real W A S D presses.
-- Check the PC log: `dist\bin\virtualgamepad.1.log` and, in debug mode, `%APPDATA%\kitswas\VirtualGamePad\debug.log`. A running instance can be elevated and then cannot be stopped from here (`Access is denied`); ask the user to close it.
+- Check the PC log: `dist\bin\airdeck.1.log` and, in debug mode, `%APPDATA%\horse-3903\AirDeck\debug.log`. A running instance can be elevated and then cannot be stopped from here (`Access is denied`); ask the user to close it.
 - Kill helper servers by port (`Get-NetTCPConnection -LocalPort`), never with a blanket `taskkill` on `python.exe`.
 - Emulator taps need 2 to 3 second waits after launch, and screenshots lag one frame. Verify each screen before the next tap.
 
 ## 7. Releases and checksums
 
-Releases are published on the forks as pre-releases, tagged `v<upstream version>-modern-ui.<n>`. Each has the file and a `SHA256SUMS.txt`. Verify on Windows with `Get-FileHash -Algorithm SHA256 <file>`.
-- PC: `VirtualGamePad-PC-<version>-modern-ui.<n>-win64.zip`, the contents of `dist\bin` without `*.log`, `*.lock` and `VirtualGamePad.ini`. ViGEmBus is not included.
-- Mobile: `VirtualGamePad-Mobile-<version>-modern-ui.<n>-debug.apk`, debug signed, installed by sideloading.
+Releases are published as pre-releases, tagged `v<version>` since the rename (earlier ones are `v<upstream version>-modern-ui.<n>` and still carry the old VirtualGamePad name inside). Each has the file and a `SHA256SUMS.txt`. Verify on Windows with `Get-FileHash -Algorithm SHA256 <file>`.
+- PC: `AirDeck-PC-<version>-win64.zip`, the contents of `dist\bin` without `*.log`, `*.lock` and `AirDeck.ini`. ViGEmBus is not included.
+- Mobile: `AirDeck-Mobile-<version>-debug.apk`, debug signed, installed by sideloading.
 - Publish with `gh release create <tag> <files> --repo horse-3903/<repo> --prerelease --target modern-ui --title ... --notes-file ...`. Notes list what changed since the previous build, give the SHA-256, and say plainly what was not tested.
-- Latest: PC `v0.4.1-modern-ui.3`, Mobile `v0.4.2-modern-ui.4`.
+- Latest: `v0.5.0` for both repos.
 
 ## 8. User preferences and house rules
 
