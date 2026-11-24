@@ -29,8 +29,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); o
     overscroll-behavior: none; position: fixed; inset: 0; width: 100%; }
 #app { position: fixed; inset: 0; height: 100vh; height: 100dvh; }
 #app::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .5s;
-    background: color-mix(in srgb, var(--slotc, transparent) 9%, transparent);
-    box-shadow: inset 0 0 18dvh 3dvh color-mix(in srgb, var(--slotc, transparent) 45%, transparent); }
+    background: color-mix(in srgb, var(--slotc, transparent) 3%, transparent);
+    box-shadow: inset 0 0 14dvh 0 color-mix(in srgb, var(--slotc, transparent) 30%, transparent); }
 html.glow #app::before { opacity: 1; }
 
 .btn, .pill, .stick { background: var(--panel); border: 2px solid var(--border); }
