@@ -191,37 +191,51 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		summaryLabel = new QLabel(listPage);
 		summaryLabel->setStyleSheet("font-weight: 600; font-size: 12pt;");
 		listLayout->addWidget(summaryLabel);
-		auto *cardsLayout = new QVBoxLayout();
-		cardsLayout->setSpacing(10);
+		// Connected controllers sit in a grid, three across and two down
+		cardsGrid = new QGridLayout();
+		cardsGrid->setSpacing(12);
+		for (int column = 0; column < 3; ++column)
+			cardsGrid->setColumnStretch(column, 1);
+		auto *cardsLayout = cardsGrid;
 		for (int i = 0; i < 6; ++i)
 		{
 			SlotCard card;
 			card.frame = new QFrame(listPage);
 			card.frame->setProperty("role", "card");
-			auto *cardLayout = new QHBoxLayout(card.frame);
-			cardLayout->setContentsMargins(16, 14, 16, 14);
-			cardLayout->setSpacing(14);
+			auto *cardLayout = new QVBoxLayout(card.frame);
+			cardLayout->setContentsMargins(14, 14, 14, 14);
+			cardLayout->setSpacing(10);
 
 			card.deviceIcon = new QLabel(card.frame);
-			card.deviceIcon->setFixedSize(52, 52);
+			card.deviceIcon->setFixedSize(48, 48);
 			card.deviceIcon->setAlignment(Qt::AlignCenter);
 
-			auto *textColumn = new QVBoxLayout();
-			textColumn->setSpacing(6);
-			auto *titleRow = new QHBoxLayout();
-			titleRow->setSpacing(10);
 			card.badge = new QLabel(QString::number(i + 1), card.frame);
 			card.badge->setFixedSize(24, 24);
 			card.badge->setAlignment(Qt::AlignCenter);
 			card.title = new QLabel(card.frame);
-			card.state = new QLabel(card.frame);
-			card.state->setAlignment(Qt::AlignCenter);
-			titleRow->addWidget(card.badge);
-			titleRow->addWidget(card.title);
-			titleRow->addWidget(card.state);
-			titleRow->addStretch();
+			card.title->setMinimumWidth(0);
+			card.title->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 			card.detail = new QLabel(card.frame);
 			card.detail->setProperty("role", "caption");
+			card.detail->setMinimumWidth(0);
+			card.detail->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+			card.state = new QLabel(card.frame);
+			card.state->setAlignment(Qt::AlignCenter);
+
+			auto *header = new QHBoxLayout();
+			header->setSpacing(10);
+			auto *titleRow = new QHBoxLayout();
+			titleRow->setSpacing(8);
+			titleRow->addWidget(card.badge);
+			titleRow->addWidget(card.title, 1);
+			auto *headerText = new QVBoxLayout();
+			headerText->setSpacing(2);
+			headerText->addLayout(titleRow);
+			headerText->addWidget(card.detail);
+			header->addWidget(card.deviceIcon, 0, Qt::AlignTop);
+			header->addLayout(headerText, 1);
+			cardLayout->addLayout(header);
 
 			const auto makeChip = [&](QLabel *&icon, QLabel *&text) {
 				auto *chip = new QFrame(card.frame);
@@ -238,28 +252,29 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 				chipLayout->addWidget(text);
 				return chip;
 			};
-			auto *metaRow = new QHBoxLayout();
-			metaRow->setSpacing(8);
+			auto *chipsA = new QHBoxLayout();
+			chipsA->setSpacing(6);
 			QLabel *ipIcon = nullptr;
-			metaRow->addWidget(makeChip(ipIcon, card.ip));
-			metaRow->addWidget(makeChip(card.srcIcon, card.srcText));
-			metaRow->addWidget(makeChip(card.outIcon, card.outText));
+			chipsA->addWidget(makeChip(ipIcon, card.ip));
+			chipsA->addWidget(makeChip(card.srcIcon, card.srcText));
 			ipIcon->hide();
-			metaRow->addStretch();
-
-			textColumn->addLayout(titleRow);
-			textColumn->addWidget(card.detail);
-			textColumn->addLayout(metaRow);
+			chipsA->addStretch();
+			auto *chipsB = new QHBoxLayout();
+			chipsB->setSpacing(6);
+			chipsB->addWidget(makeChip(card.outIcon, card.outText));
+			chipsB->addWidget(card.state);
+			chipsB->addStretch();
+			cardLayout->addLayout(chipsA);
+			cardLayout->addLayout(chipsB);
+			cardLayout->addStretch();
 
 			card.test = new QPushButton(tr("Test controller"), card.frame);
 			card.test->setCursor(Qt::PointingHandCursor);
 			card.test->setMinimumHeight(36);
 			connect(card.test, &QPushButton::clicked, this, [this, i]() { openTester(i + 1); });
-
-			cardLayout->addWidget(card.deviceIcon, 0, Qt::AlignVCenter);
-			cardLayout->addLayout(textColumn, 1);
-			cardLayout->addWidget(card.test, 0, Qt::AlignVCenter);
-			cardsLayout->addWidget(card.frame);
+			cardLayout->addWidget(card.test);
+			card.frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+			card.frame->hide();
 			slotCards.push_back(card);
 		}
 		listLayout->addLayout(cardsLayout);
@@ -752,6 +767,20 @@ void Server::updateSlots()
 									  .arg(color.red())
 									  .arg(color.green())
 									  .arg(color.blue()));
+	}
+	if (cardsGrid != nullptr)
+	{
+		int placed = 0;
+		for (SlotCard &card : slotCards)
+			cardsGrid->removeWidget(card.frame);
+		for (SlotCard &card : slotCards)
+		{
+			if (!card.frame->isVisibleTo(card.frame->parentWidget()))
+				continue;
+			cardsGrid->addWidget(card.frame, placed / 3, placed % 3);
+			++placed;
+		}
+		cardsGrid->setRowStretch(2, 1);
 	}
 	if (addPhoneCard != nullptr)
 		addPhoneCard->setVisible(!freeSlots.empty());

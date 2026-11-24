@@ -115,6 +115,7 @@ class Server : public QWidget
 	QLabel *slotNote = nullptr;
 	QFrame *addPhoneCard = nullptr;
 	QLabel *testerTitle = nullptr;
+	class QGridLayout *cardsGrid = nullptr;
 	QLabel *testerSubtitle = nullptr;
 	ControllerTester *tester = nullptr;
 	int testerSlot = 0;
