@@ -230,7 +230,7 @@ void ControllerTester::drawDs4(QPainter &p)
 	setFill("l3", lit(B_L3), accent);
 	setFill("r3", lit(B_R3), accent);
 	setFill("ps", false, accent);
-	const auto move = [](float x, float y) { return QString("translate(%1 %2)").arg(x * 14, 0, 'f', 2).arg(y * 14, 0, 'f', 2); };
+	const auto move = [](float x, float y) { return QString("translate(%1 %2)").arg(x * 7, 0, 'f', 2).arg(y * 7, 0, 'f', 2); };
 	data.replace("{{lstick}}", move(m_lx, m_ly).toUtf8());
 	data.replace("{{rstick}}", move(m_rx, m_ry).toUtf8());
 
