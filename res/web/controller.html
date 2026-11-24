@@ -14,12 +14,12 @@
 :root {
   --bg: #fafafa; --fg: #161616; --muted: #5a5a5a; --panel: #ececf0; --panel-on: #cfcfd6;
   --border: #c4c4cc; --accent: #161616; --accent-fg: #ffffff; --sheet: #ffffff; --shadow: rgba(0,0,0,.25);
-  --ok: #1a9d4a; --bad: #d03030; --warn: #c98a00; --card: #f2f2f6; --disc: #e2e2e8; --arm: #cfcfd8; --armedge: #8a8a96;
+  --ok: #1a9d4a; --bad: #d03030; --warn: #c98a00; --card: #f2f2f6; --disc: #e2e2e8; --arm: #cfcfd8; --armedge: #8a8a96; --key: #b9b9c6; --keyedge: #7d7d8a; --keyon: #8e8e9c;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0a0a0c; --fg: #f1f1f1; --muted: #9a9a9a; --panel: #15151a; --panel-on: #2c2c34;
-    --border: #34343c; --accent: #f5f5f5; --accent-fg: #000000; --sheet: #101014; --shadow: rgba(0,0,0,.6); --card: #17171c; --disc: #0e0e12; --arm: #17171d; --armedge: #34343d;
+    --border: #34343c; --accent: #f5f5f5; --accent-fg: #000000; --sheet: #101014; --shadow: rgba(0,0,0,.6); --card: #17171c; --disc: #0e0e12; --arm: #17171d; --armedge: #34343d; --key: #2a2a32; --keyedge: #4a4a55; --keyon: #6a6a78;
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
@@ -50,6 +50,24 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); o
 #dpad { display: block; width: 36dvh; height: 36dvh; left: calc(30vw - 18dvh); top: calc(72dvh - 18dvh); padding: 0;
     border-radius: 50%; background: transparent; border: 0; overflow: visible; }
 #dpad .dpv { position: absolute; left: -6%; top: -6%; width: 112%; height: 112%; pointer-events: none; }
+/* PlayStation mode: four separate keys on a round base, each pointing at the centre */
+#dpadps { position: absolute; width: 36dvh; height: 36dvh; left: calc(30vw - 18dvh); top: calc(72dvh - 18dvh);
+    border-radius: 50%; background: var(--disc); border: 2px solid var(--border); }
+#dpadps .btn { position: absolute; width: 34%; height: 34%; border: 0 !important; background: transparent !important; transform: none !important; padding: 0; }
+#dpadps .btn svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+#dpadps .btn path { fill: var(--key); stroke: var(--keyedge); stroke-width: 1.2; stroke-linejoin: round; }
+#dpadps .btn.on path { fill: var(--keyon); }
+#dpadps .up { left: 33%; top: 8%; }
+#dpadps .down { left: 33%; top: 58%; }
+#dpadps .left { left: 8%; top: 33%; }
+#dpadps .right { left: 58%; top: 33%; }
+#dpadps .pm { position: absolute; width: 6%; height: 5%; background: var(--border); pointer-events: none; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+#dpadps .pm.t { left: 47%; top: 2.5%; }
+#dpadps .pm.b { left: 47%; top: 92.5%; transform: rotate(180deg); }
+#dpadps .pm.l { left: 2.5%; top: 47%; transform: rotate(-90deg); }
+#dpadps .pm.r { left: 91.5%; top: 47%; transform: rotate(90deg); }
+body:not(.xbox) #dpad { display: none; }
+body.xbox #dpadps { display: none; }
 #face { width: 32dvh; height: 32dvh; left: calc(84vw - 16dvh); top: calc(47dvh - 16dvh); gap: .8dvh; }
 .cluster .btn { display: flex; align-items: center; justify-content: center; }
 /* a raised plus on a round base: four arms with no outlines, so the cross reads as one piece */
@@ -195,6 +213,14 @@ body:not(.xbox) .xbox-label { display: none; }
     <div class="btn right" data-b="right"><span class="arrow"></span></div>
     <div class="btn down" data-b="down"><span class="arrow"></span></div>
     <i class="dm tl"></i><i class="dm tr"></i><i class="dm bl"></i><i class="dm br"></i>
+  </div>
+
+  <div id="dpadps">
+    <div class="btn up" data-b="up"><svg viewBox="0 0 36 36"><path d="M3 8Q3 4 7 4H29Q33 4 33 8V19Q33 21 31.5 22.5L19.5 31Q18 32 16.5 31L4.5 22.5Q3 21 3 19Z"/></svg></div>
+    <div class="btn right" data-b="right"><svg viewBox="0 0 36 36"><path d="M3 8Q3 4 7 4H29Q33 4 33 8V19Q33 21 31.5 22.5L19.5 31Q18 32 16.5 31L4.5 22.5Q3 21 3 19Z" transform="rotate(90 18 18)"/></svg></div>
+    <div class="btn down" data-b="down"><svg viewBox="0 0 36 36"><path d="M3 8Q3 4 7 4H29Q33 4 33 8V19Q33 21 31.5 22.5L19.5 31Q18 32 16.5 31L4.5 22.5Q3 21 3 19Z" transform="rotate(180 18 18)"/></svg></div>
+    <div class="btn left" data-b="left"><svg viewBox="0 0 36 36"><path d="M3 8Q3 4 7 4H29Q33 4 33 8V19Q33 21 31.5 22.5L19.5 31Q18 32 16.5 31L4.5 22.5Q3 21 3 19Z" transform="rotate(-90 18 18)"/></svg></div>
+    <i class="pm t"></i><i class="pm r"></i><i class="pm b"></i><i class="pm l"></i>
   </div>
 
   <div class="cluster" id="face">
