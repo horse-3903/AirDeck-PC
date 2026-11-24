@@ -91,18 +91,19 @@ body:not(.xbox) .xbox-label { display: none; }
 /* system buttons, small and muted, in the middle */
 #sys { position: absolute; left: 50%; top: 27dvh; transform: translateX(-50%); display: flex; gap: 1.6dvh; }
 #sys .pill { position: static; width: 11dvh; height: 10dvh; border-radius: 1.6dvh; color: var(--muted); }
-#fsPill { position: absolute; left: 50%; top: 14dvh; transform: translateX(-50%); width: 9dvh; height: 8dvh; border-radius: 1.4dvh;
-    display: none; color: var(--muted); }
-#fsPill.show { display: flex; }
 
-/* connection status, top centre */
-#badge { position: absolute; left: 50%; top: 3dvh; transform: translateX(-50%); display: flex;
-    align-items: center; gap: 1.2dvh; padding: 1dvh 2.2dvh; border-radius: 999px; background: var(--panel);
-    font-size: 2.6dvh; font-weight: 600; color: var(--muted); white-space: nowrap; }
-#slotDots { display: none; }
-#conn { width: 1.7dvh; height: 1.7dvh; border-radius: 50%; background: var(--bad); }
-#conn.ok { background: var(--ok); }
-#conn.wait { background: var(--warn); }
+/* top row: fullscreen, connection status, settings */
+#top { position: absolute; left: 50%; top: 2.5dvh; transform: translateX(-50%); display: flex; align-items: center; gap: 1.4dvh; }
+#top .pill { position: static; width: 8dvh; height: 7dvh; border-radius: 1.4dvh; color: var(--muted); }
+#fsPill { display: none; }
+#fsPill.show { display: flex; }
+#badge { min-width: 15dvh; height: 7dvh; display: flex; align-items: center; justify-content: center; padding: 0 2.4dvh;
+    border-radius: 1.4dvh; font-size: 2.8dvh; font-weight: 700; letter-spacing: .02em; white-space: nowrap;
+    color: var(--bad); background: rgba(208, 48, 48, .16); }
+#badge.ok { color: var(--ok); background: rgba(26, 157, 74, .16); }
+#badge.wait { color: var(--warn); background: rgba(201, 138, 0, .16); }
+#badge.bad { color: var(--bad); background: rgba(208, 48, 48, .16); }
+#conn, #slotDots { display: none; }
 
 #rotate { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
     flex-direction: column; background: var(--bg); text-align: center; padding: 8vw; z-index: 20; gap: 12px; }
@@ -136,14 +137,18 @@ body:not(.xbox) .xbox-label { display: none; }
 .statusrow { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 14px; }
 .sdot { width: 9px; height: 9px; border-radius: 50%; background: var(--bad); flex: none; }
 .sdot.ok { background: var(--ok); } .sdot.wait { background: var(--warn); }
-.statusrow .grow { flex: 1; }
+.spill { flex: 1; text-align: center; padding: 9px 12px; border-radius: 8px; font-size: 14px; font-weight: 700;
+    color: var(--bad); background: rgba(208, 48, 48, .16); }
+.spill.ok { color: var(--ok); background: rgba(26, 157, 74, .16); }
+.spill.wait { color: var(--warn); background: rgba(201, 138, 0, .16); }
+.spill.bad { color: var(--bad); background: rgba(208, 48, 48, .16); }
 .link { border: 0; background: transparent; color: var(--fg); font-size: 14px; font-weight: 700; padding: 6px 4px; }
 .sec { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 6px; }
 .label { font-size: 15px; font-weight: 700; margin: 6px 0; }
 .styles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stylecard { border: 1px solid var(--border); background: var(--card); border-radius: 12px; padding: 14px 8px; text-align: center; font-size: 15px; font-weight: 700; }
 .stylecard.sel { background: var(--panel-on); border-color: var(--fg); }
-.syms { display: flex; justify-content: center; gap: 14px; font-size: 16px; margin-bottom: 8px; font-weight: 700; }
+.syms { display: flex; justify-content: center; align-items: center; gap: 14px; font-size: 20px; margin-bottom: 8px; font-weight: 800; height: 26px; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--border); font-size: 15px; font-weight: 700; }
 .row:first-of-type { border-top: 0; }
 .row .hint { display: block; color: var(--muted); font-size: 13px; font-weight: 400; margin-top: 2px; }
@@ -151,6 +156,10 @@ body:not(.xbox) .xbox-label { display: none; }
 .switch i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--muted); transition: transform .12s; }
 .switch.on { background: var(--accent); border-color: var(--accent); }
 .switch.on i { transform: translateX(20px); background: var(--accent-fg); }
+.sel:focus, .sel:focus-visible { outline: none; border-color: var(--fg); box-shadow: 0 0 0 2px var(--panel-on); }
+.sel { appearance: none; -webkit-appearance: none; padding-right: 36px !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a9a9a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; }
 .sel { min-width: 150px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel); color: var(--fg); font-size: 15px; touch-action: manipulation; }
 .btn2 { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 14px; border-radius: 10px;
     border: 1px solid var(--border); background: var(--panel); color: var(--fg); font-size: 15px; font-weight: 600; }
@@ -200,11 +209,13 @@ body:not(.xbox) .xbox-label { display: none; }
 
   <div id="sys">
     <div class="pill" id="view" data-b="view" aria-label="Select"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="7" width="12" height="12" rx="2"/><path d="M8 7V4.5h12.5V16H18" stroke-linecap="round"/></svg></div>
-    <div class="pill" id="menuBtn" data-nav="menu" aria-label="Settings"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg></div>
-    <div class="pill" id="start" data-b="start" aria-label="Start"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></div>
+      <div class="pill" id="start" data-b="start" aria-label="Start"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></div>
   </div>
+  <div id="top">
   <div class="pill" id="fsPill" aria-label="Fullscreen"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></div>
-  <div id="badge"><span id="conn" class="wait"></span><span id="slotDots"></span><span id="slotText">Connecting</span></div>
+    <div id="badge" class="wait"><span id="conn" class="wait"></span><span id="slotDots"></span><span id="slotText">Connecting</span></div>
+    <div class="pill" id="menuBtn" data-nav="menu" aria-label="Settings"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></div>
+  </div>
 </div>
 
 <div id="rotate"><div class="big">Rotate your phone</div><div class="small">The controller needs landscape. Turn your phone sideways and unlock rotation if it does not turn.</div></div>
@@ -223,13 +234,13 @@ body:not(.xbox) .xbox-label { display: none; }
       </div>
       <button class="iconbtn" id="editName" aria-label="Rename"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg></button>
     </div>
-    <div class="statusrow"><span class="sdot wait" id="sdot"></span><span class="grow" id="connHint"></span><button class="link" id="retryBtn">Retry</button></div>
+    <div class="statusrow"><span class="spill wait" id="connHint"></span><button class="link" id="retryBtn">Retry</button></div>
   </div>
 
   <div class="sec">Appearance</div>
   <div class="label">Button style</div>
   <div class="styles" id="styleSeg">
-    <div class="stylecard" data-v="ps"><div class="syms"><span style="color:#3fb68b">&#9651;</span><span style="color:#d96ba6">&#9633;</span><span style="color:#e5484d">&#9675;</span><span style="color:#3e8ef7">&#215;</span></div>PlayStation</div>
+    <div class="stylecard" data-v="ps"><div class="syms"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 L21 19 H3 Z" stroke="#3fb68b"/></svg><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linejoin="round"><rect x="4.5" y="4.5" width="15" height="15" rx="1" stroke="#d96ba6"/></svg><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4"><circle cx="12" cy="12" r="8" stroke="#e5484d"/></svg><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round"><path d="M5 5 L19 19 M19 5 L5 19" stroke="#3e8ef7"/></svg></div>PlayStation</div>
     <div class="stylecard" data-v="xbox"><div class="syms"><span style="color:#f5c518">Y</span><span style="color:#3e8ef7">X</span><span style="color:#e5484d">B</span><span style="color:#30a46c">A</span></div>Xbox</div>
   </div>
 
@@ -330,7 +341,8 @@ body:not(.xbox) .xbox-label { display: none; }
   function setStatus(kind, text, hint) {
     connKind = kind;
     $("conn").className = kind;
-    $("sdot").className = "sdot " + kind;
+    $("badge").className = kind;
+    $("connHint").className = "spill " + kind;
     $("slotText").textContent = text;
     $("connHint").textContent = hint || text;
     $("retryBtn").style.display = kind === "ok" ? "none" : "";
