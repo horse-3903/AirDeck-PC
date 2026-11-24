@@ -50,22 +50,18 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); o
 #dpad { display: block; width: 36dvh; height: 36dvh; left: calc(30vw - 18dvh); top: calc(72dvh - 18dvh); padding: 0;
     border-radius: 50%; background: transparent; border: 0; overflow: visible; }
 #dpad .dpv { position: absolute; left: -6%; top: -6%; width: 112%; height: 112%; pointer-events: none; }
-/* PlayStation mode: four separate keys on a round base, each pointing at the centre */
-#dpadps { position: absolute; width: 36dvh; height: 36dvh; left: calc(30vw - 18dvh); top: calc(72dvh - 18dvh);
-    border-radius: 50%; background: var(--disc); border: 2px solid var(--border); }
-#dpadps .btn { position: absolute; width: 38%; height: 38%; border: 0 !important; background: transparent !important; transform: none !important; padding: 0; }
+/* PlayStation mode: the supplied SVG, a round base with four keys; each key is its own button so it lights when pressed */
+#dpadps { position: absolute; width: 36dvh; height: 36dvh; left: calc(30vw - 18dvh); top: calc(72dvh - 18dvh); }
+#dpadps .dpv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#dpadps .btn { position: absolute; width: 38%; height: 38%; border: 0 !important; background: transparent !important;
+    transform: none !important; padding: 0; }
 #dpadps .btn svg { width: 100%; height: 100%; display: block; pointer-events: none; }
-#dpadps .btn path { fill: var(--key); stroke: var(--keyedge); stroke-width: 1.2; stroke-linejoin: round; }
-#dpadps .btn.on path { fill: var(--keyon); }
-#dpadps .up { left: 31%; top: 8%; }
-#dpadps .down { left: 31%; top: 54%; }
-#dpadps .left { left: 8%; top: 31%; }
-#dpadps .right { left: 54%; top: 31%; }
-#dpadps .pm { position: absolute; width: 6%; height: 5%; background: var(--border); pointer-events: none; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
-#dpadps .pm.t { left: 47%; top: 2.5%; }
-#dpadps .pm.b { left: 47%; top: 92.5%; transform: rotate(180deg); }
-#dpadps .pm.l { left: 2.5%; top: 47%; transform: rotate(-90deg); }
-#dpadps .pm.r { left: 91.5%; top: 47%; transform: rotate(90deg); }
+#dpadps .k { fill: var(--key); stroke: var(--keyedge); stroke-width: 1.2; stroke-linejoin: round; }
+#dpadps .btn.on .k { fill: var(--keyon); }
+#dpadps .up { left: 31%; top: 9.5%; }
+#dpadps .right { left: 52.5%; top: 31%; }
+#dpadps .down { left: 31%; top: 52.5%; }
+#dpadps .left { left: 9.5%; top: 31%; }
 body:not(.xbox) #dpad { display: none; }
 body.xbox #dpadps { display: none; }
 #face { width: 32dvh; height: 32dvh; left: calc(84vw - 16dvh); top: calc(47dvh - 16dvh); gap: .8dvh; }
@@ -216,11 +212,11 @@ body:not(.xbox) .xbox-label { display: none; }
   </div>
 
   <div id="dpadps">
-    <div class="btn up" data-b="up"><svg viewBox="0 0 36 36"><path d="M8 7Q8 4 11 4H25Q28 4 28 7V22L21.5 33.4Q21 34.5 19.8 34.5H16.2Q15 34.5 14.5 33.4L8 22Z"/></svg></div>
-    <div class="btn right" data-b="right"><svg viewBox="0 0 36 36"><path d="M8 7Q8 4 11 4H25Q28 4 28 7V22L21.5 33.4Q21 34.5 19.8 34.5H16.2Q15 34.5 14.5 33.4L8 22Z" transform="rotate(90 18 18)"/></svg></div>
-    <div class="btn down" data-b="down"><svg viewBox="0 0 36 36"><path d="M8 7Q8 4 11 4H25Q28 4 28 7V22L21.5 33.4Q21 34.5 19.8 34.5H16.2Q15 34.5 14.5 33.4L8 22Z" transform="rotate(180 18 18)"/></svg></div>
-    <div class="btn left" data-b="left"><svg viewBox="0 0 36 36"><path d="M8 7Q8 4 11 4H25Q28 4 28 7V22L21.5 33.4Q21 34.5 19.8 34.5H16.2Q15 34.5 14.5 33.4L8 22Z" transform="rotate(-90 18 18)"/></svg></div>
-    <i class="pm t"></i><i class="pm r"></i><i class="pm b"></i><i class="pm l"></i>
+    <svg class="dpv" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" fill="var(--disc)" stroke="var(--border)" stroke-width="1.5"/><g fill="var(--border)"><path d="M50 2.5L53.5 7.5Q50 6.2 46.5 7.5Z"/><path d="M50 97.5L53.5 92.5Q50 93.8 46.5 92.5Z"/><path d="M2.5 50L7.5 46.5Q6.2 50 7.5 53.5Z"/><path d="M97.5 50L92.5 46.5Q93.8 50 92.5 53.5Z"/></g></svg>
+    <div class="btn up" data-b="up"><svg viewBox="31 9.5 38 38"><g transform="translate(31 9.5) scale(1.0556)"><path class="k" d="M8 5.6Q8 2.6 11 2.6H25Q28 2.6 28 5.6V24.5L18.7 33.8Q18 34.5 17.3 33.8L8 24.5Z"/></g></svg></div>
+    <div class="btn right" data-b="right"><svg viewBox="52.5 31 38 38"><g transform="translate(52.5 31) scale(1.0556)"><path class="k" d="M8 5.6Q8 2.6 11 2.6H25Q28 2.6 28 5.6V24.5L18.7 33.8Q18 34.5 17.3 33.8L8 24.5Z" transform="rotate(90 18 18)"/></g></svg></div>
+    <div class="btn down" data-b="down"><svg viewBox="31 52.5 38 38"><g transform="translate(31 52.5) scale(1.0556)"><path class="k" d="M8 5.6Q8 2.6 11 2.6H25Q28 2.6 28 5.6V24.5L18.7 33.8Q18 34.5 17.3 33.8L8 24.5Z" transform="rotate(180 18 18)"/></g></svg></div>
+    <div class="btn left" data-b="left"><svg viewBox="9.5 31 38 38"><g transform="translate(9.5 31) scale(1.0556)"><path class="k" d="M8 5.6Q8 2.6 11 2.6H25Q28 2.6 28 5.6V24.5L18.7 33.8Q18 34.5 17.3 33.8L8 24.5Z" transform="rotate(-90 18 18)"/></g></svg></div>
   </div>
 
   <div class="cluster" id="face">
