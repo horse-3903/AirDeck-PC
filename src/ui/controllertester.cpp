@@ -238,9 +238,9 @@ void ControllerTester::drawDs4(QPainter &p)
 	data.replace("{{lt}}", QByteArray::number(1.0 - std::clamp(m_lt, 0.0f, 1.0f), 'f', 3));
 	data.replace("{{rt}}", QByteArray::number(1.0 - std::clamp(m_rt, 0.0f, 1.0f), 'f', 3));
 
-	// The artwork is 580 x 406 (triggers included); fit it into the 100 x 72 design space
-	const double s = std::min(100.0 / 580.0, 72.0 / 406.0);
-	const QSizeF drawn(580 * s, 406 * s);
+	// The artwork is 580 x 434 (triggers included); fit it into the 100 x 72 design space
+	const double s = std::min(100.0 / 580.0, 72.0 / 434.0);
+	const QSizeF drawn(580 * s, 434 * s);
 	QSvgRenderer renderer(data);
 	renderer.render(&p, QRectF((100 - drawn.width()) / 2, (72 - drawn.height()) / 2, drawn.width(), drawn.height()));
 }
