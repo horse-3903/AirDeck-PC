@@ -216,9 +216,10 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 
 			card.deviceIcon = new QLabel(card.frame);
 			card.deviceIcon->setAlignment(Qt::AlignCenter);
-			card.deviceIcon->setFixedHeight(92);
-			cardLayout->addWidget(card.deviceIcon);
-			cardLayout->addStretch(1);
+			card.deviceIcon->setMinimumSize(10, 80);
+			card.deviceIcon->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+			card.deviceIcon->installEventFilter(this);
+			cardLayout->addWidget(card.deviceIcon, 1);
 
 			// Everything below the icon only exists while a device is connected, but keeps its space
 			card.details = new QWidget(card.frame);
@@ -267,7 +268,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			cardsGrid->addWidget(card.frame, i / 3, i % 3);
 			slotCards.push_back(card);
 		}
-		listLayout->addLayout(cardsLayout);
+		listLayout->addLayout(cardsLayout, 1);
 
 		// Pointer to the pairing screen once at least one phone is connected
 		addPhoneCard = new QFrame(listPage);
@@ -288,7 +289,6 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		slotNote->setProperty("role", "caption");
 		slotNote->setWordWrap(true);
 		listLayout->addWidget(slotNote);
-		listLayout->addStretch();
 
 		// Tester page
 		auto *testerPage = new QWidget(this);
@@ -703,6 +703,13 @@ QString Server::outputName(const Client &client) const
 	}
 }
 
+void Server::refreshIcon(SlotCard &card)
+{
+	const QSize size = card.deviceIcon->size();
+	if (size.width() > 8 && size.height() > 8 && card.iconColor.isValid())
+		card.deviceIcon->setPixmap(controllerPixmap(card.iconPs4, card.iconColor, size, devicePixelRatioF()));
+}
+
 void Server::updateSlots()
 {
 	std::vector<int> freeSlots;
@@ -724,7 +731,6 @@ void Server::updateSlots()
 		const bool ps4 = i >= 4;
 		const QColor gray("#4A4A52");
 		const QColor color = active ? slotColor(i + 1) : gray;
-		const qreal dpr = devicePixelRatioF();
 		const QString css = QString("%1,%2,%3").arg(color.red()).arg(color.green()).arg(color.blue());
 
 		card.frame->setStyleSheet(QString("QFrame#slotTile { background: #0C0C0E; border: 2px solid %1; border-radius: 14px; } "
@@ -733,7 +739,9 @@ void Server::updateSlots()
 		card.frame->setCursor(active ? Qt::ArrowCursor : Qt::PointingHandCursor);
 		card.frame->setToolTip(active ? QString() : (usable ? tr("Empty. Click to connect a device.") : tr("Not available in this mode")));
 		card.badge->setStyleSheet(QString("font-weight: 800; font-size: 15pt; color: %1;").arg(color.name()));
-		card.deviceIcon->setPixmap(controllerPixmap(ps4, color, QSize(180, 92), dpr));
+		card.iconPs4 = ps4;
+		card.iconColor = color;
+		refreshIcon(card);
 		card.details->setVisible(active);
 		if (!active)
 			continue;
@@ -1281,6 +1289,14 @@ bool Server::eventFilter(QObject *watched, QEvent *event)
 {
 	if (watched == pagesHolder && event->type() == QEvent::Resize && pages != nullptr)
 		pages->setGeometry(pagesHolder->rect());
+	if (event->type() == QEvent::Resize)
+	{
+		for (SlotCard &card : slotCards)
+		{
+			if (watched == card.deviceIcon)
+				refreshIcon(card);
+		}
+	}
 	if (event->type() == QEvent::MouseButtonRelease)
 	{
 		for (const SlotCard &card : slotCards)

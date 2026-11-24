@@ -88,6 +88,8 @@ class Server : public QWidget
 		QFrame *frame = nullptr;
 		QWidget *details = nullptr;
 		bool occupied = false;
+		bool iconPs4 = false;
+		QColor iconColor;
 	};
 	std::vector<SlotCard> slotCards;
 	ExecutorInterface *executorFor(Client &client);
@@ -104,6 +106,7 @@ class Server : public QWidget
 	void showTab(int index);
 	void openTester(int slot);
 	void closeTester();
+	void refreshIcon(SlotCard &card);
 	QString deviceTitle(const Client &client) const;
 	QString outputName(const Client &client) const;
 	void noteInput(Client &client, const vgp_data_exchange_gamepad_reading &reading);
