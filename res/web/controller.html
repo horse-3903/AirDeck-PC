@@ -144,13 +144,21 @@ body:not(.xbox) .xbox-label { display: none; }
     border-radius: 1.4dvh; background: var(--panel); border: 2px solid var(--warn); font-size: 2.8dvh; font-weight: 700; cursor: pointer;
     letter-spacing: .02em; white-space: nowrap; color: var(--muted); }
 #slotText { min-width: 3.4dvh; text-align: center; }
-#confirmWrap { position: fixed; inset: 0; background: var(--shadow); display: none; align-items: center; justify-content: center; z-index: 40; }
-#confirmWrap.open { display: flex; }
-#confirmBox { background: var(--sheet); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; width: min(360px, 90vw); }
-#confirmBox .ctitle { font-size: 17px; font-weight: 700; }
-#confirmBox .ctext { font-size: 14px; color: var(--muted); margin-top: 6px; }
-#confirmBox .cbtns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
-#confirmBox .sbtn { width: auto; min-width: 100px; }
+#confirmWrap { position: fixed; inset: 0; background: rgba(0, 0, 0, .5); display: none; align-items: center; justify-content: center; z-index: 40; }
+#confirmWrap.open { display: flex; animation: cfade .16s ease-out; }
+#confirmBox { background: var(--sheet); border: 1px solid var(--border); border-radius: 16px; padding: 20px; width: min(330px, calc(100vw - 32px));
+    box-shadow: 0 12px 40px rgba(0, 0, 0, .45); text-align: center; animation: cpop .18s ease-out; }
+#confirmBox .cicon { width: 44px; height: 44px; margin: 0 auto 12px; border-radius: 50%; background: rgba(208, 48, 48, .16); color: var(--bad);
+    display: flex; align-items: center; justify-content: center; }
+#confirmBox .cicon svg { width: 22px; height: 22px; }
+#confirmBox .ctitle { font-size: 18px; font-weight: 700; }
+#confirmBox .ctext { font-size: 14px; line-height: 1.4; color: var(--muted); margin-top: 6px; }
+#confirmBox .cbtns { display: flex; gap: 10px; margin-top: 18px; }
+#confirmBox .cbtn { flex: 1; min-height: 44px; border-radius: 12px; font-size: 15px; font-weight: 600; border: 1px solid var(--border);
+    background: var(--panel); color: var(--fg); }
+#confirmBox .cbtn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+@keyframes cfade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cpop { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: scale(1); } }
 #badge[data-st="ok"] { border-color: var(--ok); color: var(--ok); }
 #badge[data-st="wait"] { border-color: var(--warn); color: var(--warn); }
 #badge[data-st="bad"] { border-color: var(--bad); color: var(--bad); }
@@ -292,9 +300,10 @@ body:not(.xbox) .xbox-label { display: none; }
 <div id="rotate"><div class="big">Rotate your phone</div><div class="small">The controller needs landscape. Turn your phone sideways and unlock rotation if it does not turn.</div></div>
 <div id="toast"></div>
 <div id="confirmWrap"><div id="confirmBox" role="dialog" aria-modal="true">
+  <div class="cicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v4M15 3v4M7 7h10v4a5 5 0 0 1-10 0V7zM12 16v5"/><path d="M3 3l18 18"/></svg></div>
   <div class="ctitle">Disconnect controller?</div>
-  <div class="ctext">The PC will stop receiving input until you reconnect.</div>
-  <div class="cbtns"><button class="sbtn" id="confirmNo">Cancel</button><button class="sbtn bad" id="confirmYes">Disconnect</button></div>
+  <div class="ctext">Your PC will stop receiving controller input until you reconnect.</div>
+  <div class="cbtns"><button class="cbtn" id="confirmNo">Cancel</button><button class="cbtn danger" id="confirmYes">Confirm</button></div>
 </div></div>
 
 <div id="sheetWrap"><div id="sheet">
