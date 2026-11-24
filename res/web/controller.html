@@ -141,9 +141,15 @@ body:not(.xbox) .xbox-label { display: none; }
 #fsPill { display: none; }
 #fsPill.show { display: flex; }
 #badge { width: 14dvh; height: 7dvh; display: flex; align-items: center; justify-content: center; gap: 1.3dvh;
-    border-radius: 1.4dvh; background: var(--panel); border: 2px solid var(--border); font-size: 2.8dvh; font-weight: 700;
+    border-radius: 1.4dvh; background: var(--panel); border: 2px solid var(--warn); font-size: 2.8dvh; font-weight: 700; cursor: pointer;
     letter-spacing: .02em; white-space: nowrap; color: var(--muted); }
 #slotText { min-width: 3.4dvh; text-align: center; }
+#badge[data-st="ok"] { border-color: var(--ok); color: var(--ok); }
+#badge[data-st="wait"] { border-color: var(--warn); color: var(--warn); }
+#badge[data-st="bad"] { border-color: var(--bad); color: var(--bad); }
+#badge.press { background: var(--panel-on); }
+#sIcon { display: flex; }
+.sico { width: 4.4dvh; height: 4.4dvh; display: block; flex: none; }
 .sd { width: 1.5dvh; height: 1.5dvh; border-radius: 50%; background: var(--bad); flex: none; box-sizing: border-box; }
 .sd.ok { background: var(--ok); }
 .sd.wait { background: transparent; border: .35dvh solid var(--warn); border-right-color: transparent; animation: sdspin .9s linear infinite; }
@@ -271,7 +277,7 @@ body:not(.xbox) .xbox-label { display: none; }
   </div>
   <div id="top">
   <div class="pill" id="fsPill" aria-label="Fullscreen"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></div>
-    <div id="badge" class="wait"><span class="sd wait" id="sDot"></span><span id="slotText">&mdash;</span></div>
+    <div id="badge" data-st="wait" role="button" aria-label="Toggle connection"><span id="sIcon"></span><span id="slotText">&mdash;</span></div>
     <div class="pill" id="menuBtn" data-nav="menu" aria-label="Settings"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></div>
   </div>
 </div>
@@ -396,17 +402,22 @@ body:not(.xbox) .xbox-label { display: none; }
   }
 
   // ---- network ----
+  var STATUS_ICONS = {
+    ok: '<svg class="sico" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6"><g transform="translate(12 12) rotate(-45)"><rect x="-10.6" y="-3.2" width="8.4" height="6.4" rx="3.2" fill-opacity=".2" /><rect x="2.2" y="-3.2" width="8.4" height="6.4" rx="3.2" fill-opacity=".2" /><rect x="-4.8" y="-1.3" width="9.6" height="2.6" rx="1.3" fill-opacity="1" stroke="none" /></g></svg>',
+    bad: '<svg class="sico" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6"><g transform="translate(12 12) rotate(-45)"><rect x="-11.4" y="-3.2" width="8.4" height="6.4" rx="3.2" fill-opacity=".2" /><rect x="3.0" y="-3.2" width="8.4" height="6.4" rx="3.2" fill-opacity=".2" /><rect x="-5.6" y="-1.3" width="4.0" height="2.6" rx="1.1" fill-opacity="1" stroke="none" /><rect x="1.6" y="-1.3" width="4.0" height="2.6" rx="1.1" fill-opacity="1" stroke="none" /></g></svg>',
+    wait: '<svg class="sico" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6"><path d="M7.2 4.2C7.2 8.2 10.6 10.2 10.6 12C10.6 13.8 7.2 15.8 7.2 19.8H16.8C16.8 15.8 13.4 13.8 13.4 12C13.4 10.2 16.8 8.2 16.8 4.2Z" fill-opacity=".2" /><rect x="5.5" y="2.2" width="13" height="2" rx="1" fill-opacity=".45" /><rect x="5.5" y="19.8" width="13" height="2" rx="1" fill-opacity=".45" /><path d="M8.7 6.5Q12 7.8 15.3 6.5C14.7 8.8 13 10.1 12.3 11.4H11.7C11 10.1 9.3 8.8 8.7 6.5Z" fill-opacity=".85" stroke="none" /><path d="M8.2 19.1C9.5 18.6 11.1 16.1 12 16.1C12.9 16.1 14.5 18.6 15.8 19.1Z" fill-opacity=".85" stroke="none" /></svg>'
+  };
   var connKind = "wait";
   function setStatus(kind, text, hint) {
     connKind = kind;
     var st = kind === "ok" ? "ok" : (kind === "wait" || text === "Reconnecting") ? "wait" : "bad";
-    $("sDot").className = "sd " + st; $("hDot").className = "sd " + st;
+    $("sIcon").innerHTML = STATUS_ICONS[st]; $("badge").setAttribute("data-st", st); $("hDot").className = "sd " + st;
     $("connTitle").textContent = st === "ok" ? "Connected" : st === "wait" ? (text === "Reconnecting" ? "Reconnecting" : "Connecting") : "Disconnected";
     $("connHint").textContent = st === "ok" ? "Controller " + slot : (st === "bad" && text === "Disconnected") ? "No active connection" : (hint || text);
     $("badge").title = $("connTitle").textContent;
     $("disconnBtn").style.display = wantConnection && st !== "bad" ? "" : "none";
     $("reconnBtn").style.display = wantConnection && st !== "bad" ? "none" : "";
-    renderSlot();
+    renderSlot(); updateMedia(st);
   }
   var SLOT_COLORS = ["#E5484D", "#3E8EF7", "#F5C518", "#30A46C", "#F97316", "#A855F7"];
   function renderSlot() {
@@ -687,9 +698,42 @@ body:not(.xbox) .xbox-label { display: none; }
     if (!("wakeLock" in navigator) || wake) return;
     navigator.wakeLock.request("screen").then(function (l) { wake = l; l.addEventListener("release", function () { wake = null; }); }).catch(function () {});
   }
+  // A silent looping track makes Chrome treat the page as playing media: it stays alive with the screen off or in
+  // another app, and Android shows a persistent media notification with the connection status
+  var keep = null, keepStarted = false;
+  function silentWav() {
+    var rate = 8000, n = rate * 10, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    function str(o, t) { for (var i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); }
+    str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVEfmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+    v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    str(36, "data"); v.setUint32(40, n * 2, true);
+    for (var i = 0; i < n; i++) v.setInt16(44 + i * 2, i % 2 ? 1 : -1, true);
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  }
+  function startKeepAlive() {
+    if (keepStarted) return; keepStarted = true;
+    keep = new Audio(silentWav()); keep.loop = true; keep.volume = 0.05;
+    keep.play().then(function () { updateMedia(connKind === "ok" ? "ok" : connKind === "wait" ? "wait" : "bad"); }).catch(function () { keepStarted = false; });
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.setActionHandler("play", function () { reconnect(); });
+      navigator.mediaSession.setActionHandler("pause", function () { disconnect(); });
+      navigator.mediaSession.setActionHandler("stop", function () { disconnect(); });
+    }
+  }
+  function updateMedia(st) {
+    if (!("mediaSession" in navigator) || !keepStarted) return;
+    var title = st === "ok" ? "Connected as P" + slot : st === "wait" ? "Connecting" : "Disconnected";
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: title, artist: "Virtual Gamepad", album: "Tap play to reconnect, pause to disconnect" });
+      navigator.mediaSession.playbackState = wantConnection ? "playing" : "paused";
+    } catch (e) {}
+    if (keep) { if (wantConnection) { if (keep.paused) keep.play().catch(function () {}); } else keep.pause(); }
+  }
+  var hiddenAt = 0;
   var touched = false;
   function firstTouch() {
     if (touched) return; touched = true; takeWakeLock();
+    document.addEventListener("pointerup", function once() { document.removeEventListener("pointerup", once, true); startKeepAlive(); }, true);
     if (!isIOS && document.documentElement.requestFullscreen) {
       var once = function () { document.removeEventListener("pointerup", once, true); if (!document.fullscreenElement) enterFullscreen(true); };
       document.addEventListener("pointerup", once, true);
@@ -712,8 +756,14 @@ body:not(.xbox) .xbox-label { display: none; }
     else if (!quiet) toast("Use Share, then Add to Home Screen, for fullscreen");
   }
   document.addEventListener("visibilitychange", function () {
-    if (document.hidden) releaseAll(true); else { takeWakeLock(); if (wantConnection) connect(); }
+    if (document.hidden) { hiddenAt = Date.now(); releaseAll(true); }
+    else {
+      takeWakeLock();
+      // a socket that slept may look open but be dead, so after a real absence start a fresh one
+      if (wantConnection) { if (hiddenAt && Date.now() - hiddenAt > 4000 && !(keep && !keep.paused)) reconnect(); else connect(); }
+    }
   });
+  window.addEventListener("online", function () { if (wantConnection) reconnect(); });
   window.addEventListener("pagehide", function () { releaseAll(true); });
   window.addEventListener("blur", function () { releaseAll(true); });
   document.addEventListener("touchmove", function (e) { if (!e.target.closest("#sheet")) e.preventDefault(); }, { passive: false });
@@ -772,6 +822,11 @@ body:not(.xbox) .xbox-label { display: none; }
     $("devText").classList.remove("editing"); applySettings();
     $("sheetWrap").classList.remove("open");
   }
+  $("badge").addEventListener("pointerdown", function (e) {
+    e.preventDefault(); firstTouch(); $("badge").classList.add("press");
+    if (wantConnection) { disconnect(); toast("Disconnected. Tap the status to reconnect."); } else reconnect();
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(function (n) { $("badge").addEventListener(n, function () { $("badge").classList.remove("press"); }); });
   $("menuBtn").addEventListener("pointerdown", function (e) { e.preventDefault(); firstTouch(); openMenu(); });
   $("closeBtn").addEventListener("click", closeMenu);
   $("sheetWrap").addEventListener("click", function (e) { if (e.target === $("sheetWrap")) closeMenu(); });
