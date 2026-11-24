@@ -767,6 +767,12 @@ void Server::updateSlots()
 		card.live->setVisible(live);
 		card.deviceIcon->setVisible(!live);
 		card.details->setVisible(!live);
+		{
+			// While testing, the live controller takes all the room the text block would keep
+			QSizePolicy detailsPolicy = card.details->sizePolicy();
+			detailsPolicy.setRetainSizeWhenHidden(!live);
+			card.details->setSizePolicy(detailsPolicy);
+		}
 		if (live)
 		{
 			card.live->setSlot(i + 1);
