@@ -87,6 +87,7 @@ class Server : public QWidget
 		QLabel *outText = nullptr;
 		QFrame *frame = nullptr;
 		QWidget *details = nullptr;
+		QWidget *chips = nullptr;
 		bool occupied = false;
 		bool iconPs4 = false;
 		QColor iconColor;
