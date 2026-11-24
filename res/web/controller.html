@@ -40,6 +40,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); o
     border-radius: 50%; background: var(--panel-on); border: 2px solid var(--border); will-change: transform; }
 .stick .knob::after { content: ""; position: absolute; inset: 34%; border-radius: 50%; background: var(--border); }
 .stick.active { border-color: var(--fg); }
+.stick.click { border-color: var(--fg); box-shadow: 0 0 0 .6dvh var(--panel-on); }
+.stick.click .knob { background: var(--fg); }
 #ls { left: calc(16vw - 15dvh + env(safe-area-inset-left)); top: calc(47dvh - 15dvh); }
 #rs { left: calc(67vw - 15dvh); top: calc(68dvh - 15dvh); }
 
@@ -252,7 +254,7 @@ body:not(.xbox) .xbox-label { display: none; }
 <script>
 (function () {
   "use strict";
-  var BIT = { start: 1, view: 2, a: 4, b: 8, x: 16, y: 32, up: 64, down: 128, left: 256, right: 512, l1: 1024, r1: 2048 };
+  var BIT = { start: 1, view: 2, a: 4, b: 8, x: 16, y: 32, up: 64, down: 128, left: 256, right: 512, l1: 1024, r1: 2048, l3: 4096, r3: 8192 };
   var ua = navigator.userAgent || "";
   var isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   var store = { get: function (k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
@@ -403,6 +405,7 @@ body:not(.xbox) .xbox-label { display: none; }
     pendUp |= held; held = 0; ax.lx = ax.ly = ax.rx = ax.ry = ax.lt = ax.rt = 0; dirty = true;
     document.querySelectorAll(".on").forEach(function (e) { e.classList.remove("on"); });
     document.querySelectorAll(".knob").forEach(function (k) { k.style.transform = ""; });
+    document.querySelectorAll(".stick").forEach(function (t) { t._on = false; t.classList.remove("click"); });
     document.querySelectorAll(".fill").forEach(function (f) { f.style.height = "0"; });
     if (sendNow) tick(true);
   }
@@ -514,9 +517,17 @@ body:not(.xbox) .xbox-label { display: none; }
   bindTrigger($("r2"), "rt");
 
   // ---- sticks ----
-  function bindStick(el, set) {
+  // Long press on a stick holds its click (L3 or R3) until the next long press, a quick double tap clicks once
+  function bindStick(el, set, btn) {
     var knob = el.querySelector(".knob"), id = null, cx = 0, cy = 0, R = 1;
+    var sx = 0, sy = 0, moved = false, hold = 0, downT = 0, lastTap = 0;
+    function toggleClick() {
+      if (el._on) { el._on = false; el.classList.remove("click"); release(btn); }
+      else { el._on = true; el.classList.add("click"); press(btn); buzz(); }
+    }
+    function quickClick() { press(btn); buzz(); setTimeout(function () { release(btn); }, 70); }
     function move(e) {
+      if (Math.hypot(e.clientX - sx, e.clientY - sy) > 10) { moved = true; clearTimeout(hold); }
       var dx = (e.clientX - cx) / R, dy = (e.clientY - cy) / R, m = Math.hypot(dx, dy);
       if (m > 1) { dx /= m; dy /= m; }
       knob.style.transform = "translate(" + (dx * R) + "px," + (dy * R) + "px)";
@@ -528,19 +539,24 @@ body:not(.xbox) .xbox-label { display: none; }
       id = e.pointerId;
       try { el.setPointerCapture(id); } catch (x) {}
       var r = el.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; R = r.width * 0.28;
+      sx = e.clientX; sy = e.clientY; moved = false; downT = Date.now(); clearTimeout(hold);
+      hold = setTimeout(function () { if (id !== null && !moved) toggleClick(); }, 450);
       el.classList.add("active"); move(e); buzz(); firstTouch();
     });
     var onMove = function (e) { if (e.pointerId === id) { e.preventDefault(); move(e); } };
     el.addEventListener("pointermove", onMove);
     if ("onpointerrawupdate" in window) el.addEventListener("pointerrawupdate", onMove);
     var end = function (e) {
-      if (e.pointerId !== id) return; id = null; el.classList.remove("active");
+      if (e.pointerId !== id) return; id = null; el.classList.remove("active"); clearTimeout(hold);
       knob.style.transform = ""; set(0, 0); dirty = true;
+      if (!moved && Date.now() - downT < 250) {
+        if (Date.now() - lastTap < 350) { lastTap = 0; quickClick(); } else lastTap = Date.now();
+      }
     };
     el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("lostpointercapture", end);
   }
-  bindStick($("ls"), function (x, y) { ax.lx = x; ax.ly = y; });
-  bindStick($("rs"), function (x, y) { ax.rx = x; ax.ry = y; });
+  bindStick($("ls"), function (x, y) { ax.lx = x; ax.ly = y; }, "l3");
+  bindStick($("rs"), function (x, y) { ax.rx = x; ax.ry = y; }, "r3");
 
   // ---- platform behaviour ----
   var wake = null;
