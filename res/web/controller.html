@@ -144,6 +144,13 @@ body:not(.xbox) .xbox-label { display: none; }
     border-radius: 1.4dvh; background: var(--panel); border: 2px solid var(--warn); font-size: 2.8dvh; font-weight: 700; cursor: pointer;
     letter-spacing: .02em; white-space: nowrap; color: var(--muted); }
 #slotText { min-width: 3.4dvh; text-align: center; }
+#confirmWrap { position: fixed; inset: 0; background: var(--shadow); display: none; align-items: center; justify-content: center; z-index: 40; }
+#confirmWrap.open { display: flex; }
+#confirmBox { background: var(--sheet); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; width: min(360px, 90vw); }
+#confirmBox .ctitle { font-size: 17px; font-weight: 700; }
+#confirmBox .ctext { font-size: 14px; color: var(--muted); margin-top: 6px; }
+#confirmBox .cbtns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+#confirmBox .sbtn { width: auto; min-width: 100px; }
 #badge[data-st="ok"] { border-color: var(--ok); color: var(--ok); }
 #badge[data-st="wait"] { border-color: var(--warn); color: var(--warn); }
 #badge[data-st="bad"] { border-color: var(--bad); color: var(--bad); }
@@ -284,6 +291,11 @@ body:not(.xbox) .xbox-label { display: none; }
 
 <div id="rotate"><div class="big">Rotate your phone</div><div class="small">The controller needs landscape. Turn your phone sideways and unlock rotation if it does not turn.</div></div>
 <div id="toast"></div>
+<div id="confirmWrap"><div id="confirmBox" role="dialog" aria-modal="true">
+  <div class="ctitle">Disconnect controller?</div>
+  <div class="ctext">The PC will stop receiving input until you reconnect.</div>
+  <div class="cbtns"><button class="sbtn" id="confirmNo">Cancel</button><button class="sbtn bad" id="confirmYes">Disconnect</button></div>
+</div></div>
 
 <div id="sheetWrap"><div id="sheet">
   <div class="head"><h2>Controller settings</h2><button class="iconbtn" id="closeBtn" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
@@ -824,8 +836,13 @@ body:not(.xbox) .xbox-label { display: none; }
   }
   $("badge").addEventListener("pointerdown", function (e) {
     e.preventDefault(); firstTouch(); $("badge").classList.add("press");
-    if (wantConnection) { disconnect(); toast("Disconnected. Tap the status to reconnect."); } else reconnect();
+    if (!wantConnection) reconnect();
+    else if (connKind === "ok") { releaseAll(true); $("confirmWrap").classList.add("open"); }
+    else { disconnect(); toast("Disconnected. Tap the status to reconnect."); }
   });
+  $("confirmNo").addEventListener("click", function () { $("confirmWrap").classList.remove("open"); });
+  $("confirmWrap").addEventListener("pointerdown", function (e) { if (e.target === this) this.classList.remove("open"); });
+  $("confirmYes").addEventListener("click", function () { $("confirmWrap").classList.remove("open"); disconnect(); toast("Disconnected. Tap the status to reconnect."); });
   ["pointerup", "pointercancel", "pointerleave"].forEach(function (n) { $("badge").addEventListener(n, function () { $("badge").classList.remove("press"); }); });
   $("menuBtn").addEventListener("pointerdown", function (e) { e.preventDefault(); firstTouch(); openMenu(); });
   $("closeBtn").addEventListener("click", closeMenu);
