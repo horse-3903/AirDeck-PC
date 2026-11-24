@@ -12,6 +12,7 @@
 <title>Virtual Gamepad</title>
 <style>
 :root {
+  --u: 1dvh; --w: 1vw;
   --bg: #fafafa; --fg: #161616; --muted: #5a5a5a; --panel: #ececf0; --panel-on: #cfcfd6;
   --border: #c4c4cc; --accent: #161616; --accent-fg: #ffffff; --sheet: #ffffff; --shadow: rgba(0,0,0,.25);
   --ok: #1a9d4a; --bad: #d03030; --warn: #c98a00; --card: #f2f2f6; --disc: #e2e2e8; --arm: #cfcfd8; --armedge: #8a8a96; --key: #b9b9c6; --keyedge: #7d7d8a; --keyon: #8e8e9c;
@@ -40,7 +41,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); o
 #app { position: fixed; top: 0; bottom: 0; left: max(env(safe-area-inset-left), env(safe-area-inset-right)); right: max(env(safe-area-inset-left), env(safe-area-inset-right)); height: 100vh; height: 100dvh; }
 #app::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .5s;
     background: color-mix(in srgb, var(--slotc, transparent) var(--gl-wash), transparent);
-    box-shadow: inset 0 0 12dvh 0 color-mix(in srgb, var(--slotc, transparent) var(--gl-edge), transparent); }
+    box-shadow: inset 0 0 calc(12 * var(--u)) 0 color-mix(in srgb, var(--slotc, transparent) var(--gl-edge), transparent); }
 html.glow #app::before { opacity: 1; }
 
 .btn, .pill, .stick { background: var(--panel); border: 2px solid var(--border); }
@@ -48,24 +49,24 @@ html.glow #app::before { opacity: 1; }
 .btn.on svg, .pill.on svg, .btn.on .letter { filter: brightness(1.4); }
 
 /* sticks: a movement ring and a cap that travels inside it */
-.stick { position: absolute; border-radius: 50%; width: 30dvh; height: 30dvh; }
+.stick { position: absolute; border-radius: 50%; width: calc(30 * var(--u)); height: calc(30 * var(--u)); }
 .stick::before { content: ""; position: absolute; inset: 22%; border-radius: 50%; border: 1px solid var(--border); opacity: .7; pointer-events: none; }
 .stick .knob { position: absolute; left: 50%; top: 50%; width: 44%; height: 44%; margin: -22% 0 0 -22%;
     border-radius: 50%; background: var(--panel-on); border: 2px solid var(--border); will-change: transform; }
 .stick .knob::after { content: ""; position: absolute; inset: 34%; border-radius: 50%; background: var(--border); }
 .stick.active { border-color: var(--fg); }
-.stick.click { border-color: var(--fg); box-shadow: 0 0 0 .6dvh var(--panel-on); }
+.stick.click { border-color: var(--fg); box-shadow: 0 0 0 calc(.6 * var(--u)) var(--panel-on); }
 .stick.click .knob { background: var(--fg); }
-#ls { left: calc(16% - 15dvh); top: calc(52dvh - 15dvh); }
-#rs { left: calc(70% - 15dvh); top: calc(79dvh - 15dvh); }
+#ls { left: calc(16% - calc(15 * var(--u))); top: calc(calc(52 * var(--u)) - calc(15 * var(--u))); }
+#rs { left: calc(70% - calc(15 * var(--u))); top: calc(calc(79 * var(--u)) - calc(15 * var(--u))); }
 
 /* d-pad is one cross, face buttons a diamond */
 .cluster { position: absolute; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); }
-#dpad { display: block; width: 30dvh; height: 30dvh; left: calc(30% - 15dvh); top: calc(79dvh - 15dvh); padding: 0;
+#dpad { display: block; width: calc(30 * var(--u)); height: calc(30 * var(--u)); left: calc(30% - calc(15 * var(--u))); top: calc(calc(79 * var(--u)) - calc(15 * var(--u))); padding: 0;
     border-radius: 50%; background: transparent; border: 0; overflow: visible; }
 #dpad .dpv { position: absolute; left: 4.1%; top: 4.1%; width: 91.8%; height: 91.8%; pointer-events: none; }
 /* PlayStation mode: the supplied SVG, a round base with four keys; each key is its own button so it lights when pressed */
-#dpadps { position: absolute; width: 30dvh; height: 30dvh; left: calc(30% - 15dvh); top: calc(79dvh - 15dvh); }
+#dpadps { position: absolute; width: calc(30 * var(--u)); height: calc(30 * var(--u)); left: calc(30% - calc(15 * var(--u))); top: calc(calc(79 * var(--u)) - calc(15 * var(--u))); }
 #dpadps .dpv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; transform: scale(.84); }
 #dpadps .btn { position: absolute; width: 38%; height: 38%; border: 0 !important; background: transparent !important;
     transform: none !important; padding: 0; }
@@ -82,7 +83,7 @@ html.glow #app::before { opacity: 1; }
 #dpadps .left { left: 9.5%; top: 31%; }
 body:not(.xbox) #dpad { display: none; }
 body.xbox #dpadps { display: none; }
-#face { width: 32dvh; height: 32dvh; left: calc(84% - 16dvh); top: calc(52dvh - 16dvh); gap: .8dvh; }
+#face { width: calc(32 * var(--u)); height: calc(32 * var(--u)); left: calc(84% - calc(16 * var(--u))); top: calc(calc(52 * var(--u)) - calc(16 * var(--u))); gap: calc(.8 * var(--u)); }
 .cluster .btn { display: flex; align-items: center; justify-content: center; }
 /* a raised plus on a round base: four arms with no outlines, so the cross reads as one piece */
 #dpad .btn { position: absolute; display: block; border: 0; background: transparent; }
@@ -105,45 +106,45 @@ body.xbox #dpadps { display: none; }
 .cluster .right, .cluster .b { grid-area: 2 / 3; }
 .cluster .down, .cluster .a { grid-area: 3 / 2; }
 .arrow { width: 0; height: 0; border-style: solid; }
-.up .arrow { border-width: 0 1.5dvh 2.4dvh 1.5dvh; border-color: transparent transparent var(--fg) transparent; }
-.down .arrow { border-width: 2.4dvh 1.5dvh 0 1.5dvh; border-color: var(--fg) transparent transparent transparent; }
-.left .arrow { border-width: 1.5dvh 2.4dvh 1.5dvh 0; border-color: transparent var(--fg) transparent transparent; }
-.right .arrow { border-width: 1.5dvh 0 1.5dvh 2.4dvh; border-color: transparent transparent transparent var(--fg); }
+.up .arrow { border-width: 0 calc(1.5 * var(--u)) calc(2.4 * var(--u)) calc(1.5 * var(--u)); border-color: transparent transparent var(--fg) transparent; }
+.down .arrow { border-width: calc(2.4 * var(--u)) calc(1.5 * var(--u)) 0 calc(1.5 * var(--u)); border-color: var(--fg) transparent transparent transparent; }
+.left .arrow { border-width: calc(1.5 * var(--u)) calc(2.4 * var(--u)) calc(1.5 * var(--u)) 0; border-color: transparent var(--fg) transparent transparent; }
+.right .arrow { border-width: calc(1.5 * var(--u)) 0 calc(1.5 * var(--u)) calc(2.4 * var(--u)); border-color: transparent transparent transparent var(--fg); }
 .glyph { width: 49%; height: 49%; }
-.letter { font-weight: 400; font-size: 4.8dvh; }
+.letter { font-weight: 400; font-size: calc(4.8 * var(--u)); }
 .face-ps, .face-xbox { display: contents; }
 body.xbox .face-ps { display: none; }
 body:not(.xbox) .face-xbox { display: none; }
 
 /* triggers on top, bumpers under them, both in the thumb zone of each hand */
 .pill { position: absolute; display: flex; align-items: center; justify-content: center;
-    border-radius: 999px; font-weight: 700; font-size: 3dvh; color: var(--fg); }
-#l2, #r2 { top: 4dvh; width: 17%; height: 14dvh; border-radius: 1.8dvh; overflow: hidden; }
-#l1, #r1 { top: 20dvh; width: 17%; height: 10dvh; border-radius: 1.8dvh; font-size: 2.6dvh; }
+    border-radius: 999px; font-weight: 700; font-size: calc(3 * var(--u)); color: var(--fg); }
+#l2, #r2 { top: calc(4 * var(--u)); width: 17%; height: calc(14 * var(--u)); border-radius: calc(1.8 * var(--u)); overflow: hidden; }
+#l1, #r1 { top: calc(20 * var(--u)); width: 17%; height: calc(10 * var(--u)); border-radius: calc(1.8 * var(--u)); font-size: calc(2.6 * var(--u)); }
 #l2, #l1 { left: 7.5%; }
 #r2, #r1 { right: 7.5%; }
 .ico { height: 56%; width: auto; max-width: 70%; }
 .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: var(--fg); opacity: .35; pointer-events: none; }
 .tl { position: relative; pointer-events: none; text-align: center; }
-.pct { display: block; font-size: 2.2dvh; font-weight: 600; }
+.pct { display: block; font-size: calc(2.2 * var(--u)); font-weight: 600; }
 .zline { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--border); pointer-events: none; }
 .xbox-label, .ps-label { display: inline; }
 body.xbox .ps-label { display: none; }
 body:not(.xbox) .xbox-label { display: none; }
 
 /* system buttons, small and muted, in the middle */
-#sys { position: absolute; left: 50%; top: 15dvh; transform: translateX(-50%); display: flex; gap: 34vw; }
-#sys .pill { position: static; width: 8.8dvh; height: 8dvh; border-radius: 1.8dvh; color: var(--muted); }
+#sys { position: absolute; left: 50%; top: calc(15 * var(--u)); transform: translateX(-50%); display: flex; gap: calc(34 * var(--w)); }
+#sys .pill { position: static; width: calc(8.8 * var(--u)); height: calc(8 * var(--u)); border-radius: calc(1.8 * var(--u)); color: var(--muted); }
 
 /* top row: fullscreen, connection status, settings */
-#top { position: absolute; left: 50%; top: 2.5dvh; transform: translateX(-50%); display: flex; align-items: center; gap: 1.4dvh; }
-#top .pill { position: static; width: 8dvh; height: 7dvh; border-radius: 1.4dvh; color: var(--muted); }
+#top { position: absolute; left: 50%; top: calc(2.5 * var(--u)); transform: translateX(-50%); display: flex; align-items: center; gap: calc(1.4 * var(--u)); }
+#top .pill { position: static; width: calc(8 * var(--u)); height: calc(7 * var(--u)); border-radius: calc(1.4 * var(--u)); color: var(--muted); }
 #fsPill { display: none; }
 #fsPill.show { display: flex; }
-#badge { width: 14dvh; height: 7dvh; display: flex; align-items: center; justify-content: center; gap: 1.3dvh;
-    border-radius: 1.4dvh; background: var(--panel); border: 2px solid var(--warn); font-size: 2.8dvh; font-weight: 700; cursor: pointer;
+#badge { width: calc(14 * var(--u)); height: calc(7 * var(--u)); display: flex; align-items: center; justify-content: center; gap: calc(1.3 * var(--u));
+    border-radius: calc(1.4 * var(--u)); background: var(--panel); border: 2px solid var(--warn); font-size: calc(2.8 * var(--u)); font-weight: 700; cursor: pointer;
     letter-spacing: .02em; white-space: nowrap; color: var(--muted); }
-#slotText { min-width: 3.4dvh; text-align: center; }
+#slotText { min-width: calc(3.4 * var(--u)); text-align: center; }
 #confirmWrap { position: fixed; inset: 0; background: rgba(0, 0, 0, .5); display: none; align-items: center; justify-content: center; z-index: 40; }
 #confirmWrap.open { display: flex; animation: cfade .16s ease-out; }
 #confirmBox { background: var(--sheet); border: 1px solid var(--border); border-radius: 16px; padding: 20px; width: min(330px, calc(100vw - 32px));
@@ -164,24 +165,24 @@ body:not(.xbox) .xbox-label { display: none; }
 #badge[data-st="bad"] { border-color: var(--bad); color: var(--bad); }
 #badge.press { background: var(--panel-on); }
 #sIcon { display: flex; }
-.sico { width: 4.4dvh; height: 4.4dvh; display: block; flex: none; }
-.sd { width: 1.5dvh; height: 1.5dvh; border-radius: 50%; background: var(--bad); flex: none; box-sizing: border-box; }
+.sico { width: calc(4.4 * var(--u)); height: calc(4.4 * var(--u)); display: block; flex: none; }
+.sd { width: calc(1.5 * var(--u)); height: calc(1.5 * var(--u)); border-radius: 50%; background: var(--bad); flex: none; box-sizing: border-box; }
 .sd.ok { background: var(--ok); }
-.sd.wait { background: transparent; border: .35dvh solid var(--warn); border-right-color: transparent; animation: sdspin .9s linear infinite; }
+.sd.wait { background: transparent; border: calc(.35 * var(--u)) solid var(--warn); border-right-color: transparent; animation: sdspin .9s linear infinite; }
 @keyframes sdspin { to { transform: rotate(360deg); } }
 
-#rotate { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
-    flex-direction: column; background: var(--bg); text-align: center; padding: 8vw; z-index: 20; gap: 12px; }
-#rotate .big { font-size: 22px; font-weight: 700; }
-#rotate .small { color: var(--muted); font-size: 15px; max-width: 320px; line-height: 1.4; }
-@media (orientation: portrait) { #rotate { display: flex; } }
+/* Portrait: the whole controller is turned a quarter turn so it can be used with the phone held sideways */
+@media (orientation: portrait) {
+  :root { --u: 1vw; --w: 1dvh; }
+  #app { left: 0; right: auto; top: 0; bottom: auto; width: 100dvh; height: 100vw; transform-origin: 0 0; transform: translateX(100vw) rotate(90deg); }
+}
 
 /* settings sheet */
 #sheetWrap { position: fixed; inset: 0; background: var(--shadow); display: none; align-items: center;
     justify-content: center; z-index: 30; }
 #sheetWrap.open { display: flex; }
 #sheet { background: var(--sheet); border: 1px solid var(--border); border-radius: 12px; width: min(680px, 94vw);
-    max-height: 94dvh; overflow-y: auto; padding: 0 20px 18px; touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    max-height: calc(94 * var(--u)); overflow-y: auto; padding: 0 20px 18px; touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 #sheetWrap, #sheet, #sheet * { touch-action: pan-y; }
 #sheet input[type=text], #sheet textarea { touch-action: manipulation; }
 .head { position: sticky; top: 0; background: var(--sheet); display: flex; align-items: center; justify-content: space-between; padding: 16px 0 10px; z-index: 2; }
@@ -240,7 +241,7 @@ body:not(.xbox) .xbox-label { display: none; }
 #ioBox { width: 100%; height: 90px; margin-top: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel);
     color: var(--fg); font: 12px monospace; padding: 8px; display: none; -webkit-user-select: text; user-select: text; }
 @media (max-height: 460px) { #sheet { padding: 0 16px 12px; } .row { padding: 8px 0; } .head { padding: 10px 0 6px; } .sec { margin: 12px 0 4px; } }
-#toast { position: fixed; left: 50%; top: 14dvh; transform: translateX(-50%); background: var(--accent);
+#toast { position: fixed; left: 50%; top: calc(14 * var(--u)); transform: translateX(-50%); background: var(--accent);
     color: var(--accent-fg); padding: 8px 14px; border-radius: 6px; font-size: 14px; z-index: 40; display: none; }
 </style>
 </head>
@@ -297,7 +298,6 @@ body:not(.xbox) .xbox-label { display: none; }
   </div>
 </div>
 
-<div id="rotate"><div class="big">Rotate your phone</div><div class="small">The controller needs landscape. Turn your phone sideways and unlock rotation if it does not turn.</div></div>
 <div id="toast"></div>
 <div id="confirmWrap"><div id="confirmBox" role="dialog" aria-modal="true">
   <div class="cicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v4M15 3v4M7 7h10v4a5 5 0 0 1-10 0V7zM12 16v5"/><path d="M3 3l18 18"/></svg></div>
@@ -417,6 +417,14 @@ body:not(.xbox) .xbox-label { display: none; }
   var sentName = "";
 
   function $(id) { return document.getElementById(id); }
+  // In portrait the controller is rotated 90 degrees clockwise, so screen points map back to its own frame
+  var portrait = window.matchMedia("(orientation: portrait)");
+  function vw() { return document.documentElement.clientWidth; }
+  function P(e) { return portrait.matches ? { x: e.clientY, y: vw() - e.clientX } : { x: e.clientX, y: e.clientY }; }
+  function R(el) {
+    var r = el.getBoundingClientRect();
+    return portrait.matches ? { left: r.top, top: vw() - r.right, width: r.height, height: r.width } : { left: r.left, top: r.top, width: r.width, height: r.height };
+  }
   function toast(text) {
     var t = $("toast"); t.textContent = text; t.style.display = "block";
     clearTimeout(toast.h); toast.h = setTimeout(function () { t.style.display = "none"; }, 2200);
@@ -577,7 +585,7 @@ body:not(.xbox) .xbox-label { display: none; }
       if (n) { el.querySelector(".btn." + n).classList.add("on"); press(n); buzz(0, "dpad " + n); }
     }
     function pick(e) {
-      var r = el.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+      var r = R(el), q = P(e), dx = q.x - (r.left + r.width / 2), dy = q.y - (r.top + r.height / 2);
       if (Math.hypot(dx, dy) < r.width * 0.07) return null;
       var ax = Math.abs(dx), ay = Math.abs(dy), horiz;
       if (cur === "left" || cur === "right") horiz = ay <= ax * 1.25;
@@ -609,10 +617,10 @@ body:not(.xbox) .xbox-label { display: none; }
       pct.textContent = id !== null && mode() !== "digital" ? Math.round(v * 100) + "%" : "";
     }
     function handle(e) {
-      var y = e.clientY - top;
+      var y = P(e).y - top;
       switch (mode()) {
         case "slide": setv(0.1 + 0.9 * Math.min(1, Math.max(0, 1 - y / h))); break;
-        case "drag": setv(0.2 + 0.8 * Math.min(1, Math.max(0, (y0 - e.clientY) / (h * 0.6)))); break;
+        case "drag": setv(0.2 + 0.8 * Math.min(1, Math.max(0, (y0 - P(e).y) / (h * 0.6)))); break;
         case "zones": setv(y < h / 2 ? 1 : 0.5); break;
         case "force": setv(Math.min(1, Math.max(0.1, (e.pressure || 0.5) * 1.6))); break;
       }
@@ -646,7 +654,7 @@ body:not(.xbox) .xbox-label { display: none; }
     el.addEventListener("pointerdown", function (e) {
       if (id !== null) return; e.preventDefault(); id = e.pointerId;
       try { el.setPointerCapture(id); } catch (x) {}
-      var r = el.getBoundingClientRect(); top = r.top; h = r.height || 1; y0 = e.clientY;
+      var r = R(el); top = r.top; h = r.height || 1; y0 = P(e).y;
       el.classList.add("on"); buzz(0, "trig " + key); firstTouch();
       var m = mode();
       if (m === "digital") setv(1);
@@ -674,7 +682,7 @@ body:not(.xbox) .xbox-label { display: none; }
   // ---- sticks ----
   // Long press on a stick holds its click (L3 or R3) until the next long press, a quick double tap clicks once
   function bindStick(el, set, btn) {
-    var knob = el.querySelector(".knob"), id = null, cx = 0, cy = 0, R = 1;
+    var knob = el.querySelector(".knob"), id = null, cx = 0, cy = 0, Rad = 1;
     var sx = 0, sy = 0, moved = false, hold = 0, downT = 0, lastTap = 0;
     function toggleClick() {
       if (el._on) { el._on = false; el.classList.remove("click"); release(btn); }
@@ -682,10 +690,11 @@ body:not(.xbox) .xbox-label { display: none; }
     }
     function quickClick() { press(btn); buzz(); setTimeout(function () { release(btn); }, 70); }
     function move(e) {
-      if (Math.hypot(e.clientX - sx, e.clientY - sy) > 10) { moved = true; clearTimeout(hold); }
-      var dx = (e.clientX - cx) / R, dy = (e.clientY - cy) / R, m = Math.hypot(dx, dy);
+      var q = P(e);
+      if (Math.hypot(q.x - sx, q.y - sy) > 10) { moved = true; clearTimeout(hold); }
+      var dx = (q.x - cx) / Rad, dy = (q.y - cy) / Rad, m = Math.hypot(dx, dy);
       if (m > 1) { dx /= m; dy /= m; }
-      knob.style.transform = "translate(" + (dx * R) + "px," + (dy * R) + "px)";
+      knob.style.transform = "translate(" + (dx * Rad) + "px," + (dy * Rad) + "px)";
       set(dx, dy); dirty = true; flush();
     }
     el.addEventListener("pointerdown", function (e) {
@@ -693,8 +702,8 @@ body:not(.xbox) .xbox-label { display: none; }
       if (settings.snap !== "on" && !e.target.classList.contains("knob")) return;
       id = e.pointerId;
       try { el.setPointerCapture(id); } catch (x) {}
-      var r = el.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; R = r.width * 0.28;
-      sx = e.clientX; sy = e.clientY; moved = false; downT = Date.now(); clearTimeout(hold);
+      var r = R(el), q0 = P(e); cx = r.left + r.width / 2; cy = r.top + r.height / 2; Rad = r.width * 0.28;
+      sx = q0.x; sy = q0.y; moved = false; downT = Date.now(); clearTimeout(hold);
       hold = setTimeout(function () { if (id !== null && !moved) toggleClick(); }, 450);
       el.classList.add("active"); move(e); buzz(0, "stick"); firstTouch();
     });
