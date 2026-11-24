@@ -16,6 +16,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QDataStream>
+#include <QElapsedTimer>
 #include <QHostAddress>
 #include <QList>
 #include <QMessageBox>
@@ -1195,7 +1196,11 @@ void Server::handleWebMessage(Client &client, const QByteArray &payload)
 								 reading.right_thumbstick_x != client.rx || reading.right_thumbstick_y != client.ry ||
 								 reading.left_trigger != client.lt || reading.right_trigger != client.rt;
 		// Only log when something happened, heartbeats would flood the file
-		if (reading.buttons_down || reading.buttons_up || axesChanged)
+		static QElapsedTimer axisClock;
+		const bool axisDue = axesChanged && (!axisClock.isValid() || axisClock.elapsed() > 250);
+		if (axisDue)
+			axisClock.restart();
+		if (reading.buttons_down || reading.buttons_up || axisDue)
 			qInfo().noquote() << QString("[web] slot %1 down=%2 up=%3 held=0x%4 L=(%5,%6) R=(%7,%8) LT=%9 RT=%10 raw=%11")
 									 .arg(client.slot)
 									 .arg(decode(reading.buttons_down))

@@ -361,12 +361,12 @@ body:not(.xbox) .xbox-label { display: none; }
   function press(name) {
     if (name === "l2") { ax.lt = 1; } else if (name === "r2") { ax.rt = 1; }
     else { var bit = BIT[name]; if (!(held & bit)) { held |= bit; pendDown |= bit; } }
-    dirty = true;
+    dirty = true; flush();
   }
   function release(name) {
     if (name === "l2") { ax.lt = 0; } else if (name === "r2") { ax.rt = 0; }
     else { var bit = BIT[name]; if (held & bit) { held &= ~bit; pendUp |= bit; } }
-    dirty = true;
+    dirty = true; flush();
   }
   function releaseAll(sendNow) {
     pendUp |= held; held = 0; ax.lx = ax.ly = ax.rx = ax.ry = ax.lt = ax.rt = 0; dirty = true;
@@ -398,7 +398,9 @@ body:not(.xbox) .xbox-label { display: none; }
       ws.send(JSON.stringify({ t: "hello", name: settings.name, model: guessModel() })); sentName = settings.name;
     }
   }
-  setInterval(tick, 16);
+  // Send as soon as something changes instead of waiting for the next timer tick
+  function flush() { if (Date.now() - lastSend >= 4) tick(); }
+  setInterval(tick, 8);
 
   // ---- buttons ----
   function bindButton(el) {
@@ -494,7 +496,7 @@ body:not(.xbox) .xbox-label { display: none; }
       var dx = (e.clientX - cx) / R, dy = (e.clientY - cy) / R, m = Math.hypot(dx, dy);
       if (m > 1) { dx /= m; dy /= m; }
       knob.style.transform = "translate(" + (dx * R) + "px," + (dy * R) + "px)";
-      set(dx, dy); dirty = true;
+      set(dx, dy); dirty = true; flush();
     }
     el.addEventListener("pointerdown", function (e) {
       if (id !== null) return; e.preventDefault();
@@ -504,7 +506,9 @@ body:not(.xbox) .xbox-label { display: none; }
       var r = el.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; R = r.width * 0.29;
       el.classList.add("active"); move(e); buzz(); firstTouch();
     });
-    el.addEventListener("pointermove", function (e) { if (e.pointerId === id) { e.preventDefault(); move(e); } });
+    var onMove = function (e) { if (e.pointerId === id) { e.preventDefault(); move(e); } };
+    el.addEventListener("pointermove", onMove);
+    if ("onpointerrawupdate" in window) el.addEventListener("pointerrawupdate", onMove);
     var end = function (e) {
       if (e.pointerId !== id) return; id = null; el.classList.remove("active");
       knob.style.transform = ""; set(0, 0); dirty = true;

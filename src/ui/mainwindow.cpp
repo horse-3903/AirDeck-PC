@@ -3,12 +3,14 @@
 #include "../settings/settings_singleton.hpp"
 #include "../platform/elevation.hpp"
 #include "mainmenu.hpp"
+#include "toastpopup.hpp"
 #include "ui_mainwindow.h"
 
 #include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
 #include <QMenu>
+#include <QMetaObject>
 #include <QSystemTrayIcon>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
@@ -30,6 +32,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 		trayIcon->setToolTip(tr("Virtual Gamepad"));
 		auto *menu = new QMenu(this);
 		menu->addAction(tr("Show"), this, [this]() { showFromTray(); });
+		menu->addAction(tr("Stop server"), this, [this]() { stopServerAndQuit(); });
 		menu->addAction(tr("Quit"), this, [this]() {
 			quitRequested = true;
 			QApplication::quit();
@@ -52,6 +55,14 @@ MainWindow::~MainWindow()
 	delete ui;
 }
 
+void MainWindow::stopServerAndQuit()
+{
+	if (QWidget *server = findChild<QWidget *>("Server"))
+		QMetaObject::invokeMethod(server, "destroyServer", Qt::DirectConnection);
+	quitRequested = true;
+	QApplication::quit();
+}
+
 void MainWindow::showFromTray()
 {
 	showNormal();
@@ -69,9 +80,11 @@ void MainWindow::closeEvent(QCloseEvent *event)
 		if (!trayHintShown)
 		{
 			trayHintShown = true;
-			trayIcon->showMessage(tr("Virtual Gamepad"),
-								  tr("The server is still running. Use the tray icon to reopen or quit."),
-								  QSystemTrayIcon::Information, 4000);
+			auto *toast = new ToastPopup(windowIcon(), tr("Virtual Gamepad is still running"),
+										 tr("The server keeps running in the background. Open the tray icon to reopen the window."),
+										 tr("Stop server"));
+			connect(toast, &ToastPopup::actionClicked, this, [this]() { stopServerAndQuit(); });
+			toast->showToast();
 		}
 		event->ignore();
 		return;
