@@ -377,7 +377,7 @@ body:not(.xbox) .xbox-label { display: none; }
     ["force", "Touch pressure", "Needs a screen that reports pressure"],
     ["tilt", "Tilt while held", "Hold, then tilt the phone"]
   ];
-  var canVibrate = typeof navigator.vibrate === "function";
+  var canVibrate = typeof navigator.vibrate === "function" || isIOS;
 
   // ---- state ----
   var held = 0, pendDown = 0, pendUp = 0, dirty = false, lastSend = 0;
@@ -456,7 +456,20 @@ body:not(.xbox) .xbox-label { display: none; }
   }
 
   // ---- input state ----
-  function buzz() { if (canVibrate && settings.vib === "on") navigator.vibrate(25); }
+  // Android uses the Vibration API (short pulses are too faint on many motors); iOS has none, but toggling a
+  // switch control from a touch gives a system tick
+  var tick = null;
+  function buzz(ms) {
+    if (!canVibrate || settings.vib !== "on") return;
+    if (typeof navigator.vibrate === "function") { navigator.vibrate(ms || 40); return; }
+    if (!tick) {
+      tick = document.createElement("label");
+      tick.style.cssText = "position:fixed;left:-99px;top:0;width:1px;height:1px;opacity:0;pointer-events:none";
+      var box = document.createElement("input"); box.type = "checkbox"; box.setAttribute("switch", "");
+      tick.appendChild(box); document.body.appendChild(tick);
+    }
+    tick.click();
+  }
   function press(name) {
     if (name === "l2") { ax.lt = 1; } else if (name === "r2") { ax.rt = 1; }
     else { var bit = BIT[name]; if (!(held & bit)) { held |= bit; pendDown |= bit; } }
@@ -514,7 +527,7 @@ body:not(.xbox) .xbox-label { display: none; }
     function mode() { return settings[key === "lt" ? "trigL" : "trigR"]; }
     function setv(raw) {
       var v = raw < 0.05 ? 0 : (raw >= 0.9 ? 1 : raw);
-      if (Math.floor(v * 4) > Math.floor(level * 4) && canVibrate && settings.vib === "on") navigator.vibrate(15);
+      if (Math.floor(v * 4) > Math.floor(level * 4)) buzz(25);
       level = v; ax[key] = v; dirty = true;
       fill.style.height = (v * 100) + "%";
       pct.textContent = id !== null && mode() !== "digital" ? Math.round(v * 100) + "%" : "";
