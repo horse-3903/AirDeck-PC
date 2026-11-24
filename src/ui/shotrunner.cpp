@@ -6,6 +6,7 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QEventLoop>
 #include <QFile>
 #include <QInputDialog>
 #include <QListWidget>
@@ -279,6 +280,22 @@ void ShotRunner::start()
 				port.write(QByteArray::number(server->tcpServer->serverPort()));
 		}
 	});
+	// With a test client connected from outside, shoot the Controllers tab and the tester
+	schedule([this] {
+		QEventLoop wait;
+		QTimer::singleShot(6000, &wait, &QEventLoop::quit);
+		wait.exec();
+		if (auto *server = m_window->findChild<Server *>())
+		{
+			const auto tabs = server->findChildren<QPushButton *>();
+			for (QPushButton *tab : tabs)
+				if (tab->text() == QStringLiteral("Controllers"))
+					tab->click();
+		}
+	});
+	schedule([this] { saveWindow("23-controllers-connected"); });
+	schedule([this] { click(button(QStringLiteral("Test controller"))); });
+	schedule([this] { saveWindow("24-tester"); });
 
 	QTimer::singleShot(500, this, &ShotRunner::runNext);
 }

@@ -2,6 +2,7 @@
 
 #include "../../third-party-libs/QR-Code-generator/cpp/qrcodegen.hpp"
 #include "../platform/elevation.hpp"
+#include "../ui/glyphs.hpp"
 #include "../ui/slotcolors.hpp"
 #include "../settings/settings_singleton.hpp"
 #include "ui_server.h"
@@ -200,41 +201,64 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			auto *cardLayout = new QHBoxLayout(card.frame);
 			cardLayout->setContentsMargins(16, 14, 16, 14);
 			cardLayout->setSpacing(14);
-			card.badge = new QLabel(QString::number(i + 1), card.frame);
-			card.badge->setFixedSize(44, 44);
-			card.badge->setAlignment(Qt::AlignCenter);
+
+			card.deviceIcon = new QLabel(card.frame);
+			card.deviceIcon->setFixedSize(52, 52);
+			card.deviceIcon->setAlignment(Qt::AlignCenter);
+
 			auto *textColumn = new QVBoxLayout();
-			textColumn->setSpacing(4);
+			textColumn->setSpacing(6);
+			auto *titleRow = new QHBoxLayout();
+			titleRow->setSpacing(10);
+			card.badge = new QLabel(QString::number(i + 1), card.frame);
+			card.badge->setFixedSize(24, 24);
+			card.badge->setAlignment(Qt::AlignCenter);
 			card.title = new QLabel(card.frame);
-			card.detail = new QLabel(card.frame);
-			card.detail->setProperty("role", "caption");
-			auto *metaRow = new QHBoxLayout();
-			metaRow->setSpacing(8);
-			card.ip = new QLabel(card.frame);
-			card.ip->setStyleSheet("QLabel { background: #1F1F24; border-radius: 10px; padding: 2px 10px; "
-								   "color: #E5E5E5; font-weight: 600; }");
-			card.input = new QLabel(card.frame);
-			card.input->setProperty("role", "caption");
-			metaRow->addWidget(card.ip);
-			metaRow->addWidget(card.input);
-			metaRow->addStretch();
-			textColumn->addWidget(card.title);
-			textColumn->addWidget(card.detail);
-			textColumn->addLayout(metaRow);
-			auto *rightColumn = new QVBoxLayout();
-			rightColumn->setSpacing(8);
 			card.state = new QLabel(card.frame);
 			card.state->setAlignment(Qt::AlignCenter);
-			card.test = new QPushButton(tr("Test inputs"), card.frame);
+			titleRow->addWidget(card.badge);
+			titleRow->addWidget(card.title);
+			titleRow->addWidget(card.state);
+			titleRow->addStretch();
+			card.detail = new QLabel(card.frame);
+			card.detail->setProperty("role", "caption");
+
+			const auto makeChip = [&](QLabel *&icon, QLabel *&text) {
+				auto *chip = new QFrame(card.frame);
+				chip->setStyleSheet("QFrame { background: #1F1F24; border: none; border-radius: 10px; } "
+									"QLabel { background: transparent; border: none; }");
+				auto *chipLayout = new QHBoxLayout(chip);
+				chipLayout->setContentsMargins(8, 3, 10, 3);
+				chipLayout->setSpacing(6);
+				icon = new QLabel(chip);
+				icon->setFixedSize(16, 16);
+				text = new QLabel(chip);
+				text->setStyleSheet("color: #E5E5E5; font-weight: 600; font-size: 9pt;");
+				chipLayout->addWidget(icon);
+				chipLayout->addWidget(text);
+				return chip;
+			};
+			auto *metaRow = new QHBoxLayout();
+			metaRow->setSpacing(8);
+			QLabel *ipIcon = nullptr;
+			metaRow->addWidget(makeChip(ipIcon, card.ip));
+			metaRow->addWidget(makeChip(card.srcIcon, card.srcText));
+			metaRow->addWidget(makeChip(card.outIcon, card.outText));
+			ipIcon->hide();
+			metaRow->addStretch();
+
+			textColumn->addLayout(titleRow);
+			textColumn->addWidget(card.detail);
+			textColumn->addLayout(metaRow);
+
+			card.test = new QPushButton(tr("Test controller"), card.frame);
 			card.test->setCursor(Qt::PointingHandCursor);
-			card.test->setMinimumHeight(34);
+			card.test->setMinimumHeight(36);
 			connect(card.test, &QPushButton::clicked, this, [this, i]() { openTester(i + 1); });
-			rightColumn->addWidget(card.state, 0, Qt::AlignRight);
-			rightColumn->addStretch();
-			rightColumn->addWidget(card.test, 0, Qt::AlignRight);
-			cardLayout->addWidget(card.badge, 0, Qt::AlignTop);
+
+			cardLayout->addWidget(card.deviceIcon, 0, Qt::AlignVCenter);
 			cardLayout->addLayout(textColumn, 1);
-			cardLayout->addLayout(rightColumn);
+			cardLayout->addWidget(card.test, 0, Qt::AlignVCenter);
 			cardsLayout->addWidget(card.frame);
 			slotCards.push_back(card);
 		}
@@ -242,19 +266,15 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 
 		// Pointer to the pairing screen once at least one phone is connected
 		addPhoneCard = new QFrame(listPage);
-		addPhoneCard->setStyleSheet("QFrame { border: 1px dashed #3A3A42; border-radius: 4px; background: transparent; }"
-									"QLabel { border: none; }");
-		auto *addLayout = new QVBoxLayout(addPhoneCard);
-		addLayout->setContentsMargins(16, 14, 16, 14);
-		addLayout->setSpacing(8);
-		auto *addLabel = new QLabel(tr("Connect another phone"), addPhoneCard);
-		addLabel->setAlignment(Qt::AlignCenter);
-		auto *addButton = new QPushButton(tr("Show connection QR"), addPhoneCard);
+		auto *addLayout = new QHBoxLayout(addPhoneCard);
+		addLayout->setContentsMargins(0, 0, 0, 0);
+		addLayout->setSpacing(10);
+		auto *addButton = new QPushButton(tr("Add another controller"), addPhoneCard);
 		addButton->setCursor(Qt::PointingHandCursor);
 		addButton->setMinimumHeight(34);
 		connect(addButton, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(1); });
-		addLayout->addWidget(addLabel);
-		addLayout->addWidget(addButton, 0, Qt::AlignCenter);
+		addLayout->addWidget(addButton);
+		addLayout->addStretch();
 		listLayout->addWidget(addPhoneCard);
 
 		slotNote = new QLabel(listPage);
@@ -275,13 +295,16 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		testerTitle->setProperty("role", "heading");
 		testerHeader->addWidget(backToList);
 		testerHeader->addSpacing(8);
-		testerHeader->addWidget(testerTitle, 1);
+		testerSubtitle = new QLabel(testerPage);
+		testerSubtitle->setProperty("role", "caption");
+		auto *titleColumn = new QVBoxLayout();
+		titleColumn->setSpacing(2);
+		titleColumn->addWidget(testerTitle);
+		titleColumn->addWidget(testerSubtitle);
+		testerHeader->addLayout(titleColumn, 1);
 		testerLayout->addLayout(testerHeader);
 		tester = new ControllerTester(testerPage);
 		testerLayout->addWidget(tester, 1);
-		auto *testerNote = new QLabel(tr("Shows what this PC is receiving from the phone."), testerPage);
-		testerNote->setProperty("role", "caption");
-		testerLayout->addWidget(testerNote);
 		connect(backToList, &QPushButton::clicked, this, [this]() { closeTester(); });
 
 		controllersStack = new QStackedWidget(this);
@@ -619,9 +642,9 @@ void Server::openTester(int slot)
 	{
 		if (client->slot == slot)
 		{
-			testerTitle->setText(tr("Controller %1: %2")
-									 .arg(slot)
-									 .arg(client->name.isEmpty() ? client->socket->peerAddress().toString() : client->name));
+			testerTitle->setText(tr("Controller %1").arg(slot));
+			testerSubtitle->setText(tr("%1  \u00B7  %2  \u00B7  %3")
+										.arg(deviceTitle(*client), client->socket->peerAddress().toString(), outputName(*client)));
 			tester->setState(client->held, client->lx, client->ly, client->rx, client->ry, client->lt, client->rt);
 		}
 	}
@@ -647,6 +670,32 @@ void Server::noteInput(Client &client, const vgp_data_exchange_gamepad_reading &
 		tester->setState(client.held, client.lx, client.ly, client.rx, client.ry, client.lt, client.rt);
 }
 
+QString Server::deviceTitle(const Client &client) const
+{
+	const bool web = client.protocol == Client::Protocol::WebSocket;
+	if (!web)
+		return !client.name.isEmpty() ? client.name : tr("Phone app");
+	const QString n = client.name;
+	const bool generic = n.isEmpty() || n == QStringLiteral("Browser") || n.endsWith(QStringLiteral(" device")) ||
+						 n == QStringLiteral("iPhone") || n == QStringLiteral("iPad");
+	return generic ? tr("Browser controller") : n;
+}
+
+QString Server::outputName(const Client &client) const
+{
+	if (client.ds4)
+		return tr("DualShock 4");
+	switch (serverMode)
+	{
+	case ExecutorType::VigemExecutor:
+		return tr("Xbox 360");
+	case ExecutorType::GamepadExecutor:
+		return tr("Windows gamepad");
+	default:
+		return tr("Keyboard / Mouse");
+	}
+}
+
 void Server::updateSlots()
 {
 	std::vector<int> freeSlots;
@@ -667,23 +716,35 @@ void Server::updateSlots()
 			freeSlots.push_back(i + 1);
 		if (!active)
 			continue;
-		card.badge->setStyleSheet(QString("QLabel { background: %1; color: #000000; border-radius: 22px; "
-										  "font-weight: 800; font-size: 14pt; }")
+		const qreal dpr = devicePixelRatioF();
+		card.badge->setStyleSheet(QString("QLabel { background: %1; color: #000000; border-radius: 12px; "
+										  "font-weight: 800; font-size: 10pt; }")
 									  .arg(color.name()));
 		const bool web = owner->protocol == Client::Protocol::WebSocket;
-		card.title->setText(!owner->name.isEmpty() ? owner->name : owner->socket->peerAddress().toString());
+		card.deviceIcon->setStyleSheet(QString("QLabel { background: rgba(%1,%2,%3,36); border-radius: 12px; }")
+										   .arg(color.red())
+										   .arg(color.green())
+										   .arg(color.blue()));
+		card.deviceIcon->setPixmap(glyphPixmap(web ? Glyph::Browser : Glyph::Phone, color, 28, dpr));
+		card.title->setText(deviceTitle(*owner));
 		card.title->setStyleSheet("font-weight: 700; font-size: 13pt; color: #F5F5F5;");
-		QStringList parts;
-		parts << tr("Controller %1").arg(i + 1) << (web ? tr("Browser") : tr("Android app"));
-		if (!owner->model.isEmpty() && owner->model != owner->name)
-			parts << owner->model;
-		card.detail->setText(parts.join("  \u00B7  "));
-		card.detail->setToolTip(parts.join("\n"));
+		// Platform and browser for web controllers, the phone model for the app
+		QString detail = owner->model;
+		const int sizeAt = detail.lastIndexOf(QStringLiteral(" ("));
+		if (web && sizeAt > 0 && detail.endsWith(QLatin1Char(')')))
+			detail.truncate(sizeAt);
+		if (detail.isEmpty())
+			detail = web ? tr("Web browser") : tr("Android");
+		card.detail->setText(detail);
+		card.detail->setToolTip(owner->model);
 		card.ip->setText(owner->socket->peerAddress().toString());
-		card.input->setText(owner->ds4								  ? tr("DualShock 4 input")
-							: serverMode == ExecutorType::VigemExecutor ? tr("Xbox 360 input")
-							: serverMode == ExecutorType::GamepadExecutor ? tr("Windows virtual gamepad input")
-																		 : tr("Keyboard and mouse input"));
+		card.srcIcon->setPixmap(glyphPixmap(web ? Glyph::Browser : Glyph::Phone, QColor("#BDBDC4"), 16, dpr));
+		card.srcText->setText(web ? tr("Browser") : tr("App"));
+		const Glyph out = serverMode == ExecutorType::KeyboardMouseExecutor ? Glyph::Keyboard
+						  : serverMode == ExecutorType::GamepadExecutor		? Glyph::Gear
+																			: Glyph::Gamepad;
+		card.outIcon->setPixmap(glyphPixmap(out, QColor("#BDBDC4"), 16, dpr));
+		card.outText->setText(outputName(*owner));
 		card.state->setText(tr("Connected"));
 		card.state->setStyleSheet(QString("QLabel { color: %1; background: rgba(%2,%3,%4,40); border-radius: 10px; "
 										  "padding: 3px 12px; font-weight: 600; }")

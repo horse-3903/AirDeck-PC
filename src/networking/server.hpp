@@ -80,6 +80,11 @@ class Server : public QWidget
 		QPushButton *test = nullptr;
 		QLabel *ip = nullptr;
 		QLabel *input = nullptr;
+		QLabel *deviceIcon = nullptr;
+		QLabel *srcIcon = nullptr;
+		QLabel *srcText = nullptr;
+		QLabel *outIcon = nullptr;
+		QLabel *outText = nullptr;
 		QFrame *frame = nullptr;
 	};
 	std::vector<SlotCard> slotCards;
@@ -97,6 +102,8 @@ class Server : public QWidget
 	void showTab(int index);
 	void openTester(int slot);
 	void closeTester();
+	QString deviceTitle(const Client &client) const;
+	QString outputName(const Client &client) const;
 	void noteInput(Client &client, const vgp_data_exchange_gamepad_reading &reading);
 	QStackedWidget *pages = nullptr;
 	QWidget *pagesHolder = nullptr;
@@ -108,6 +115,7 @@ class Server : public QWidget
 	QLabel *slotNote = nullptr;
 	QFrame *addPhoneCard = nullptr;
 	QLabel *testerTitle = nullptr;
+	QLabel *testerSubtitle = nullptr;
 	ControllerTester *tester = nullptr;
 	int testerSlot = 0;
 	bool userPickedTab = false;
