@@ -413,7 +413,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			auto *tab = new QPushButton(this);
 			tab->setCheckable(true);
 			tab->setCursor(Qt::PointingHandCursor);
-			tab->setFixedHeight(52);
+			tab->setFixedHeight(68);
 			tab->setStyleSheet("QPushButton { background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 0; } "
 							   "QPushButton:checked { border-bottom: 2px solid #F2F2F2; } "
 							   "QPushButton:focus { outline: none; }");
