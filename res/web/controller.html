@@ -189,7 +189,7 @@ body:not(.xbox) .xbox-label { display: none; }
 .styles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .stylecard { border: 1px solid var(--border); background: var(--card); border-radius: 12px; padding: 14px 8px; box-sizing: border-box; height: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 8px; text-align: center; font-size: 15px; line-height: 20px; font-weight: 700; }
-.stylecard.sel { background: var(--panel-on); border-color: var(--fg); }
+.stylecard.picked { background: var(--panel-on); border-color: var(--fg); }
 .syms { display: flex; justify-content: center; align-items: center; gap: 14px; height: 26px; width: 100%; flex: none; }
 .syms svg { width: 26px; height: 26px; display: block; flex: none; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--border); font-size: 15px; font-weight: 700; }
@@ -668,7 +668,7 @@ body:not(.xbox) .xbox-label { display: none; }
   function applySettings() {
     applyTheme();
     document.body.classList.toggle("xbox", settings.style === "xbox");
-    document.querySelectorAll("#styleSeg .stylecard").forEach(function (d) { d.classList.toggle("sel", d.dataset.v === settings.style); });
+    document.querySelectorAll("#styleSeg .stylecard").forEach(function (d) { d.classList.toggle("picked", d.dataset.v === settings.style); });
     $("vibSw").classList.toggle("on", settings.vib === "on");
     $("snapSw").classList.toggle("on", settings.snap === "on");
     $("vibHint").textContent = canVibrate ? "Haptic feedback when pressing controls." : "Not available on this browser.";
