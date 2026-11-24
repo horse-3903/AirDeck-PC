@@ -172,16 +172,6 @@ int main(int argc, char *argv[])
 	if (stopRequested)
 		return 0;
 	initToastIdentity();
-	for (int i = 1; i < argc; ++i)
-	{
-		if (QString(argv[i]) == "--test-toast")
-		{
-			const bool shown = showNativeToast("Virtual Gamepad is still running", "Toast test", "Stop server");
-			qInfo() << "Toast test result:" << shown;
-			QThread::msleep(1500);
-			return 0;
-		}
-	}
 	QLocalServer::removeServer(instanceKey);
 	QLocalServer instanceServer;
 	instanceServer.listen(instanceKey);

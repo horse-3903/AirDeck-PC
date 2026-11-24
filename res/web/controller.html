@@ -129,10 +129,6 @@ body:not(.xbox) .xbox-label { display: none; }
     font-size: 14px; font-weight: 600; text-align: center; }
 .act.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .sel { max-width: 55%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel); color: var(--fg); font-size: 14px; touch-action: manipulation; }
-#dbg { position: fixed; top: 1dvh; left: 50%; transform: translateX(-50%); max-width: 70vw; z-index: 25; display: none;
-    background: rgba(0,0,0,.82); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; color: #7CFC9A;
-    font: 11px/1.35 monospace; white-space: pre; pointer-events: none; }
-#dbg.show { display: block; }
 .sec { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 2px; }
 .sec:first-of-type { margin-top: 4px; }
 .dev { font-size: 12px; color: var(--muted); line-height: 1.5; padding: 6px 0; word-break: break-word; }
@@ -185,7 +181,6 @@ body:not(.xbox) .xbox-label { display: none; }
 
 <div id="rotate"><div class="big">Rotate your phone</div><div class="small">The controller needs landscape. Turn your phone sideways and unlock rotation if it does not turn.</div></div>
 <div id="toast"></div>
-<div id="dbg"></div>
 
 <div id="sheetWrap"><div id="sheet">
   <div class="head"><h2>Controller menu</h2><div class="act primary" id="closeBtn">Close</div></div>
@@ -199,9 +194,6 @@ body:not(.xbox) .xbox-label { display: none; }
   <div class="row"><span>Right trigger<br><span class="hint" id="trHint"></span></span><select id="trigR" class="sel"></select></div>
   <div class="row"><span>Vibration<br><span class="hint" id="vibHint">Taps vibrate</span></span><span class="seg" id="vibSeg"><div data-v="on">On</div><div data-v="off">Off</div></span></div>
   <div class="row"><span>Fullscreen<br><span class="hint" id="fsHint"></span></span><span class="act" id="fsBtn">Enter</span></div>
-  <div class="sec">Debug</div>
-  <div class="row"><span>Live data<br><span class="hint">Shows what is being sent to the PC</span></span><span class="seg" id="dbgSeg"><div data-v="on">On</div><div data-v="off">Off</div></span></div>
-  <div class="row"><span>Send log<br><span class="hint" id="logHint"></span></span><span class="act" id="logBtn">Copy</span></div>
   <div class="sec">Backup</div>
   <div class="row"><span>Settings<br><span class="hint">Copy or paste as text, or use a file</span></span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><span class="act" id="expBtn">Export</span><span class="act" id="impBtn">Import</span></span></div>
   <textarea id="ioBox" spellcheck="false" placeholder="Paste exported settings here, then tap Import again"></textarea>
@@ -257,22 +249,8 @@ body:not(.xbox) .xbox-label { display: none; }
     vib: store.get("vgp-vib", "on"),
     snap: store.get("vgp-snap", "on"),
     trigL: store.get("vgp-trigL", "digital"),
-    trigR: store.get("vgp-trigR", "digital"),
-    dbg: store.get("vgp-dbg", "off")
+    trigR: store.get("vgp-trigR", "digital")
   };
-  var sendLog = [], sentCount = 0;
-  var BTN_NAMES = ["Menu", "View", "A", "B", "X", "Y", "Up", "Down", "Left", "Right", "L1", "R1"];
-  function bitNames(b) { var o = []; for (var i = 0; i < BTN_NAMES.length; i++) if (b & (1 << i)) o.push(BTN_NAMES[i]); return o.length ? o.join("+") : "-"; }
-  function showDbg(msg, d, u) {
-    $("dbg").textContent = "sent #" + sentCount + "  slot " + slot + "  ws " + (ws ? ws.readyState : "-") +
-      "\nheld " + bitNames(held) + "  down " + bitNames(d) + "  up " + bitNames(u) +
-      "\nL " + msg.lx.toFixed(2) + "," + msg.ly.toFixed(2) + "  R " + msg.rx.toFixed(2) + "," + msg.ry.toFixed(2) +
-      "  LT " + msg.lt.toFixed(2) + "  RT " + msg.rt.toFixed(2);
-  }
-  window.addEventListener("error", function (e) {
-    sendLog.push("ERROR " + e.message + " line " + e.lineno);
-    if (settings.dbg === "on") $("dbg").textContent = "ERROR " + e.message + " line " + e.lineno;
-  });
   // slide, ramp, force and tilt are implemented but hidden from the menu
   var OFFERED = ["digital", "drag", "zones"];
   var TRIG_MODES = [
@@ -385,14 +363,7 @@ body:not(.xbox) .xbox-label { display: none; }
     u &= ~both;
     var msg = { t: "state", d: d, u: u,
       lx: +ax.lx.toFixed(3), ly: +ax.ly.toFixed(3), rx: +ax.rx.toFixed(3), ry: +ax.ry.toFixed(3), lt: ax.lt, rt: ax.rt };
-    var text = JSON.stringify(msg);
-    try { ws.send(text); } catch (e) { return; }
-    sentCount++;
-    if (d || u || dirty) {
-      sendLog.push(new Date().toISOString().slice(11, 23) + " " + text);
-      if (sendLog.length > 300) sendLog.shift();
-    }
-    if (settings.dbg === "on") showDbg(msg, d, u);
+    try { ws.send(JSON.stringify(msg)); } catch (e) { return; }
     lastSend = now; dirty = (pendUp !== 0);
     if (settings.name !== sentName) {
       ws.send(JSON.stringify({ t: "hello", name: settings.name, model: guessModel() })); sentName = settings.name;
@@ -571,9 +542,6 @@ body:not(.xbox) .xbox-label { display: none; }
     });
     $("l2").updateZones(); $("r2").updateZones();
     $("nameInput").value = settings.name;
-    document.querySelectorAll("#dbgSeg div").forEach(function (d) { d.classList.toggle("sel", d.dataset.v === settings.dbg); });
-    $("dbg").classList.toggle("show", settings.dbg === "on");
-    $("logHint").textContent = sendLog.length + " messages kept";
     document.querySelectorAll("#snapSeg div").forEach(function (d) { d.classList.toggle("sel", d.dataset.v === settings.snap); });
     $("devInfo").textContent = devInfo.label + (devInfo.screen ? "  \u00B7  " + devInfo.screen : "") + (devInfo.touch ? "  \u00B7  " + devInfo.touch : "");
   }
@@ -612,15 +580,6 @@ body:not(.xbox) .xbox-label { display: none; }
   });
   ["trigL", "trigR"].forEach(function (k) {
     $(k).addEventListener("change", function () { settings[k] = this.value; store.set("vgp-" + k, this.value); applySettings(); });
-  });
-  document.querySelectorAll("#dbgSeg div").forEach(function (d) {
-    d.addEventListener("click", function () { settings.dbg = d.dataset.v; store.set("vgp-dbg", settings.dbg); applySettings(); });
-  });
-  $("logBtn").addEventListener("click", function () {
-    var t = sendLog.join("\n"), box = $("ioBox");
-    box.style.display = "block"; box.value = t;
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { toast("Log copied"); }, function () { toast("Select the text to copy"); });
-    else toast("Select the text to copy");
   });
   $("expBtn").addEventListener("click", function () {
     var t = exportText(), box = $("ioBox");

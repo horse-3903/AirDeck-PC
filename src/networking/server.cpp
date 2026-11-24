@@ -1278,8 +1278,6 @@ void Server::handleWebMessage(Client &client, const QByteArray &payload)
 	{
 		client.name = message.value("name").toString().left(40).trimmed();
 		client.model = message.value("model").toString().left(60).trimmed();
-		qInfo().noquote() << "[web] hello from" << client.socket->peerAddress().toString() << "slot" << client.slot
-						  << "name=" << client.name << "model=" << client.model;
 		updateSlots();
 		return;
 	}
@@ -1305,38 +1303,6 @@ void Server::handleWebMessage(Client &client, const QByteArray &payload)
 	reading.left_trigger = trigger("lt");
 	reading.right_trigger = trigger("rt");
 	requestCount++;
-	{
-		static const char *const names[] = {"Menu", "View", "A", "B", "X", "Y", "Up", "Down", "Left", "Right",
-											"L1", "R1", "L3", "R3"};
-		const auto decode = [](uint32_t bits) {
-			QStringList list;
-			for (int i = 0; i < 14; ++i)
-				if (bits & (1u << i))
-					list << names[i];
-			return list.isEmpty() ? QStringLiteral("-") : list.join('+');
-		};
-		const bool axesChanged = reading.left_thumbstick_x != client.lx || reading.left_thumbstick_y != client.ly ||
-								 reading.right_thumbstick_x != client.rx || reading.right_thumbstick_y != client.ry ||
-								 reading.left_trigger != client.lt || reading.right_trigger != client.rt;
-		// Only log when something happened, heartbeats would flood the file
-		static QElapsedTimer axisClock;
-		const bool axisDue = axesChanged && (!axisClock.isValid() || axisClock.elapsed() > 250);
-		if (axisDue)
-			axisClock.restart();
-		if (reading.buttons_down || reading.buttons_up || axisDue)
-			qInfo().noquote() << QString("[web] slot %1 down=%2 up=%3 held=0x%4 L=(%5,%6) R=(%7,%8) LT=%9 RT=%10 raw=%11")
-									 .arg(client.slot)
-									 .arg(decode(reading.buttons_down))
-									 .arg(decode(reading.buttons_up))
-									 .arg(client.held, 0, 16)
-									 .arg(reading.left_thumbstick_x, 0, 'f', 2)
-									 .arg(reading.left_thumbstick_y, 0, 'f', 2)
-									 .arg(reading.right_thumbstick_x, 0, 'f', 2)
-									 .arg(reading.right_thumbstick_y, 0, 'f', 2)
-									 .arg(reading.left_trigger, 0, 'f', 2)
-									 .arg(reading.right_trigger, 0, 'f', 2)
-									 .arg(QString::fromUtf8(payload));
-	}
 	noteInput(client, reading);
 	activeExecutor->inject_gamepad_state(reading);
 }
