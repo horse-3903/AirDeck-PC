@@ -271,7 +271,15 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			card.test = new QPushButton(tr("Test controller"), card.details);
 			card.test->setCursor(Qt::PointingHandCursor);
 			card.test->setMinimumHeight(34);
-			connect(card.test, &QPushButton::clicked, this, [this, i]() { openTester(i + 1); });
+			connect(card.test, &QPushButton::clicked, this, [this, i]() {
+				if (slotCards[i].occupied)
+					openTester(i + 1);
+				else
+				{
+					userPickedTab = true;
+					showTab(1);
+				}
+			});
 			detailsLayout->addSpacing(2);
 			QSizePolicy keepTest = card.test->sizePolicy();
 			keepTest.setRetainSizeWhenHidden(true);
@@ -720,8 +728,24 @@ QString Server::outputName(const Client &client) const
 void Server::refreshIcon(SlotCard &card)
 {
 	const QSize size = card.deviceIcon->size();
-	if (size.width() > 8 && size.height() > 8 && card.iconColor.isValid())
-		card.deviceIcon->setPixmap(controllerPixmap(card.iconPs4, card.iconColor, size, devicePixelRatioF()));
+	if (size.width() <= 8 || size.height() <= 8 || !card.iconColor.isValid())
+		return;
+	const qreal dpr = devicePixelRatioF();
+	if (card.occupied)
+	{
+		card.deviceIcon->setPixmap(controllerPixmap(card.iconPs4, card.iconColor, size, dpr));
+		return;
+	}
+	// An empty slot shows a smaller, quieter controller in the middle of the same space
+	QPixmap full(size * dpr);
+	full.setDevicePixelRatio(dpr);
+	full.fill(Qt::transparent);
+	const QSize inner(size.width() * 0.55, size.height() * 0.62);
+	QPainter p(&full);
+	p.drawPixmap((size.width() - inner.width()) / 2, (size.height() - inner.height()) / 2,
+				 controllerPixmap(card.iconPs4, card.iconColor, inner, dpr));
+	p.end();
+	card.deviceIcon->setPixmap(full);
 }
 
 void Server::updateSlots()
@@ -759,21 +783,36 @@ void Server::updateSlots()
 			tip = tip.isEmpty() ? note : tip + QStringLiteral("\n") + note;
 		}
 		card.frame->setToolTip(tip);
-		card.badge->setStyleSheet(QString("font-weight: 800; font-size: 15pt; color: %1;")
-									  .arg(active ? slot.name() : QStringLiteral("#4A4A52")));
+		if (active)
+		{
+			card.badge->setText(QString::number(i + 1));
+			card.badge->setFixedSize(32, 28);
+			card.badge->move(16, 10);
+			card.badge->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+			card.badge->setStyleSheet(QString("font-weight: 800; font-size: 15pt; color: %1;").arg(slot.name()));
+		}
+		else
+		{
+			// Empty slots get a quiet pill like a placeholder
+			card.badge->setText(QString("%1").arg(i + 1, 2, 10, QLatin1Char('0')));
+			card.badge->setFixedSize(34, 22);
+			card.badge->move(16, 12);
+			card.badge->setAlignment(Qt::AlignCenter);
+			card.badge->setStyleSheet("background: #26262B; border-radius: 11px; font-weight: 700; font-size: 9pt; color: #BDBDC4;");
+		}
 		card.iconPs4 = ps4;
 		card.iconColor = art;
 		refreshIcon(card);
 
 		card.chips->setVisible(active);
-		card.test->setVisible(active);
+		card.test->setText(active ? tr("Test controller") : tr("+  Connect device"));
 		card.test->setStyleSheet("QPushButton { color: #F5F5F5; border: 1px solid #4A4A52; border-radius: 4px; background: transparent; } "
 								 "QPushButton:hover { background: #1E1E22; border-color: #6A6A72; } "
 								 "QPushButton:pressed { background: #141416; }");
 		if (!active)
 		{
-			card.title->setText(tr("Available"));
-			card.title->setStyleSheet("font-size: 10pt; color: #6B6B73;");
+			card.title->setText(tr("Waiting for controller"));
+			card.title->setStyleSheet("font-size: 11pt; font-weight: 600; color: #8A8A92;");
 			card.detail->setText(QStringLiteral("\u00A0"));
 			continue;
 		}
