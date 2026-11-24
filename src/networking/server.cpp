@@ -722,7 +722,7 @@ void Server::updateStatus()
 		countPill->setText(tr("%1  \u00B7  Port %2").arg(modeName).arg(port));
 	}
 	if (summaryLabel != nullptr)
-		summaryLabel->setText(tr("%1 connected  ·  %2 available").arg(active).arg(capacity - active));
+		summaryLabel->setText(tr("%1 connected  \u00B7  %2 available").arg(active).arg(capacity - active));
 	if (tabCount != nullptr)
 		tabCount->setText(QString::number(active));
 	if (!userPickedTab && pages != nullptr)
