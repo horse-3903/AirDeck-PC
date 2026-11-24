@@ -57,7 +57,7 @@ html.glow #app::before { opacity: 1; }
 .stick.active { border-color: var(--fg); }
 .stick.click { border-color: var(--fg); box-shadow: 0 0 0 calc(.6 * var(--u)) var(--panel-on); }
 .stick.click .knob { background: var(--fg); }
-#ls { left: calc(16% - calc(15 * var(--u))); top: calc(calc(52 * var(--u)) - calc(15 * var(--u))); }
+#ls { left: calc(16% - calc(15 * var(--u))); top: calc(calc(56 * var(--u)) - calc(15 * var(--u))); }
 #rs { left: calc(70% - calc(15 * var(--u))); top: calc(calc(79 * var(--u)) - calc(15 * var(--u))); }
 
 /* d-pad is one cross, face buttons a diamond */
@@ -83,7 +83,7 @@ html.glow #app::before { opacity: 1; }
 #dpadps .left { left: 9.5%; top: 31%; }
 body:not(.xbox) #dpad { display: none; }
 body.xbox #dpadps { display: none; }
-#face { width: calc(32 * var(--u)); height: calc(32 * var(--u)); left: calc(84% - calc(16 * var(--u))); top: calc(calc(52 * var(--u)) - calc(16 * var(--u))); gap: calc(.8 * var(--u)); }
+#face { width: calc(32 * var(--u)); height: calc(32 * var(--u)); left: calc(84% - calc(16 * var(--u))); top: calc(calc(56 * var(--u)) - calc(16 * var(--u))); gap: calc(.8 * var(--u)); }
 .cluster .btn { display: flex; align-items: center; justify-content: center; }
 /* a raised plus on a round base: four arms with no outlines, so the cross reads as one piece */
 #dpad .btn { position: absolute; display: block; border: 0; background: transparent; }
@@ -119,10 +119,10 @@ body:not(.xbox) .face-xbox { display: none; }
 /* triggers on top, bumpers under them, both in the thumb zone of each hand */
 .pill { position: absolute; display: flex; align-items: center; justify-content: center;
     border-radius: 999px; font-weight: 700; font-size: calc(3 * var(--u)); color: var(--fg); }
-#l2, #r2 { top: calc(4 * var(--u)); width: 17%; height: calc(14 * var(--u)); border-radius: calc(1.8 * var(--u)); overflow: hidden; }
-#l1, #r1 { top: calc(20 * var(--u)); width: 17%; height: calc(10 * var(--u)); border-radius: calc(1.8 * var(--u)); font-size: calc(2.6 * var(--u)); }
-#l2, #l1 { left: 7.5%; }
-#r2, #r1 { right: 7.5%; }
+#l2, #r2 { top: calc(3 * var(--u)); width: calc(16.7 * var(--u)); height: calc(20.8 * var(--u)); border-radius: calc(4.9 * var(--u)) calc(4.9 * var(--u)) calc(1.9 * var(--u)) calc(1.9 * var(--u)); overflow: hidden; }
+#l1, #r1 { top: calc(27 * var(--u)); width: calc(16.7 * var(--u)); height: calc(10 * var(--u)); border-radius: calc(1.8 * var(--u)); font-size: calc(2.6 * var(--u)); }
+#l2, #l1 { left: calc(16% - calc(8.35 * var(--u))); }
+#r2, #r1 { right: calc(16% - calc(8.35 * var(--u))); }
 .ico { height: 56%; width: auto; max-width: 70%; }
 .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: var(--fg); opacity: .35; pointer-events: none; }
 .tl { position: relative; pointer-events: none; text-align: center; }
