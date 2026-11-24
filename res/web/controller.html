@@ -56,16 +56,16 @@ html.glow #app::before { opacity: 1; }
 .stick.active { border-color: var(--fg); }
 .stick.click { border-color: var(--fg); box-shadow: 0 0 0 .6dvh var(--panel-on); }
 .stick.click .knob { background: var(--fg); }
-#ls { left: calc(16% - 15dvh); top: calc(47dvh - 15dvh); }
-#rs { left: calc(70% - 15dvh); top: calc(70dvh - 15dvh); }
+#ls { left: calc(16% - 15dvh); top: calc(52dvh - 15dvh); }
+#rs { left: calc(70% - 15dvh); top: calc(79dvh - 15dvh); }
 
 /* d-pad is one cross, face buttons a diamond */
 .cluster { position: absolute; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); }
-#dpad { display: block; width: 30dvh; height: 30dvh; left: calc(30% - 15dvh); top: calc(70dvh - 15dvh); padding: 0;
+#dpad { display: block; width: 30dvh; height: 30dvh; left: calc(30% - 15dvh); top: calc(79dvh - 15dvh); padding: 0;
     border-radius: 50%; background: transparent; border: 0; overflow: visible; }
 #dpad .dpv { position: absolute; left: 4.1%; top: 4.1%; width: 91.8%; height: 91.8%; pointer-events: none; }
 /* PlayStation mode: the supplied SVG, a round base with four keys; each key is its own button so it lights when pressed */
-#dpadps { position: absolute; width: 30dvh; height: 30dvh; left: calc(30% - 15dvh); top: calc(70dvh - 15dvh); }
+#dpadps { position: absolute; width: 30dvh; height: 30dvh; left: calc(30% - 15dvh); top: calc(79dvh - 15dvh); }
 #dpadps .dpv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; transform: scale(.84); }
 #dpadps .btn { position: absolute; width: 38%; height: 38%; border: 0 !important; background: transparent !important;
     transform: none !important; padding: 0; }
@@ -82,7 +82,7 @@ html.glow #app::before { opacity: 1; }
 #dpadps .left { left: 9.5%; top: 31%; }
 body:not(.xbox) #dpad { display: none; }
 body.xbox #dpadps { display: none; }
-#face { width: 32dvh; height: 32dvh; left: calc(84% - 16dvh); top: calc(47dvh - 16dvh); gap: .8dvh; }
+#face { width: 32dvh; height: 32dvh; left: calc(84% - 16dvh); top: calc(52dvh - 16dvh); gap: .8dvh; }
 .cluster .btn { display: flex; align-items: center; justify-content: center; }
 /* a raised plus on a round base: four arms with no outlines, so the cross reads as one piece */
 #dpad .btn { position: absolute; display: block; border: 0; background: transparent; }
