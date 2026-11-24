@@ -621,7 +621,7 @@ body:not(.xbox) .xbox-label { display: none; }
     }
   }
   function updateFsPill() {
-    var standalone = window.matchMedia && window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches;
+    var standalone = !document.fullscreenElement && window.matchMedia && window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches;
     var can = !isIOS && !!document.documentElement.requestFullscreen && !standalone;
     $("fsPill").classList.toggle("show", can);
     var fs = !!document.fullscreenElement, path = $("fsPill").querySelector("path");
