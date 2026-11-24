@@ -6,6 +6,7 @@
 #include "buttoninputbox.hpp"
 #include "ui_preferences.h"
 
+#include <QCheckBox>
 #include <QRadioButton>
 #include <QScrollArea>
 
@@ -71,7 +72,16 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 	ui->pointerSlider->adjustSize();
 	ui->pointerSlider->setMaximumWidth(320);
 	ui->portSpinBox->setMaximumWidth(140);
-	ui->portSpinBox->setSpecialValueText(tr("Random"));
+	ui->portSpinBox->setRange(1024, 65535);
+	ui->portSpinBox->setValue(SettingsSingleton::DEFAULT_PORT_NUMBER);
+	ui->portSpinBox->setToolTip(tr("The port the server uses every time it starts (1024-65535)."));
+	{
+		auto *randomPort = new QCheckBox(tr("Use a different port each time"), this);
+		randomPort->setObjectName("randomPortCheck");
+		if (auto *row = qobject_cast<QHBoxLayout *>(ui->horizontalLayout_port))
+			row->insertWidget(row->indexOf(ui->portSpinBox) + 1, randomPort);
+		connect(randomPort, &QCheckBox::toggled, ui->portSpinBox, [this](bool random) { ui->portSpinBox->setEnabled(!random); });
+	}
 	ui->profileComboBox->setMaximumWidth(320);
 	if (auto *profilesRow = qobject_cast<QHBoxLayout *>(ui->profilesGroup->layout()))
 		profilesRow->addStretch();
@@ -222,7 +232,8 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		settings.setMouseSensitivity(ui->pointerSlider->value() * 100);
 
 		// Save port number now
-		settings.setPort(ui->portSpinBox->value());
+		auto *randomPort = findChild<QCheckBox *>("randomPortCheck");
+		settings.setPort(randomPort != nullptr && randomPort->isChecked() ? 0 : ui->portSpinBox->value());
 
 		// Save executor type
 		ExecutorType executorType = ui->gamepadExecutorRadio->isChecked()
@@ -593,8 +604,12 @@ You can share profiles with others (same OS only) by copying the files in the Pr
 
 void Preferences::load_port()
 {
-	int port = SettingsSingleton::instance().port();
-	ui->portSpinBox->setValue(port);
+	const int port = SettingsSingleton::instance().port();
+	const bool random = port < 1024 || port > 65535;
+	ui->portSpinBox->setValue(random ? SettingsSingleton::DEFAULT_PORT_NUMBER : port);
+	ui->portSpinBox->setEnabled(!random);
+	if (auto *check = findChild<QCheckBox *>("randomPortCheck"))
+		check->setChecked(random);
 }
 
 void Preferences::change_port(int value)
