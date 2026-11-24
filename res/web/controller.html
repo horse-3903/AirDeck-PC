@@ -468,8 +468,8 @@ body:not(.xbox) .xbox-label { display: none; }
   function buzz(ms, who) {
     if (!canVibrate || settings.vib !== "on") return;
     if (typeof navigator.vibrate === "function") {
-      var ok = navigator.vibrate(ms || 60);
-      if (vibLog < 40 && ws && ws.readyState === 1) { vibLog++; ws.send(JSON.stringify({ t: "dbg", msg: "vibrate(" + (ms || 60) + ") " + (who || "?") + " returned " + ok + ", activation " + (navigator.userActivation ? navigator.userActivation.hasBeenActive : "n/a") })); }
+      var ok = navigator.vibrate(ms || 30);
+      if (vibLog < 40 && ws && ws.readyState === 1) { vibLog++; ws.send(JSON.stringify({ t: "dbg", msg: "vibrate(" + (ms || 30) + ") " + (who || "?") + " returned " + ok + ", activation " + (navigator.userActivation ? navigator.userActivation.hasBeenActive : "n/a") })); }
       return;
     }
     if (!hapticLabel) {
@@ -537,7 +537,7 @@ body:not(.xbox) .xbox-label { display: none; }
     function mode() { return settings[key === "lt" ? "trigL" : "trigR"]; }
     function setv(raw) {
       var v = raw < 0.05 ? 0 : (raw >= 0.9 ? 1 : raw);
-      if (Math.floor(v * 4) > Math.floor(level * 4) && mode() !== "digital") buzz(25);
+      if (Math.floor(v * 4) > Math.floor(level * 4) && mode() !== "digital") buzz(18);
       level = v; ax[key] = v; dirty = true;
       fill.style.height = (v * 100) + "%";
       pct.textContent = id !== null && mode() !== "digital" ? Math.round(v * 100) + "%" : "";
