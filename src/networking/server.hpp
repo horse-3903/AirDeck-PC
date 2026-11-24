@@ -10,6 +10,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QEvent>
 #include "../ui/controllertester.hpp"
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -92,11 +93,14 @@ class Server : public QWidget
 	void sendWebFrame(QTcpSocket *socket, const QByteArray &payload, int opcode = 1);
 	void sendWebJson(Client &client, const QJsonObject &object);
 	void updateQrPixmaps();
+	void flattenLabels();
 	void showTab(int index);
 	void openTester(int slot);
 	void closeTester();
 	void noteInput(Client &client, const vgp_data_exchange_gamepad_reading &reading);
 	QStackedWidget *pages = nullptr;
+	QWidget *pagesHolder = nullptr;
+	bool eventFilter(QObject *watched, QEvent *event) override;
 	QStackedWidget *controllersStack = nullptr;
 	QPushButton *tabControllers = nullptr;
 	QPushButton *tabConnect = nullptr;

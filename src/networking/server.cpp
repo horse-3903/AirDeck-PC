@@ -289,8 +289,6 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 
 		pages = new QStackedWidget(this);
 		// Wrapped labels report a very tall minimum at narrow widths, which forced the whole page to scroll
-		pages->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Ignored);
-		pages->setMinimumHeight(480);
 		pages->addWidget(controllersStack);
 		pages->addWidget(connectPage);
 
@@ -316,7 +314,14 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		connect(tabControllers, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(0); });
 		connect(tabConnect, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(1); });
 		ui->verticalLayout->insertLayout(1, tabRow);
-		ui->verticalLayout->insertWidget(2, pages, 1);
+		// A holder without a layout never reports height-for-width, which is what made the scroll area
+		// stretch the page to the tallest wrapped text layout
+		pagesHolder = new QWidget(this);
+		pagesHolder->setMinimumSize(560, 480);
+		pagesHolder->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+		pages->setParent(pagesHolder);
+		pagesHolder->installEventFilter(this);
+		ui->verticalLayout->insertWidget(2, pagesHolder, 1);
 		ui->clientLabel->clear();
 		ui->clientLabel->hide();
 		showTab(1);
@@ -346,6 +351,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 
 	// The home screen connects to statusChanged after construction, so announce the state again
 	QTimer::singleShot(0, this, [this]() { updateStatus(); });
+	flattenLabels();
 	qDebug() << "Server widget initialized";
 }
 
@@ -493,7 +499,8 @@ void Server::initServer()
 			if (ui->IPList->count() > 0)
 				ui->hintLabel->setText(web ? tr("Open the address below in the phone's browser, or scan the QR code with its camera.")
 										   : appHint);
-		};
+		flattenLabels();
+			};
 		connect(appButton, &QPushButton::clicked, this, [choose]() { choose(false); });
 		connect(webButton, &QPushButton::clicked, this, [choose]() { choose(true); });
 
@@ -697,6 +704,7 @@ void Server::updateSlots()
 			note += tr("  \u00B7  XInput games generally support up to 4 controllers. Controllers 5 and 6 appear "
 					   "as PlayStation controllers.");
 		slotNote->setText(note);
+		flattenLabels();
 	}
 	// The tester follows one controller; leave it when that controller goes away
 	if (testerSlot != 0)
@@ -1205,6 +1213,29 @@ void Server::handleWebMessage(Client &client, const QByteArray &payload)
 	activeExecutor->inject_gamepad_state(reading);
 }
 
+// Wrapped labels ask their parents for height-for-width, which made the scroll area size the whole page
+// to the tallest wrapped layout. Their minimum heights are set explicitly, so opt out.
+bool Server::eventFilter(QObject *watched, QEvent *event)
+{
+	if (watched == pagesHolder && event->type() == QEvent::Resize && pages != nullptr)
+		pages->setGeometry(pagesHolder->rect());
+	return QWidget::eventFilter(watched, event);
+}
+
+void Server::flattenLabels()
+{
+	const auto labels = findChildren<QLabel *>();
+	for (QLabel *label : labels)
+	{
+		QSizePolicy policy = label->sizePolicy();
+		if (policy.hasHeightForWidth())
+		{
+			policy.setHeightForWidth(false);
+			label->setSizePolicy(policy);
+		}
+	}
+}
+
 void Server::updateQrPixmaps()
 {
 	for (size_t i = 0; i < qrLabels.size(); ++i)
@@ -1215,6 +1246,7 @@ void Server::updateQrPixmaps()
 	}
 	ui->qrCaption->setText(webQr ? tr("Scan with the phone camera to open the web controller")
 								 : tr("Scan with the Virtual Gamepad app"));
+	flattenLabels();
 }
 
 void Server::destroyServer()

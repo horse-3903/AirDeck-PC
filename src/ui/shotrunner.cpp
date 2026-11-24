@@ -15,6 +15,7 @@
 #include <QStackedWidget>
 #include <QTabWidget>
 #include <QTextStream>
+#include <functional>
 
 ShotRunner::ShotRunner(MainWindow *window, const QString &folder, QObject *parent)
 	: QObject(parent), m_window(window), m_folder(folder)
@@ -240,7 +241,26 @@ void ShotRunner::start()
 	schedule([this] { click(button("startButton")); });
 	schedule([this] { saveWindow("18-server-vigem-waiting"); });
 	schedule([this] { resizeWindow(960, 760); });
-	schedule([this] { saveWindow("19-server-vigem-waiting-tall"); resizeWindow(960, 540); });
+	schedule([this] {
+		saveWindow("19-server-vigem-waiting-tall");
+		QFile dbg(m_folder + "/dbg.txt");
+		if (dbg.open(QIODevice::WriteOnly | QIODevice::Text))
+		{
+			QTextStream t(&dbg);
+			std::function<void(QWidget *, int)> walk = [&](QWidget *w, int d) {
+				if (d > 7 || !w->isVisible())
+					return;
+				t << QString(d * 2, ' ') << w->metaObject()->className() << ' ' << w->objectName() << " min "
+				  << w->minimumSizeHint().width() << 'x' << w->minimumSizeHint().height() << " actual " << w->height() << " hfw " << w->hasHeightForWidth() << " h4w " << (w->hasHeightForWidth() ? w->heightForWidth(w->width()) : -1)
+				  << '\n';
+				for (QObject *c : w->children())
+					if (auto *cw = qobject_cast<QWidget *>(c))
+						walk(cw, d + 1);
+			};
+			walk(m_window, 0);
+		}
+		resizeWindow(960, 540);
+	});
 	schedule([this] { click(button(QStringLiteral("Back to Home"))); });
 	schedule([this] { saveWindow("20-home-server-running"); });
 	schedule([this] { click(button("startButton")); });
