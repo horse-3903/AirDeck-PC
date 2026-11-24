@@ -773,23 +773,13 @@ void Server::updateSlots()
 			tip = tip.isEmpty() ? note : tip + QStringLiteral("\n") + note;
 		}
 		card.frame->setToolTip(tip);
-		if (active)
-		{
-			card.badge->setText(QString::number(i + 1));
-			card.badge->setFixedSize(32, 28);
-			card.badge->move(16, 10);
-			card.badge->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-			card.badge->setStyleSheet(QString("font-weight: 800; font-size: 15pt; color: %1;").arg(slot.name()));
-		}
-		else
-		{
-			// Empty slots get a quiet pill like a placeholder
-			card.badge->setText(QString("%1").arg(i + 1, 2, 10, QLatin1Char('0')));
-			card.badge->setFixedSize(34, 22);
-			card.badge->move(16, 12);
-			card.badge->setAlignment(Qt::AlignCenter);
-			card.badge->setStyleSheet("background: #26262B; border-radius: 11px; font-weight: 700; font-size: 9pt; color: #BDBDC4;");
-		}
+		// Same number style for every slot, grey until a controller is connected
+		card.badge->setText(QString::number(i + 1));
+		card.badge->setFixedSize(32, 28);
+		card.badge->move(16, 10);
+		card.badge->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+		card.badge->setStyleSheet(QString("font-weight: 800; font-size: 15pt; color: %1;")
+									  .arg(active ? slot.name() : QStringLiteral("#4A4A52")));
 		card.iconPs4 = ps4;
 		card.iconColor = art;
 		refreshIcon(card);
