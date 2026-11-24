@@ -277,7 +277,9 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 				}
 			});
 			detailsLayout->addStretch(1);
-			detailsLayout->addSpacing(2);
+			// Equal to the blank strip under the artwork, so the text sits halfway between artwork and button
+			card.padSpacer = new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::Fixed);
+			detailsLayout->addItem(card.padSpacer);
 			QSizePolicy keepTest = card.test->sizePolicy();
 			keepTest.setRetainSizeWhenHidden(true);
 			card.test->setSizePolicy(keepTest);
@@ -733,6 +735,16 @@ void Server::refreshIcon(SlotCard &card)
 	full.setDevicePixelRatio(dpr);
 	full.fill(Qt::transparent);
 	const QSize inner(size.width() * 0.55, size.height() * 0.62);
+	if (card.padSpacer != nullptr)
+	{
+		const double fit = std::min((inner.width() - 8) / 200.0, (inner.height() - 8) / 148.0);
+		const int pad = std::max(0, static_cast<int>((size.height() - 148 * fit) / 2));
+		if (card.padSpacer->sizeHint().height() != pad)
+		{
+			card.padSpacer->changeSize(0, pad, QSizePolicy::Minimum, QSizePolicy::Fixed);
+			card.details->layout()->invalidate();
+		}
+	}
 	QPainter p(&full);
 	p.drawPixmap((size.width() - inner.width()) / 2, (size.height() - inner.height()) / 2,
 				 controllerPixmap(card.iconPs4, card.iconColor, inner, dpr));

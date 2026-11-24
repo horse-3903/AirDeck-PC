@@ -10,6 +10,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QSpacerItem>
 #include <QEvent>
 #include "../ui/controllertester.hpp"
 #include <QTcpServer>
@@ -88,6 +89,7 @@ class Server : public QWidget
 		QFrame *frame = nullptr;
 		QWidget *details = nullptr;
 		QWidget *chips = nullptr;
+		QSpacerItem *padSpacer = nullptr;
 		bool occupied = false;
 		bool iconPs4 = false;
 		QColor iconColor;
