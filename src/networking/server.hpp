@@ -127,7 +127,6 @@ class Server : public QWidget
 	QPushButton *viewInput = nullptr;
 	QPushButton *homeBtn = nullptr;
 	QPushButton *restartBtn = nullptr;
-	QLabel *statusDot = nullptr;
 	QLabel *tabIcon[2] = {nullptr, nullptr};
 	QLabel *tabText[2] = {nullptr, nullptr};
 	QLabel *tabCount = nullptr;

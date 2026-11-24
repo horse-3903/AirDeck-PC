@@ -214,10 +214,6 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		ui->headerLayout->removeWidget(ui->statusLabel);
 		auto *statusRow = new QHBoxLayout();
 		statusRow->setSpacing(8);
-		statusDot = new QLabel(this);
-		statusDot->setFixedSize(10, 10);
-		statusDot->setStyleSheet("background: #34C759; border-radius: 5px;");
-		statusRow->addWidget(statusDot, 0, Qt::AlignVCenter);
 		statusRow->addWidget(ui->statusLabel, 1);
 		titleColumn->addLayout(statusRow);
 		titleColumn->addLayout(pillRow);
@@ -417,7 +413,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			auto *tab = new QPushButton(this);
 			tab->setCheckable(true);
 			tab->setCursor(Qt::PointingHandCursor);
-			tab->setFixedHeight(38);
+			tab->setFixedHeight(52);
 			tab->setStyleSheet("QPushButton { background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 0; } "
 							   "QPushButton:checked { border-bottom: 2px solid #F2F2F2; } "
 							   "QPushButton:focus { outline: none; }");
@@ -726,9 +722,7 @@ void Server::updateStatus()
 		countPill->setText(tr("%1  \u00B7  Port %2").arg(modeName).arg(port));
 	}
 	if (summaryLabel != nullptr)
-		summaryLabel->setText(QStringLiteral("<span style='color:%1'>&#9679;</span>&nbsp; %2")
-								  .arg(active > 0 ? "#34C759" : "#6A6A72",
-									   tr("%1 connected  \u00B7  %2 available").arg(active).arg(capacity - active)));
+		summaryLabel->setText(tr("%1 connected  ·  %2 available").arg(active).arg(capacity - active));
 	if (tabCount != nullptr)
 		tabCount->setText(QString::number(active));
 	if (!userPickedTab && pages != nullptr)
@@ -848,7 +842,6 @@ void Server::restartServer()
 	};
 	lock(false);
 	ui->statusLabel->setText(tr("Restarting server"));
-	statusDot->setStyleSheet("background: #F5C518; border-radius: 5px;");
 	debugLog(QStringLiteral("Restarting server"));
 
 	// Release every virtual controller first so no input stays held
@@ -877,7 +870,6 @@ void Server::restartServer()
 		if (!listenServer())
 		{
 			ui->statusLabel->setText(tr("Restart failed"));
-			statusDot->setStyleSheet("background: #E5484D; border-radius: 5px;");
 			QMessageBox::warning(this, tr("Restart server"), tr("The server could not start again: %1.").arg(tcpServer->errorString()));
 			restarting = false;
 			lock(true);
@@ -891,7 +883,6 @@ void Server::restartServer()
 		}
 		updateQrPixmaps();
 		ui->statusLabel->setText(tr("Server running"));
-		statusDot->setStyleSheet("background: #34C759; border-radius: 5px;");
 		restarting = false;
 		lock(true);
 		updateStatus();
