@@ -220,10 +220,11 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 
 			card.deviceIcon = new QLabel(card.frame);
 			card.deviceIcon->setAlignment(Qt::AlignCenter);
-			card.deviceIcon->setMinimumSize(10, 80);
-			card.deviceIcon->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+			// A fixed-height artwork area; spare height goes around the text instead
+			card.deviceIcon->setMinimumWidth(10);
+			card.deviceIcon->setFixedHeight(124);
 			card.deviceIcon->installEventFilter(this);
-			cardLayout->addWidget(card.deviceIcon, 2);
+			cardLayout->addWidget(card.deviceIcon, 0);
 
 			// Everything below the icon only exists while a device is connected, but keeps its space
 			card.details = new QWidget(card.frame);
@@ -732,7 +733,7 @@ void Server::refreshIcon(SlotCard &card)
 	QPixmap full(size * dpr);
 	full.setDevicePixelRatio(dpr);
 	full.fill(Qt::transparent);
-	const QSize inner(size.width() * 0.55, size.height() * 0.62);
+	const QSize inner(size.width() * 0.6, size.height() * 0.8);
 	QPainter p(&full);
 	p.drawPixmap((size.width() - inner.width()) / 2, (size.height() - inner.height()) / 2,
 				 controllerPixmap(card.iconPs4, card.iconColor, inner, dpr));
