@@ -329,7 +329,7 @@ body:not(.xbox) .xbox-label { display: none; }
     <div class="stylecard" data-v="xbox"><div class="syms"><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5.5 4 L12 13 L18.5 4 M12 13 V20.5"/></svg><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3e8ef7" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 4 L19 20 M19 4 L5 20"/></svg><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e5484d" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M7 4 V20 M7 4 H12 A4 4 0 0 1 12 12 H7 M7 12 H13 A4 4 0 0 1 13 20 H7"/></svg><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#30a46c" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M4.5 20.5 L12 3.5 L19.5 20.5 M7.8 14.5 H16.2"/></svg></div><span>Xbox</span></div>
   </div>
 
-  <div class="row" id="dpadRow"><span>D-pad<span class="hint">Orthogonal gives one direction at a time and no diagonals.</span></span><select id="dpadSel" class="sel"><option value="ortho">Orthogonal</option><option value="keys">Separate keys</option></select></div>
+  <div class="row" id="dpadRow"><span>D-pad<span class="hint">Multi-press holds several directions at once, including diagonals.</span></span><select id="dpadSel" class="sel"><option value="multi">Multi-press</option><option value="single">One at a time</option></select></div>
   <div class="row" id="themeRow"><span>Theme<span class="hint">Light, dark or follow the device.</span></span><select id="themeSel" class="sel"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
 
   <div class="sec">Input behaviour</div>
@@ -391,7 +391,7 @@ body:not(.xbox) .xbox-label { display: none; }
     name: store.get("vgp-name", defaultName()),
     style: store.get("vgp-style", "ps"),
     theme: store.get("vgp-theme", "system"),
-    dpad: store.get("vgp-dpad", "ortho"),
+    dpad: store.get("vgp-dpad", "multi") === "single" || store.get("vgp-dpad", "multi") === "ortho" ? "single" : "multi",
     vib: store.get("vgp-vib", "on"),
     snap: store.get("vgp-snap", "on"),
     trigL: store.get("vgp-trigL", "digital"),
@@ -565,7 +565,7 @@ body:not(.xbox) .xbox-label { display: none; }
   function bindButton(el) {
     var name = el.getAttribute("data-b");
     el.addEventListener("pointerdown", function (e) {
-      if (settings.dpad === "ortho" && (name === "up" || name === "down" || name === "left" || name === "right")) return;
+      if (name === "up" || name === "down" || name === "left" || name === "right") return;
       e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch (x) {}
       el.classList.add("on"); press(name); buzz(0, "btn " + name); firstTouch();
     });
@@ -574,33 +574,47 @@ body:not(.xbox) .xbox-label { display: none; }
   }
   document.querySelectorAll("[data-b]").forEach(bindButton);
 
-  // Orthogonal D-pad: one touch on the whole pad gives exactly one of up, down, left or right (never a diagonal),
-  // and sliding the thumb switches direction
+  // D-pad: every finger on the pad picks its direction from where it is, and the pad holds the union, so two
+  // fingers (or one thumb near a diagonal) press several directions at once. "One at a time" mode keeps a single
+  // finger and a single cardinal direction.
   ["dpad", "dpadps"].forEach(function (cid) {
-    var el = $(cid), id = null, cur = null;
-    function setDir(n) {
-      if (n === cur) return;
-      if (cur) { el.querySelector(".btn." + cur).classList.remove("on"); release(cur); }
-      cur = n;
-      if (n) { el.querySelector(".btn." + n).classList.add("on"); press(n); buzz(0, "dpad " + n); }
+    var el = $(cid), ptrs = {}, DIRS = ["up", "down", "left", "right"];
+    function setDir(name, on) {
+      var is = (held & BIT[name]) !== 0, arm = el.querySelector(".btn." + name);
+      if (on && !is) { press(name); arm.classList.add("on"); buzz(0, "dpad " + name); }
+      else if (!on && is) { release(name); arm.classList.remove("on"); }
     }
+    function current() { for (var i = 0; i < 4; i++) if ((held & BIT[DIRS[i]]) !== 0) return DIRS[i]; return null; }
     function pick(e) {
-      var r = R(el), q = P(e), dx = q.x - (r.left + r.width / 2), dy = q.y - (r.top + r.height / 2);
-      if (Math.hypot(dx, dy) < r.width * 0.07) return null;
-      var ax = Math.abs(dx), ay = Math.abs(dy), horiz;
-      if (cur === "left" || cur === "right") horiz = ay <= ax * 1.25;
-      else if (cur === "up" || cur === "down") horiz = ax > ay * 1.25;
-      else horiz = ax > ay;
-      return horiz ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down");
+      var r = R(el), q = P(e), dx = q.x - (r.left + r.width / 2), dy = q.y - (r.top + r.height / 2), d = Math.hypot(dx, dy);
+      var out = {};
+      if (d < r.width * 0.07) return out;
+      if (settings.dpad === "single") {
+        var ax = Math.abs(dx), ay = Math.abs(dy), cur = current(), horiz;
+        if (cur === "left" || cur === "right") horiz = ay <= ax * 1.25;
+        else if (cur === "up" || cur === "down") horiz = ax > ay * 1.25;
+        else horiz = ax > ay;
+        out[horiz ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down")] = true;
+        return out;
+      }
+      var ux = dx / d, uy = dy / d;
+      if (uy < -0.38) out.up = true; if (uy > 0.38) out.down = true;
+      if (ux < -0.38) out.left = true; if (ux > 0.38) out.right = true;
+      return out;
     }
-    function end(e) { if (e.pointerId !== id) return; id = null; setDir(null); }
+    function apply() {
+      var on = {};
+      Object.keys(ptrs).forEach(function (k) { Object.keys(ptrs[k]).forEach(function (n) { on[n] = true; }); });
+      DIRS.forEach(function (n) { setDir(n, !!on[n]); });
+    }
+    function end(e) { if (!(e.pointerId in ptrs)) return; delete ptrs[e.pointerId]; apply(); }
     el.addEventListener("pointerdown", function (ev) {
-      if (settings.dpad !== "ortho" || id !== null) return;
-      ev.preventDefault(); id = ev.pointerId;
-      try { el.setPointerCapture(id); } catch (x) {}
-      firstTouch(); setDir(pick(ev));
+      if (settings.dpad === "single" && Object.keys(ptrs).length) return;
+      ev.preventDefault();
+      try { el.setPointerCapture(ev.pointerId); } catch (x) {}
+      firstTouch(); ptrs[ev.pointerId] = pick(ev); apply();
     });
-    el.addEventListener("pointermove", function (ev) { if (ev.pointerId === id) { ev.preventDefault(); setDir(pick(ev)); } });
+    el.addEventListener("pointermove", function (ev) { if (ev.pointerId in ptrs) { ev.preventDefault(); ptrs[ev.pointerId] = pick(ev); apply(); } });
     el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("lostpointercapture", end);
   });
 
