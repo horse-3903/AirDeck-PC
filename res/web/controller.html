@@ -14,12 +14,12 @@
 :root {
   --bg: #fafafa; --fg: #161616; --muted: #5a5a5a; --panel: #ececf0; --panel-on: #cfcfd6;
   --border: #c4c4cc; --accent: #161616; --accent-fg: #ffffff; --sheet: #ffffff; --shadow: rgba(0,0,0,.25);
-  --ok: #1a9d4a; --bad: #d03030; --warn: #c98a00; --card: #f2f2f6; --disc: #e2e2e8; --panel-arm: #cfcfd8;
+  --ok: #1a9d4a; --bad: #d03030; --warn: #c98a00; --card: #f2f2f6; --disc: #e2e2e8; --arm: #4a4a54; --armedge: #1c1c22;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0a0a0c; --fg: #f1f1f1; --muted: #9a9a9a; --panel: #15151a; --panel-on: #2c2c34;
-    --border: #34343c; --accent: #f5f5f5; --accent-fg: #000000; --sheet: #101014; --shadow: rgba(0,0,0,.6); --card: #17171c; --disc: #0d0d10; --panel-arm: #1b1b21;
+    --border: #34343c; --accent: #f5f5f5; --accent-fg: #000000; --sheet: #101014; --shadow: rgba(0,0,0,.6); --card: #17171c; --disc: #1a1a20; --arm: #08080a; --armedge: #5a5a66;
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
@@ -48,12 +48,13 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); o
 /* d-pad is one cross, face buttons a diamond */
 .cluster { position: absolute; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); }
 #dpad { display: block; width: 36dvh; height: 36dvh; left: calc(30vw - 18dvh); top: calc(72dvh - 18dvh); padding: 0;
-    border-radius: 50%; background: var(--disc); border: 2px solid var(--border); overflow: hidden; }
+    border-radius: 50%; background: transparent; border: 0; overflow: hidden; }
+#dpad .dpv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 #face { width: 32dvh; height: 32dvh; left: calc(84vw - 16dvh); top: calc(47dvh - 16dvh); gap: .8dvh; }
 .cluster .btn { display: flex; align-items: center; justify-content: center; }
 /* a raised plus on a round base: four arms with no outlines, so the cross reads as one piece */
-#dpad .btn { position: absolute; display: block; border: 0; background: var(--panel-arm); }
-#dpad .btn.on { background: var(--panel-on); box-shadow: inset 0 0 0 2px var(--fg); transform: none; }
+#dpad .btn { position: absolute; display: block; border: 0; background: transparent; }
+#dpad .btn.on { background: rgba(255,255,255,.2); transform: none; }
 #dpad .arrow { display: none; }
 #dpad .up { left: 36%; top: 0; width: 28%; height: 50%; border-radius: 0; }
 #dpad .down { left: 36%; top: 50%; width: 28%; height: 50%; border-radius: 0; }
@@ -188,6 +189,7 @@ body:not(.xbox) .xbox-label { display: none; }
   <div class="stick" id="rs"><div class="knob"></div></div>
 
   <div class="cluster" id="dpad">
+    <svg class="dpv" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49.2" fill="var(--disc)" stroke="var(--border)" stroke-width="1.4"/><path d="M36 3.04A49 49 0 0 1 64 3.04V36H96.96A49 49 0 0 1 96.96 64H64V96.96A49 49 0 0 1 36 96.96V64H3.04A49 49 0 0 1 3.04 36H36Z" fill="var(--arm)" stroke="var(--arm)" stroke-width="1.6" stroke-linejoin="round"/><path d="M36 3.04V36H3.04M3.04 64H36V96.96M64 96.96V64H96.96M96.96 36H64V3.04" fill="none" stroke="var(--armedge)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <div class="btn up" data-b="up"><span class="arrow"></span></div>
     <div class="btn left" data-b="left"><span class="arrow"></span></div>
     <div class="btn right" data-b="right"><span class="arrow"></span></div>
