@@ -436,7 +436,8 @@ void Server::initServer()
 		port = 0; // 0 means random port
 	}
 
-	if (!tcpServer->listen(QHostAddress::AnyIPv4, port))
+	// A fixed port that is already taken falls back to a free one instead of failing
+	if (!tcpServer->listen(QHostAddress::AnyIPv4, port) && !(port != 0 && tcpServer->listen(QHostAddress::AnyIPv4, 0)))
 	{
 		QMessageBox::critical(this, tr("VGamepad Server"),
 							  tr("Unable to start the server: %1.").arg(tcpServer->errorString()));

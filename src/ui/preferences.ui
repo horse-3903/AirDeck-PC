@@ -79,7 +79,7 @@
          <item>
           <widget class="QSpinBox" name="portSpinBox">
            <property name="toolTip">
-            <string>Port number for the server (1024-65535). 0 means auto.</string>
+            <string>Port number for the server (1024-65535). Random picks a different port each time.</string>
            </property>
            <property name="minimum">
             <number>0</number>

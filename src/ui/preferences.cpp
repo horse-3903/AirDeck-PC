@@ -71,7 +71,7 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 	ui->pointerSlider->adjustSize();
 	ui->pointerSlider->setMaximumWidth(320);
 	ui->portSpinBox->setMaximumWidth(140);
-	ui->portSpinBox->setSpecialValueText(tr("Auto"));
+	ui->portSpinBox->setSpecialValueText(tr("Random"));
 	ui->profileComboBox->setMaximumWidth(320);
 	if (auto *profilesRow = qobject_cast<QHBoxLayout *>(ui->profilesGroup->layout()))
 		profilesRow->addStretch();
