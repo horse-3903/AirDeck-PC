@@ -8,6 +8,10 @@
 #include "ui_server.h"
 
 #include <QApplication>
+#include <QDateTime>
+#include <QDir>
+#include <QStandardPaths>
+#include <QTextStream>
 #include <QButtonGroup>
 #include <QGridLayout>
 #include <QClipboard>
@@ -340,6 +344,23 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		modeButton->setStyleSheet("QPushButton { padding: 4px 18px; min-height: 22px; }");
 		connect(modeButton, &QPushButton::clicked, this, [this]() { setTestMode(!testMode); });
 		tabRow->addWidget(modeButton);
+		debugButton = new QPushButton(tr("Debug mode"), this);
+		debugButton->setCheckable(true);
+		debugButton->setCursor(Qt::PointingHandCursor);
+		debugButton->setMinimumHeight(36);
+		debugButton->setMinimumWidth(150);
+		debugButton->setStyleSheet("QPushButton { padding: 4px 18px; min-height: 22px; } "
+								   "QPushButton:checked { background-color: #F5F5F5; color: #000000; border-color: #FFFFFF; }");
+		debugButton->setChecked(SettingsSingleton::instance().qsettings()->value("server/debug", false).toBool());
+		debugMode = debugButton->isChecked();
+		debugButton->setToolTip(tr("Logs connections to %1 and lets one device hold several controllers").arg(debugLogPath()));
+		connect(debugButton, &QPushButton::toggled, this, [this](bool on) {
+			debugMode = on;
+			SettingsSingleton::instance().qsettings()->setValue("server/debug", on);
+			debugLog(on ? QStringLiteral("Debug mode on") : QStringLiteral("Debug mode off"), true);
+			updateSlots();
+		});
+		tabRow->addWidget(debugButton);
 		connect(tabControllers, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(0); });
 		connect(tabConnect, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(1); });
 		ui->verticalLayout->insertLayout(1, tabRow);
@@ -639,6 +660,30 @@ void Server::showTab(int index)
 	tabConnect->setChecked(index == 1);
 }
 
+QString Server::debugLogPath() const
+{
+	return QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("debug.log");
+}
+
+void Server::debugLog(const QString &line, bool force)
+{
+	if (!debugMode && !force)
+		return;
+	qInfo().noquote() << "[debug]" << line;
+	QDir().mkpath(QFileInfo(debugLogPath()).absolutePath());
+	QFile file(debugLogPath());
+	if (file.open(QIODevice::Append | QIODevice::Text))
+		QTextStream(&file) << QDateTime::currentDateTime().toString(Qt::ISODateWithMs) << "  " << line << QChar(10);
+}
+
+QString Server::deviceKey(const Client &client) const
+{
+	bool ok = false;
+	const QHostAddress address = client.socket->peerAddress();
+	const quint32 v4 = address.toIPv4Address(&ok);
+	return ok ? QHostAddress(v4).toString() : address.toString();
+}
+
 void Server::setTestMode(bool on)
 {
 	testMode = on;
@@ -841,6 +886,18 @@ ExecutorInterface *Server::executorFor(Client &client)
 
 bool Server::activate(Client &client, QString *failure)
 {
+	if (!debugMode)
+	{
+		const QString key = deviceKey(client);
+		for (const auto &other : clients)
+		{
+			if (other.get() != &client && other->active && deviceKey(*other) == key)
+			{
+				*failure = tr("This device already has a controller connected. Debug mode allows several.");
+				return false;
+			}
+		}
+	}
 	// Keyboard/mouse input is shared, so only one phone may drive it.
 	// Virtual gamepads can be created per phone.
 	const ExecutorType mode = SettingsSingleton::instance().executorType();
@@ -940,6 +997,10 @@ bool Server::activate(Client &client, QString *failure)
 	isGamepadConnected = true;
 	qInfo() << "Device connected:" << client.socket->peerAddress().toString()
 			<< "slot" << client.slot << "total devices:" << clients.size();
+	debugLog(QStringLiteral("Connected %1 (%2) as slot %3, devices: %4")
+				 .arg(client.socket->peerAddress().toString(), client.protocol == Client::Protocol::WebSocket ? "browser" : "app")
+				 .arg(client.slot)
+				 .arg(clients.size()));
 	updateClientLabel();
 	updateSlots();
 	return true;
@@ -948,6 +1009,7 @@ bool Server::activate(Client &client, QString *failure)
 void Server::refuse(Client &client, const QString &why)
 {
 	qWarning() << "Refusing a device:" << why;
+	debugLog(QStringLiteral("Refused %1: %2").arg(client.socket->peerAddress().toString(), why));
 	ui->clientLabel->setText(why);
 	QTcpSocket *socket = client.socket;
 	if (client.protocol == Client::Protocol::WebSocket)
@@ -991,6 +1053,7 @@ void Server::handleConnection()
 		if (wasActive)
 		{
 			qInfo() << "Device disconnected.";
+			debugLog(QStringLiteral("Disconnected %1").arg(socket->peerAddress().toString()));
 			qDebug() << "Average Request Interval" << averageRequestInterval
 					 << "ms, Request Count:" << requestCount;
 		}
@@ -1264,6 +1327,7 @@ void Server::handleWebMessage(Client &client, const QByteArray &payload)
 	{
 		client.name = message.value("name").toString().left(40).trimmed();
 		client.model = message.value("model").toString().left(60).trimmed();
+		debugLog(QStringLiteral("Hello from %1: %2, %3").arg(client.socket->peerAddress().toString(), client.name, client.model));
 		updateSlots();
 		return;
 	}
