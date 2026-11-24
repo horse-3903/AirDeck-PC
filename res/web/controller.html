@@ -464,7 +464,7 @@ body:not(.xbox) .xbox-label { display: none; }
   // ---- input state ----
   // Android uses the Vibration API (short pulses are too faint on many motors); iOS has none, but toggling a
   // switch control from a touch gives a system tick
-  var tick = null, vibLog = 0;
+  var hapticLabel = null, vibLog = 0;
   function buzz(ms, who) {
     if (!canVibrate || settings.vib !== "on") return;
     if (typeof navigator.vibrate === "function") {
@@ -472,13 +472,13 @@ body:not(.xbox) .xbox-label { display: none; }
       if (vibLog < 40 && ws && ws.readyState === 1) { vibLog++; ws.send(JSON.stringify({ t: "dbg", msg: "vibrate(" + (ms || 60) + ") " + (who || "?") + " returned " + ok + ", activation " + (navigator.userActivation ? navigator.userActivation.hasBeenActive : "n/a") })); }
       return;
     }
-    if (!tick) {
-      tick = document.createElement("label");
-      tick.style.cssText = "position:fixed;left:-99px;top:0;width:1px;height:1px;opacity:0;pointer-events:none";
+    if (!hapticLabel) {
+      hapticLabel = document.createElement("label");
+      hapticLabel.style.cssText = "position:fixed;left:-99px;top:0;width:1px;height:1px;opacity:0;pointer-events:none";
       var box = document.createElement("input"); box.type = "checkbox"; box.setAttribute("switch", "");
-      tick.appendChild(box); document.body.appendChild(tick);
+      hapticLabel.appendChild(box); document.body.appendChild(hapticLabel);
     }
-    tick.click();
+    hapticLabel.click();
   }
   function press(name) {
     if (name === "l2") { ax.lt = 1; } else if (name === "r2") { ax.rt = 1; }
