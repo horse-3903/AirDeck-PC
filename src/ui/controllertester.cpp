@@ -234,37 +234,15 @@ void ControllerTester::drawDs4(QPainter &p)
 	data.replace("{{lstick}}", move(m_lx, m_ly).toUtf8());
 	data.replace("{{rstick}}", move(m_rx, m_ry).toUtf8());
 
-	// The artwork is 580 x 388; fit it into the 100 x 72 design space
-	const double s = std::min(100.0 / 580.0, 72.0 / 388.0);
-	const QSizeF drawn(580 * s, 388 * s);
-	const QRectF target((100 - drawn.width()) / 2, (72 - drawn.height()) / 2, drawn.width(), drawn.height());
-	QSvgRenderer renderer(data);
-	renderer.render(&p, target);
+	data.replace("{{accent}}", accent.name().toUtf8());
+	data.replace("{{lt}}", QByteArray::number(1.0 - std::clamp(m_lt, 0.0f, 1.0f), 'f', 3));
+	data.replace("{{rt}}", QByteArray::number(1.0 - std::clamp(m_rt, 0.0f, 1.0f), 'f', 3));
 
-	// L2 and R2 sit above the bumpers and fill as they are pulled (artwork units mapped by hand)
-	const auto toDesign = [&](double x, double y) { return QPointF(target.x() + (x - 10) * s, target.y() + (y + 4) * s); };
-	const auto trigger = [&](double x, float value) {
-		const QPointF topLeft = toDesign(x, 1);
-		const QSizeF size(60 * s, 22 * s);
-		const QRectF rect(topLeft, size);
-		p.setPen(QPen(QColor("#33333a"), 0.5));
-		p.setBrush(QColor("#17171b"));
-		p.drawRoundedRect(rect, 2, 2);
-		const double v = std::clamp(value, 0.0f, 1.0f);
-		if (v > 0.01)
-		{
-			p.save();
-			QPainterPath clip;
-			clip.addRoundedRect(rect, 2, 2);
-			p.setClipPath(clip);
-			p.setPen(Qt::NoPen);
-			p.setBrush(accent);
-			p.drawRect(QRectF(rect.x(), rect.bottom() - rect.height() * v, rect.width(), rect.height() * v));
-			p.restore();
-		}
-	};
-	trigger(104, m_lt);
-	trigger(436, m_rt);
+	// The artwork is 580 x 406 (triggers included); fit it into the 100 x 72 design space
+	const double s = std::min(100.0 / 580.0, 72.0 / 406.0);
+	const QSizeF drawn(580 * s, 406 * s);
+	QSvgRenderer renderer(data);
+	renderer.render(&p, QRectF((100 - drawn.width()) / 2, (72 - drawn.height()) / 2, drawn.width(), drawn.height()));
 }
 
 void ControllerTester::drawXbox(QPainter &p)
