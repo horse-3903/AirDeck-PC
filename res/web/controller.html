@@ -48,18 +48,18 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); o
 /* d-pad is one cross, face buttons a diamond */
 .cluster { position: absolute; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); }
 #dpad { display: block; width: 36dvh; height: 36dvh; left: calc(30vw - 18dvh); top: calc(72dvh - 18dvh); padding: 0;
-    border-radius: 50%; background: transparent; border: 0; overflow: hidden; }
-#dpad .dpv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    border-radius: 50%; background: transparent; border: 0; overflow: visible; }
+#dpad .dpv { position: absolute; left: -6%; top: -6%; width: 112%; height: 112%; pointer-events: none; }
 #face { width: 32dvh; height: 32dvh; left: calc(84vw - 16dvh); top: calc(47dvh - 16dvh); gap: .8dvh; }
 .cluster .btn { display: flex; align-items: center; justify-content: center; }
 /* a raised plus on a round base: four arms with no outlines, so the cross reads as one piece */
 #dpad .btn { position: absolute; display: block; border: 0; background: transparent; }
 #dpad .btn.on { background: rgba(255,255,255,.2); transform: none; }
 #dpad .arrow { display: none; }
-#dpad .up { left: 33%; top: 0; width: 34%; height: 50%; border-radius: 0; }
-#dpad .down { left: 33%; top: 50%; width: 34%; height: 50%; border-radius: 0; }
-#dpad .left { left: 0; top: 33%; width: 50%; height: 34%; border-radius: 0; }
-#dpad .right { left: 50%; top: 33%; width: 50%; height: 34%; border-radius: 0; }
+#dpad .up { left: 33%; top: -5%; width: 34%; height: 55%; border-radius: 0; }
+#dpad .down { left: 33%; top: 50%; width: 34%; height: 55%; border-radius: 0; }
+#dpad .left { left: -5%; top: 33%; width: 55%; height: 34%; border-radius: 0; }
+#dpad .right { left: 50%; top: 33%; width: 55%; height: 34%; border-radius: 0; }
 #dpad .dm { position: absolute; width: 6%; height: 6%; background: var(--border); pointer-events: none; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 #dpad .dm.tl { left: 20%; top: 20%; transform: rotate(-45deg); }
 #dpad .dm.tr { left: 74%; top: 20%; transform: rotate(45deg); }
@@ -189,7 +189,7 @@ body:not(.xbox) .xbox-label { display: none; }
   <div class="stick" id="rs"><div class="knob"></div></div>
 
   <div class="cluster" id="dpad">
-    <svg class="dpv" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49.2" fill="var(--disc)" stroke="var(--border)" stroke-width="1.4"/><path d="M33 4.04A49 49 0 0 1 67 4.04V33H95.96A49 49 0 0 1 95.96 67H67V95.96A49 49 0 0 1 33 95.96V67H4.04A49 49 0 0 1 4.04 33H33Z" fill="var(--arm)" stroke="var(--armedge)" stroke-width="1.6" stroke-linejoin="round"/></svg>
+    <svg class="dpv" viewBox="-6 -6 112 112"><circle cx="50" cy="50" r="49.2" fill="var(--disc)" stroke="var(--border)" stroke-width="1.4"/><path d="M33 -5H67V33H105V67H67V105H33V67H-5V33H33Z" fill="var(--arm)" stroke="var(--armedge)" stroke-width="1.6" stroke-linejoin="round"/></svg>
     <div class="btn up" data-b="up"><span class="arrow"></span></div>
     <div class="btn left" data-b="left"><span class="arrow"></span></div>
     <div class="btn right" data-b="right"><span class="arrow"></span></div>
