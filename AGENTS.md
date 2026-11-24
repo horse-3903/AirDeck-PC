@@ -34,7 +34,7 @@ One TCP port per PC server run (default 39268, random if the setting is outside 
 
 1. Native app: first bytes are anything except `GET `.
    - Phone sends `VGPHELLO:<name>|<model>\n` (our addition; older apps skip it).
-   - PC replies `VGPSLOT:<n>\n` with the controller slot 1 to 6.
+   - PC replies `VGPSLOT:<n>\n` with the controller slot 1 to 8.
    - Then a stream of Colfer-encoded `vgp_data_exchange_gamepad_reading` records (see `VGP_Data_Exchange`), about every 80 ms (Settings).
 2. Browser: first bytes are `GET `.
    - `GET /` returns the embedded page `res/web/controller.html` (resource `:/web/controller.html`). The server replaces the placeholder `__VGP_V__` with a 12 character MD5 of the page.
@@ -69,8 +69,8 @@ Server page (`server.cpp`), all built in code:
 Input modes:
 | Mode | Needs | Phones | Notes |
 |---|---|---|---|
-| ViGEm (default) | ViGEmBus driver installed once | up to 6 connect, only 4 are XInput slots | Verified working with a real phone and the emulator. Slots 5 and 6 are DS4 style and probably invisible to XInput games (untested). |
-| InputInjector | Windows 10+, Administrator, Developer Mode | up to 6 | Experimental. Crashes on some systems (`xboxgipsynthetic.dll`, microsoft-ui-xaml#8639). Creation is wrapped in SEH so the server survives. |
+| ViGEm (default) | ViGEmBus driver installed once | up to 8 connect, only 4 are XInput slots | Verified working with a real phone and the emulator. Slots 5 to 8 are DS4 style and probably invisible to XInput games (untested). |
+| InputInjector | Windows 10+, Administrator, Developer Mode | up to 8 | Experimental. Crashes on some systems (`xboxgipsynthetic.dll`, microsoft-ui-xaml#8639). Creation is wrapped in SEH so the server survives. |
 | Keyboard/Mouse | nothing | 1 | Default keymap in `keymap_profile.cpp`. Elevated games ignore input from a non-elevated app. |
 
 Build (the `build.bat` the earlier sessions used is gone; a session script wrapped these commands):
@@ -167,6 +167,6 @@ Releases are published as pre-releases, tagged `v<version>` since the rename (ea
 
 ## 10. Known limitations and ideas
 
-- Untested: real iPhone, haptic strength and length on a real phone, two fingers on the Android D-pad, several real phones at once, slots 5 and 6 in games, release APK signing, the InputInjector mode with multiple phones.
+- Untested: real iPhone, haptic strength and length on a real phone, two fingers on the Android D-pad, several real phones at once, slots 5 to 8 in games, the 8-card server page layout, release APK signing, the InputInjector mode with multiple phones.
 - The Android D-pad and right stick sit about 1 percent lower than the browser's.
-- Ideas not done: web manifest and touch icon for iPhone fullscreen, HTTPS for real web notifications and wake lock, DS4 targets for slots 5 and 6, a layout editor for the web controller, matching web settings (dead zone, sensitivity, opacity, haptic strength), a PC-side connection log panel, a shared secret for the connection.
+- Ideas not done: web manifest and touch icon for iPhone fullscreen, HTTPS for real web notifications and wake lock, a layout editor for the web controller, matching web settings (dead zone, sensitivity, opacity, haptic strength), a PC-side connection log panel, a shared secret for the connection.

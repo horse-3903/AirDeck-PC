@@ -288,12 +288,12 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		// Six permanent tiles, three across and two down. Empty ones are grey, a connected one takes its colour
 		cardsGrid = new QGridLayout();
 		cardsGrid->setSpacing(14);
-		for (int column = 0; column < 3; ++column)
+		for (int column = 0; column < 4; ++column)
 			cardsGrid->setColumnStretch(column, 1);
 		for (int row = 0; row < 2; ++row)
 			cardsGrid->setRowStretch(row, 1);
 		auto *cardsLayout = cardsGrid;
-		for (int i = 0; i < 6; ++i)
+		for (int i = 0; i < 8; ++i)
 		{
 			SlotCard card;
 			card.frame = new QFrame(listPage);
@@ -376,7 +376,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			card.live->setSlot(i + 1);
 			card.live->hide();
 			cardLayout->addWidget(card.live, 1);
-			cardsGrid->addWidget(card.frame, i / 3, i % 3);
+			cardsGrid->addWidget(card.frame, i / 4, i % 4);
 			slotCards.push_back(card);
 		}
 		listLayout->addLayout(cardsLayout, 1);
@@ -701,9 +701,9 @@ int Server::pickSlot(const ExecutorInterface *executor) const
 						   [slot](const std::unique_ptr<Client> &c) { return c->slot == slot; });
 	};
 	const int preferred = executor != nullptr ? executor->slot() : -1;
-	if (preferred >= 1 && preferred <= 6 && !used(preferred))
+	if (preferred >= 1 && preferred <= 8 && !used(preferred))
 		return preferred;
-	for (int slot = 1; slot <= 6; ++slot)
+	for (int slot = 1; slot <= 8; ++slot)
 	{
 		if (!used(slot))
 			return slot;
@@ -1027,7 +1027,7 @@ void Server::updateSlots()
 		card.occupied = active;
 		if (!active && usable)
 			freeSlots.push_back(i + 1);
-		// Controllers 5 and 6 are always the PlayStation style ones
+		// Controllers 5 to 8 are always the PlayStation style ones
 		const bool ps4 = i >= 4;
 		const QColor slot = slotColor(i + 1);
 		const QColor art = active ? slot : QColor("#4A4A52");
@@ -1179,7 +1179,7 @@ bool Server::activate(Client &client, QString *failure)
 		const bool useDs4 = xboxInUse >= 4;
 		if (useDs4)
 		{
-			for (int candidate : {5, 6})
+			for (int candidate : {5, 6, 7, 8})
 			{
 				if (!slotUsed(candidate))
 				{
@@ -1189,7 +1189,7 @@ bool Server::activate(Client &client, QString *failure)
 			}
 			if (chosenSlot == 0)
 			{
-				*failure = tr("All 6 controller slots are in use.");
+				*failure = tr("All 8 controller slots are in use.");
 				return false;
 			}
 		}
@@ -1240,7 +1240,7 @@ bool Server::activate(Client &client, QString *failure)
 	client.slot = chosenSlot != 0 ? chosenSlot : pickSlot(client.executor.get());
 	if (client.slot == 0)
 	{
-		*failure = tr("All 6 controller slots are in use.");
+		*failure = tr("All 8 controller slots are in use.");
 		return false;
 	}
 	client.active = true;

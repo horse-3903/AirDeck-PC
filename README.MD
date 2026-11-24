@@ -28,9 +28,9 @@ The question behind the fork is how little a person has to do to use a phone as 
 ## Features
 
 - **Three input modes** - a virtual Xbox 360 controller through ViGEm (the default), the experimental Windows InputInjector gamepad, or keyboard and mouse mapped from editable keymap profiles.
-- **Up to six controllers** - each phone gets a slot from 1 to 6 with its own colour. ViGEm gives the first four to XInput and the last two to DualShock 4 style pads.
+- **Up to eight controllers** - each phone gets a slot from 1 to 8 with its own colour. ViGEm gives the first four to XInput and the last four to DualShock 4 style pads.
 - **Phone app or browser** - the Android app speaks a compact binary protocol. Any phone browser can use the page the server hosts itself, over a WebSocket.
-- **Server page** - six slot cards show who is connected, with address, protocol and output type. An input test view draws every stick, trigger and button live. Home, Restart and Stop sit in the header as icon buttons.
+- **Server page** - eight slot cards show who is connected, with address, protocol and output type. An input test view draws every stick, trigger and button live. Home, Restart and Stop sit in the header as icon buttons.
 - **Restart and stop in place** - Restart drops every client, releases the virtual controllers and listens again on the same port. Stop shuts the server down without leaving the page, and the same button then starts it again.
 - **QR codes and addresses** - separate QR codes for the app and the browser page, a ranked list of network adapters, and one-click address copying.
 - **Debug mode** - an option in Preferences, General. It writes connections, hellos, refusals and browser vibration results to `debug.log` in the app data folder, and lets one device hold several controllers. With it off, each device gets one.
@@ -108,8 +108,8 @@ Pre-built zips are on the [releases page](https://github.com/horse-3903/AirDeck-
 
 | Mode | Needs | Controllers | Notes |
 |---|---|---|---|
-| Virtual Xbox 360 (ViGEm) | ViGEmBus driver | Up to 6 | Default. Slots 5 and 6 are DualShock 4 style and may not show up in XInput-only games. |
-| InputInjector | Windows 10+, Administrator, Developer Mode | Up to 6 | Experimental. Crashes on some systems, and the server survives the crash. |
+| Virtual Xbox 360 (ViGEm) | ViGEmBus driver | Up to 8 | Default. Slots 5 to 8 are DualShock 4 style and may not show up in XInput-only games. |
+| InputInjector | Windows 10+, Administrator, Developer Mode | Up to 8 | Experimental. Crashes on some systems, and the server survives the crash. |
 | Keyboard and mouse | Nothing | 1 | Uses the active keymap profile. Games running as Administrator ignore it unless the server does too. |
 
 ### Connecting a browser

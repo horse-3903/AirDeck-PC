@@ -448,7 +448,7 @@ body:not(.xbox) .xbox-label { display: none; }
     $("reconnBtn").style.display = wantConnection && st !== "bad" ? "none" : "";
     renderSlot(); updateMedia(st);
   }
-  var SLOT_COLORS = ["#E5484D", "#3E8EF7", "#F5C518", "#30A46C", "#F97316", "#A855F7"];
+  var SLOT_COLORS = ["#E5484D", "#3E8EF7", "#F5C518", "#30A46C", "#F97316", "#A855F7", "#14B8A6", "#EC4899"];
   function renderSlot() {
     var on = slot && connKind === "ok", c = on ? SLOT_COLORS[slot - 1] : "";
     $("slotText").textContent = on ? "P" + slot : "\u2014";

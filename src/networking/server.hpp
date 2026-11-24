@@ -155,7 +155,7 @@ class Server : public QWidget
 	QLabel *countPill = nullptr;
 	ExecutorType serverMode = ExecutorType::KeyboardMouseExecutor;
 	int slotCapacity() const;
-	static constexpr size_t MAX_PHONES = 6;
+	static constexpr size_t MAX_PHONES = 8;
 	std::vector<std::unique_ptr<Client>> clients;
 	QTcpSocket *clientConnection;
 	bool isGamepadConnected;
