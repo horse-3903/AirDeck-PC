@@ -433,7 +433,7 @@ body:not(.xbox) .xbox-label { display: none; }
     ws.onclose = function () {
       if (mine !== ws) return;
       slot = 0; renderSlot(); releaseAll(false);
-      if (wantConnection) { if (Date.now() >= refusedUntil) setStatus("bad", "Reconnecting"); scheduleRetry(); }
+      if (wantConnection) { if (Date.now() >= refusedUntil) setStatus("wait", "Reconnecting"); scheduleRetry(); }
       else setStatus("bad", "Disconnected");
     };
     ws.onerror = function () {};
