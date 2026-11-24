@@ -219,13 +219,9 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			cardLayout->setSpacing(6);
 
 			card.badge = new QLabel(QString::number(i + 1), card.frame);
-			card.state = new QLabel(card.frame);
-			card.state->setTextFormat(Qt::RichText);
-			auto *topRow = new QHBoxLayout();
-			topRow->addWidget(card.badge);
-			topRow->addStretch();
-			topRow->addWidget(card.state);
-			cardLayout->addLayout(topRow);
+			// The number floats in the corner so the artwork can sit higher
+			card.badge->setFixedSize(32, 28);
+			card.badge->move(16, 10);
 
 			card.deviceIcon = new QLabel(card.frame);
 			card.deviceIcon->setAlignment(Qt::AlignCenter);
@@ -763,13 +759,11 @@ void Server::updateSlots()
 		}
 		card.frame->setToolTip(tip);
 		card.badge->setStyleSheet(QString("font-weight: 800; font-size: 15pt; color: %1;")
-									  .arg(active ? slot.name() : QString("rgba(%1,120)").arg(slotRgb)));
+									  .arg(active ? slot.name() : QStringLiteral("#4A4A52")));
 		card.iconPs4 = ps4;
 		card.iconColor = art;
 		refreshIcon(card);
 
-		card.state->setText(active ? tr("<span style='color:#34C759'>&#9679;</span>&nbsp; Connected") : QStringLiteral("&nbsp;"));
-		card.state->setStyleSheet("font-size: 9pt; color: #D8D8DE;");
 		card.chips->setVisible(active);
 		card.test->setVisible(active);
 		card.test->setStyleSheet("QPushButton { color: #F5F5F5; border: 1px solid #4A4A52; border-radius: 4px; background: transparent; } "
