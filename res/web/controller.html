@@ -14,12 +14,12 @@
 :root {
   --bg: #fafafa; --fg: #161616; --muted: #5a5a5a; --panel: #ececf0; --panel-on: #cfcfd6;
   --border: #c4c4cc; --accent: #161616; --accent-fg: #ffffff; --sheet: #ffffff; --shadow: rgba(0,0,0,.25);
-  --ok: #1a9d4a; --bad: #d03030; --warn: #c98a00; --card: #f2f2f6;
+  --ok: #1a9d4a; --bad: #d03030; --warn: #c98a00; --card: #f2f2f6; --disc: #e2e2e8;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0a0a0c; --fg: #f1f1f1; --muted: #9a9a9a; --panel: #15151a; --panel-on: #2c2c34;
-    --border: #34343c; --accent: #f5f5f5; --accent-fg: #000000; --sheet: #101014; --shadow: rgba(0,0,0,.6); --card: #17171c;
+    --border: #34343c; --accent: #f5f5f5; --accent-fg: #000000; --sheet: #101014; --shadow: rgba(0,0,0,.6); --card: #17171c; --disc: #0d0d10;
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
@@ -47,7 +47,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); o
 
 /* d-pad is one cross, face buttons a diamond */
 .cluster { position: absolute; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); }
-#dpad { width: 28dvh; height: 28dvh; left: calc(30vw - 14dvh); top: calc(72dvh - 14dvh); gap: 0; }
+#dpad { width: 36dvh; height: 36dvh; left: calc(30vw - 18dvh); top: calc(72dvh - 18dvh); gap: 0; padding: 12%;
+    border-radius: 50%; background: var(--disc); border: 2px solid var(--border); }
 #face { width: 32dvh; height: 32dvh; left: calc(84vw - 16dvh); top: calc(47dvh - 16dvh); gap: .8dvh; }
 .cluster .btn { display: flex; align-items: center; justify-content: center; }
 #dpad .btn { border-radius: 0; }
