@@ -770,6 +770,7 @@ void Server::updateSlots()
 		if (live)
 		{
 			card.live->setSlot(i + 1);
+			card.live->setPs4(ps4);
 			card.live->setState(owner->held, owner->lx, owner->ly, owner->rx, owner->ry, owner->lt, owner->rt);
 		}
 

@@ -17,6 +17,7 @@ class ControllerTester : public QWidget
 	void setSlot(int slot);
 	// Compact mode draws only the controller, filling the widget, for use inside a tile
 	void setCompact(bool compact);
+	void setPs4(bool ps4);
 	void setState(quint32 held, float lx, float ly, float rx, float ry, float lt, float rt);
 	QSize sizeHint() const override { return {760, 400}; }
 	QSize minimumSizeHint() const override { return {560, 300}; }
@@ -29,6 +30,7 @@ class ControllerTester : public QWidget
 	void drawController(QPainter &p);
 	int m_slot = 1;
 	bool m_compact = false;
+	bool m_ps4 = false;
 	quint32 m_held = 0;
 	float m_lx = 0, m_ly = 0, m_rx = 0, m_ry = 0, m_lt = 0, m_rt = 0;
 };
