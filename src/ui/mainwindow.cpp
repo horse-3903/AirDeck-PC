@@ -3,6 +3,7 @@
 #include "../settings/settings_singleton.hpp"
 #include "../platform/elevation.hpp"
 #include "mainmenu.hpp"
+#include "../platform/toast.hpp"
 #include "toastpopup.hpp"
 #include "ui_mainwindow.h"
 
@@ -80,11 +81,14 @@ void MainWindow::closeEvent(QCloseEvent *event)
 		if (!trayHintShown)
 		{
 			trayHintShown = true;
-			auto *toast = new ToastPopup(windowIcon(), tr("Virtual Gamepad is still running"),
-										 tr("The server keeps running in the background. Open the tray icon to reopen the window."),
-										 tr("Stop server"));
-			connect(toast, &ToastPopup::actionClicked, this, [this]() { stopServerAndQuit(); });
-			toast->showToast();
+			const QString title = tr("Virtual Gamepad is still running");
+			const QString body = tr("The server keeps running in the background. Open the tray icon to reopen the window.");
+			if (!showNativeToast(title, body, tr("Stop server")))
+			{
+				auto *toast = new ToastPopup(windowIcon(), title, body, tr("Stop server"));
+				connect(toast, &ToastPopup::actionClicked, this, [this]() { stopServerAndQuit(); });
+				toast->showToast();
+			}
 		}
 		event->ignore();
 		return;

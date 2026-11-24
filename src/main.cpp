@@ -1,6 +1,7 @@
 #include "appdir.hpp"
 #include "platform/windows/console.hpp"
 #include "ui/mainwindow.hpp"
+#include "platform/toast.hpp"
 #include "ui/shotrunner.hpp"
 
 #include <QLocalServer>
@@ -8,6 +9,7 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QThread>
 #include <QFile>
 #include <QFileInfo>
 #include <QLockFile>
@@ -146,6 +148,14 @@ int main(int argc, char *argv[])
 			shotsFolder = QString::fromLocal8Bit(argv[i + 1]);
 	}
 
+	// The Windows notification button launches us with this argument to stop the running server
+	bool stopRequested = false;
+	for (int i = 1; i < argc; ++i)
+	{
+		if (QString(argv[i]) == kStopServerArgument)
+			stopRequested = true;
+	}
+
 	// Only one instance may run: a second launch just brings the first one to the front
 	const QString instanceKey = "VirtualGamePadPC-single-instance";
 	{
@@ -153,9 +163,22 @@ int main(int argc, char *argv[])
 		probe.connectToServer(instanceKey);
 		if (shotsFolder.isEmpty() && probe.waitForConnected(500))
 		{
-			probe.write("show");
+			probe.write(stopRequested ? "stop" : "show");
 			probe.waitForBytesWritten(500);
 			qInfo() << "Another instance is already running, exiting.";
+			return 0;
+		}
+	}
+	if (stopRequested)
+		return 0;
+	initToastIdentity();
+	for (int i = 1; i < argc; ++i)
+	{
+		if (QString(argv[i]) == "--test-toast")
+		{
+			const bool shown = showNativeToast("Virtual Gamepad is still running", "Toast test", "Stop server");
+			qInfo() << "Toast test result:" << shown;
+			QThread::msleep(1500);
 			return 0;
 		}
 	}
@@ -165,11 +188,18 @@ int main(int argc, char *argv[])
 
 	MainWindow w;
 	QObject::connect(&instanceServer, &QLocalServer::newConnection, &w, [&]() {
+		bool stop = false;
 		while (QLocalSocket *client = instanceServer.nextPendingConnection())
 		{
-			client->deleteLater();
+			client->waitForReadyRead(200);
+				if (client->readAll().startsWith("stop"))
+					stop = true;
+				client->deleteLater();
 		}
-		w.showFromTray();
+		if (stop)
+				w.stopServerAndQuit();
+			else
+				w.showFromTray();
 	});
 	if (!shotsFolder.isEmpty())
 	{

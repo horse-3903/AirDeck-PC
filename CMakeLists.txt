@@ -105,6 +105,8 @@ set(PROJECT_SOURCES
     src/ui/buttoninputbox.cpp
     src/ui/controllertester.cpp
     src/ui/toastpopup.cpp
+    src/platform/toast.cpp
+    src/platform/toast.hpp
     src/ui/toastpopup.hpp
     src/ui/controllertester.hpp
     src/ui/slotcolors.hpp
