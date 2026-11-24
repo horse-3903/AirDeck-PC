@@ -2,10 +2,12 @@
 
 #include "../../third-party-libs/QR-Code-generator/cpp/qrcodegen.hpp"
 #include "../platform/elevation.hpp"
+#include "../ui/slotcolors.hpp"
 #include "../settings/settings_singleton.hpp"
 #include "ui_server.h"
 
 #include <QApplication>
+#include <QButtonGroup>
 #include <QGridLayout>
 #include <QClipboard>
 #include <QCryptographicHash>
@@ -18,6 +20,9 @@
 #include <QList>
 #include <QMessageBox>
 #include <QNetworkInterface>
+#include <QPainter>
+#include <QPainterPath>
+#include <QPixmap>
 #include <QThread>
 #include <QTimer>
 #include <algorithm>
@@ -123,17 +128,11 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		const QString pillStyle =
 			"QLabel { background: #161616; border: 1px solid %1; border-radius: 4px; "
 			"padding: 4px 12px; color: %2; font-weight: 600; }";
-		auto *modePill = new QLabel(tr("Input mode  |  %1").arg(modeName), this);
-		modePill->setStyleSheet(pillStyle.arg("#5A5A5A", "#F5F5F5"));
+		serverMode = mode;
 		auto *pillRow = new QHBoxLayout();
 		pillRow->setSpacing(8);
-		pillRow->addWidget(modePill);
-		serverMode = mode;
-		portPill = new QLabel(this);
-		portPill->setStyleSheet(pillStyle.arg("#3A3A3A", "#D4D4D4"));
 		countPill = new QLabel(this);
-		countPill->setStyleSheet(pillStyle.arg("#3A3A3A", "#D4D4D4"));
-		pillRow->addWidget(portPill);
+		countPill->setProperty("role", "caption");
 		pillRow->addWidget(countPill);
 		if (isElevated())
 		{
@@ -145,39 +144,178 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		auto *titleColumn = new QVBoxLayout();
 		titleColumn->setSpacing(6);
 		ui->headerLayout->removeWidget(ui->statusLabel);
-		titleColumn->addWidget(ui->statusLabel);
+		auto *statusRow = new QHBoxLayout();
+		statusRow->setSpacing(8);
+		const qreal dpr = devicePixelRatioF();
+		QPixmap tick(QSize(22, 22) * dpr);
+		tick.setDevicePixelRatio(dpr);
+		tick.fill(Qt::transparent);
+		{
+			QPainter tp(&tick);
+			tp.setRenderHint(QPainter::Antialiasing);
+			tp.setPen(QPen(QColor("#34C759"), 3.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+			QPainterPath path;
+			path.moveTo(4.5, 11.5);
+			path.lineTo(9.2, 16.2);
+			path.lineTo(17.5, 5.8);
+			tp.drawPath(path);
+		}
+		auto *tickLabel = new QLabel(this);
+		tickLabel->setPixmap(tick);
+		tickLabel->setFixedSize(22, 22);
+		statusRow->addWidget(tickLabel);
+		statusRow->addWidget(ui->statusLabel, 1);
+		titleColumn->addLayout(statusRow);
 		titleColumn->addLayout(pillRow);
 		ui->headerLayout->insertLayout(0, titleColumn);
 	}
 
-	// One card per controller slot, filled in as phones connect
+	// Two views on one page: Controllers (who is connected, test inputs) and Connect device (QR, address)
 	{
-		auto *slotRow = new QGridLayout();
-		slotRow->setSpacing(12);
+		auto *connectPage = new QWidget(this);
+		auto *connectLayout = new QHBoxLayout(connectPage);
+		connectLayout->setContentsMargins(0, 0, 0, 0);
+		connectLayout->setSpacing(16);
+		connectLayout->addWidget(ui->connectionCard, 1);
+		connectLayout->addWidget(ui->qrCard);
+		ui->verticalLayout->removeItem(ui->contentLayout);
+		delete ui->contentLayout;
+
+		// Controllers list: one card per slot
+		auto *listPage = new QWidget(this);
+		auto *listLayout = new QVBoxLayout(listPage);
+		listLayout->setContentsMargins(0, 0, 0, 0);
+		listLayout->setSpacing(12);
+		summaryLabel = new QLabel(listPage);
+		summaryLabel->setStyleSheet("font-weight: 600; font-size: 12pt;");
+		listLayout->addWidget(summaryLabel);
+		auto *cardsLayout = new QVBoxLayout();
+		cardsLayout->setSpacing(10);
 		for (int i = 0; i < 6; ++i)
 		{
 			SlotCard card;
-			card.frame = new QFrame(this);
+			card.frame = new QFrame(listPage);
 			card.frame->setProperty("role", "card");
 			auto *cardLayout = new QHBoxLayout(card.frame);
-			cardLayout->setContentsMargins(12, 10, 12, 10);
-			cardLayout->setSpacing(10);
+			cardLayout->setContentsMargins(16, 14, 16, 14);
+			cardLayout->setSpacing(14);
 			card.badge = new QLabel(QString::number(i + 1), card.frame);
-			card.badge->setFixedSize(34, 34);
+			card.badge->setFixedSize(44, 44);
 			card.badge->setAlignment(Qt::AlignCenter);
 			auto *textColumn = new QVBoxLayout();
-			textColumn->setSpacing(1);
+			textColumn->setSpacing(4);
 			card.title = new QLabel(card.frame);
 			card.detail = new QLabel(card.frame);
 			card.detail->setProperty("role", "caption");
+			auto *metaRow = new QHBoxLayout();
+			metaRow->setSpacing(8);
+			card.ip = new QLabel(card.frame);
+			card.ip->setStyleSheet("QLabel { background: #1F1F24; border-radius: 10px; padding: 2px 10px; "
+								   "color: #E5E5E5; font-weight: 600; }");
+			card.input = new QLabel(card.frame);
+			card.input->setProperty("role", "caption");
+			metaRow->addWidget(card.ip);
+			metaRow->addWidget(card.input);
+			metaRow->addStretch();
 			textColumn->addWidget(card.title);
 			textColumn->addWidget(card.detail);
-			cardLayout->addWidget(card.badge);
+			textColumn->addLayout(metaRow);
+			auto *rightColumn = new QVBoxLayout();
+			rightColumn->setSpacing(8);
+			card.state = new QLabel(card.frame);
+			card.state->setAlignment(Qt::AlignCenter);
+			card.test = new QPushButton(tr("Test inputs"), card.frame);
+			card.test->setCursor(Qt::PointingHandCursor);
+			card.test->setMinimumHeight(34);
+			connect(card.test, &QPushButton::clicked, this, [this, i]() { openTester(i + 1); });
+			rightColumn->addWidget(card.state, 0, Qt::AlignRight);
+			rightColumn->addStretch();
+			rightColumn->addWidget(card.test, 0, Qt::AlignRight);
+			cardLayout->addWidget(card.badge, 0, Qt::AlignTop);
 			cardLayout->addLayout(textColumn, 1);
-			slotRow->addWidget(card.frame, i / 3, i % 3);
+			cardLayout->addLayout(rightColumn);
+			cardsLayout->addWidget(card.frame);
 			slotCards.push_back(card);
 		}
-		ui->verticalLayout->insertLayout(2, slotRow);
+		listLayout->addLayout(cardsLayout);
+
+		// Pointer to the pairing screen once at least one phone is connected
+		addPhoneCard = new QFrame(listPage);
+		addPhoneCard->setStyleSheet("QFrame { border: 1px dashed #3A3A42; border-radius: 4px; background: transparent; }"
+									"QLabel { border: none; }");
+		auto *addLayout = new QVBoxLayout(addPhoneCard);
+		addLayout->setContentsMargins(16, 14, 16, 14);
+		addLayout->setSpacing(8);
+		auto *addLabel = new QLabel(tr("Connect another phone"), addPhoneCard);
+		addLabel->setAlignment(Qt::AlignCenter);
+		auto *addButton = new QPushButton(tr("Show connection QR"), addPhoneCard);
+		addButton->setCursor(Qt::PointingHandCursor);
+		addButton->setMinimumHeight(34);
+		connect(addButton, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(1); });
+		addLayout->addWidget(addLabel);
+		addLayout->addWidget(addButton, 0, Qt::AlignCenter);
+		listLayout->addWidget(addPhoneCard);
+
+		slotNote = new QLabel(listPage);
+		slotNote->setProperty("role", "caption");
+		slotNote->setWordWrap(true);
+		listLayout->addWidget(slotNote);
+		listLayout->addStretch();
+
+		// Tester page
+		auto *testerPage = new QWidget(this);
+		auto *testerLayout = new QVBoxLayout(testerPage);
+		testerLayout->setContentsMargins(0, 0, 0, 0);
+		testerLayout->setSpacing(10);
+		auto *testerHeader = new QHBoxLayout();
+		auto *backToList = new QPushButton(tr("Back to controllers"), testerPage);
+		backToList->setCursor(Qt::PointingHandCursor);
+		testerTitle = new QLabel(testerPage);
+		testerTitle->setProperty("role", "heading");
+		testerHeader->addWidget(backToList);
+		testerHeader->addSpacing(8);
+		testerHeader->addWidget(testerTitle, 1);
+		testerLayout->addLayout(testerHeader);
+		tester = new ControllerTester(testerPage);
+		testerLayout->addWidget(tester, 1);
+		auto *testerNote = new QLabel(tr("Shows what this PC is receiving from the phone."), testerPage);
+		testerNote->setProperty("role", "caption");
+		testerLayout->addWidget(testerNote);
+		connect(backToList, &QPushButton::clicked, this, [this]() { closeTester(); });
+
+		controllersStack = new QStackedWidget(this);
+		controllersStack->addWidget(listPage);
+		controllersStack->addWidget(testerPage);
+
+		pages = new QStackedWidget(this);
+		pages->addWidget(controllersStack);
+		pages->addWidget(connectPage);
+
+		// Tab bar
+		auto *tabRow = new QHBoxLayout();
+		tabRow->setSpacing(6);
+		tabControllers = new QPushButton(tr("Controllers"), this);
+		tabConnect = new QPushButton(tr("Connect device"), this);
+		auto *tabGroup = new QButtonGroup(this);
+		tabGroup->setExclusive(true);
+		for (QPushButton *tab : {tabControllers, tabConnect})
+		{
+			tab->setCheckable(true);
+			tab->setCursor(Qt::PointingHandCursor);
+			tab->setMinimumHeight(36);
+			tab->setMinimumWidth(150);
+			tab->setStyleSheet("QPushButton { padding: 4px 18px; min-height: 22px; } "
+							   "QPushButton:checked { background-color: #F5F5F5; color: #000000; border-color: #FFFFFF; }");
+			tabGroup->addButton(tab);
+			tabRow->addWidget(tab);
+		}
+		tabRow->addStretch();
+		connect(tabControllers, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(0); });
+		connect(tabConnect, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(1); });
+		ui->verticalLayout->insertLayout(1, tabRow);
+		ui->verticalLayout->insertWidget(2, pages, 1);
+		ui->clientLabel->clear();
+		showTab(1);
 		updateSlots();
 	}
 	clientConnection = nullptr;
@@ -211,6 +349,15 @@ Server::~Server()
 {
 	// IMPORTANT: clientConnection should not be accessed when the server is closed
 	for (auto &client : clients)
+	{
+		// Closing a socket fires its disconnected handler, which erases from this list while it is walked
+		client->socket->disconnect(this);
+		if (client->executor)
+			client->executor->release_all();
+	}
+	if (executor)
+		executor->release_all();
+	for (auto &client : clients)
 		client->socket->close(); // Close connections gracefully
 	clients.clear();
 	clientConnection = nullptr;
@@ -240,8 +387,17 @@ void Server::initServer()
 		tcpServer->close();
 		return;
 	}
-	ui->IPList->setMaximumHeight(120);
-	ui->QRViewer->setMaximumHeight(290);
+	ui->IPList->setFixedHeight(120);
+	ui->QRViewer->setFixedHeight(290);
+	{
+		const int twoLines = ui->hintLabel->fontMetrics().lineSpacing() * 2 + 6;
+		ui->hintLabel->setMinimumHeight(twoLines);
+		ui->hintLabel->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+		ui->qrCaption->setMinimumHeight(twoLines);
+		ui->qrCaption->setWordWrap(true);
+		ui->qrCaption->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
+		ui->connectionLayout->insertStretch(ui->connectionLayout->indexOf(ui->copyButton), 1);
+	}
 	ui->statusLabel->setText(tr("Server running"));
 	ui->addressTitle->setText(tr("IP address"));
 	ui->portLabel->setText(tr("Port: **%1**").arg(tcpServer->serverPort()));
@@ -338,6 +494,13 @@ void Server::initServer()
 		webUrlLabel->setProperty("role", "caption");
 		webUrlLabel->setWordWrap(true);
 		webUrlLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+		{
+			// The web address row keeps its space in App mode so nothing below it shifts
+			QSizePolicy keep = webUrlLabel->sizePolicy();
+			keep.setRetainSizeWhenHidden(true);
+			webUrlLabel->setSizePolicy(keep);
+			webUrlLabel->setMinimumHeight(webUrlLabel->fontMetrics().lineSpacing() + 4);
+		}
 		webUrlLabel->setVisible(false);
 		ui->connectionLayout->insertWidget(ui->connectionLayout->indexOf(ui->portLabel) + 1, webUrlLabel);
 		updateQrPixmaps();
@@ -368,8 +531,10 @@ void Server::initServer()
 		tr("Anyone on your network who has this address can connect. The QR code is not a password."), this);
 	securityNote->setProperty("role", "caption");
 	securityNote->setWordWrap(true);
-	securityNote->setAlignment(Qt::AlignCenter);
+	securityNote->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
+	securityNote->setMinimumHeight(securityNote->fontMetrics().lineSpacing() * 2 + 6);
 	ui->qrLayout->addWidget(securityNote);
+	ui->qrLayout->addStretch();
 	updateStatus();
 	qInfo() << "Server started successfully on port:" << tcpServer->serverPort();
 }
@@ -402,79 +567,146 @@ void Server::updateStatus()
 		clients.begin(), clients.end(), [](const std::unique_ptr<Client> &c) { return c->active; }));
 	const int capacity = slotCapacity();
 	const int port = tcpServer != nullptr ? tcpServer->serverPort() : 0;
-	if (portPill != nullptr)
-		portPill->setText(tr("Port %1").arg(port));
 	if (countPill != nullptr)
 	{
-		countPill->setText(tr("%1 of %2 phones").arg(active).arg(capacity));
-		countPill->setToolTip(serverMode == ExecutorType::VigemExecutor
-								  ? tr("Games that use XInput can only see the first 4 controllers.")
-								  : QString());
+		const QString modeName = serverMode == ExecutorType::VigemExecutor ? tr("Xbox 360 controller (ViGEm)")
+								 : serverMode == ExecutorType::GamepadExecutor ? tr("Windows virtual gamepad")
+																			   : tr("Keyboard and mouse");
+		countPill->setText(tr("%1  \u00B7  Port %2").arg(modeName).arg(port));
 	}
+	if (summaryLabel != nullptr)
+		summaryLabel->setText(active == 0 ? tr("Connected controllers")
+										  : tr("Connected controllers  (%1 connected, %2 available)")
+												.arg(active)
+												.arg(capacity - active));
+	if (tabControllers != nullptr)
+		tabControllers->setText(active > 0 ? tr("Controllers (%1)").arg(active) : tr("Controllers"));
+	if (!userPickedTab && pages != nullptr)
+		showTab(active > 0 ? 0 : 1);
 	emit statusChanged(tr("Server running  |  Port %1  |  %2")
 						   .arg(port)
 						   .arg(active == 0 ? tr("no device connected")
 											: tr("%1 of %2 connected").arg(active).arg(capacity)));
 }
 
+void Server::showTab(int index)
+{
+	pages->setCurrentIndex(index);
+	tabControllers->setChecked(index == 0);
+	tabConnect->setChecked(index == 1);
+}
+
+void Server::openTester(int slot)
+{
+	testerSlot = slot;
+	tester->setSlot(slot);
+	for (const auto &client : clients)
+	{
+		if (client->slot == slot)
+		{
+			testerTitle->setText(tr("Controller %1: %2")
+									 .arg(slot)
+									 .arg(client->name.isEmpty() ? client->socket->peerAddress().toString() : client->name));
+			tester->setState(client->held, client->lx, client->ly, client->rx, client->ry, client->lt, client->rt);
+		}
+	}
+	controllersStack->setCurrentIndex(1);
+}
+
+void Server::closeTester()
+{
+	testerSlot = 0;
+	controllersStack->setCurrentIndex(0);
+}
+
+void Server::noteInput(Client &client, const vgp_data_exchange_gamepad_reading &reading)
+{
+	client.held = (client.held | reading.buttons_down) & ~reading.buttons_up;
+	client.lx = reading.left_thumbstick_x;
+	client.ly = reading.left_thumbstick_y;
+	client.rx = reading.right_thumbstick_x;
+	client.ry = reading.right_thumbstick_y;
+	client.lt = reading.left_trigger;
+	client.rt = reading.right_trigger;
+	if (testerSlot != 0 && client.slot == testerSlot)
+		tester->setState(client.held, client.lx, client.ly, client.rx, client.ry, client.lt, client.rt);
+}
+
 void Server::updateSlots()
 {
+	std::vector<int> freeSlots;
 	for (int i = 0; i < static_cast<int>(slotCards.size()); ++i)
 	{
 		const Client *owner = nullptr;
 		for (const auto &client : clients)
 		{
-			if (client->slot == i + 1)
+			if (client->active && client->slot == i + 1)
 				owner = client.get();
 		}
 		SlotCard &card = slotCards[i];
-		card.frame->setVisible(i < slotCapacity());
+		const QColor color = slotColor(i + 1);
 		const bool active = owner != nullptr;
-		card.badge->setStyleSheet(
-			active ? "QLabel { background: #F5F5F5; color: #000000; border-radius: 17px; "
-					 "font-weight: 700; font-size: 11pt; }"
-				   : "QLabel { background: transparent; color: #6B6B6B; border: 2px solid #3A3A3A; "
-					 "border-radius: 17px; font-weight: 700; font-size: 11pt; }");
-		if (active)
-		{
-			const QString name =
-				!owner->name.isEmpty() ? owner->name : owner->socket->peerAddress().toString();
-			card.title->setText(name);
-			card.title->setStyleSheet("font-weight: 600; color: #F5F5F5;");
-			QStringList parts;
-			if (!owner->model.isEmpty() && owner->model != owner->name)
-				parts << owner->model;
-			parts << owner->socket->peerAddress().toString();
-			card.detail->setText(parts.join("  |  "));
-		}
-		else
-		{
-			card.title->setText(tr("Controller %1").arg(i + 1));
-			card.title->setStyleSheet("color: #8A8A8A;");
-			card.detail->setText(i >= 4 && serverMode == ExecutorType::VigemExecutor
-									 ? tr("Waiting (games will not see this one)")
-									 : tr("Waiting for a phone"));
-		}
+		// Only connected phones get a card, the free slots are summarised underneath
+		card.frame->setVisible(active && i < slotCapacity());
+		if (!active && i < slotCapacity())
+			freeSlots.push_back(i + 1);
+		if (!active)
+			continue;
+		card.badge->setStyleSheet(QString("QLabel { background: %1; color: #000000; border-radius: 22px; "
+										  "font-weight: 800; font-size: 14pt; }")
+									  .arg(color.name()));
+		const bool web = owner->protocol == Client::Protocol::WebSocket;
+		card.title->setText(!owner->name.isEmpty() ? owner->name : owner->socket->peerAddress().toString());
+		card.title->setStyleSheet("font-weight: 700; font-size: 13pt; color: #F5F5F5;");
+		QStringList parts;
+		parts << tr("Controller %1").arg(i + 1) << (web ? tr("Browser") : tr("Android app"));
+		if (!owner->model.isEmpty() && owner->model != owner->name)
+			parts << owner->model;
+		card.detail->setText(parts.join("  \u00B7  "));
+		card.detail->setToolTip(parts.join("\n"));
+		card.ip->setText(owner->socket->peerAddress().toString());
+		card.input->setText(owner->ds4								  ? tr("DualShock 4 input")
+							: serverMode == ExecutorType::VigemExecutor ? tr("Xbox 360 input")
+							: serverMode == ExecutorType::GamepadExecutor ? tr("Windows virtual gamepad input")
+																		 : tr("Keyboard and mouse input"));
+		card.state->setText(tr("Connected"));
+		card.state->setStyleSheet(QString("QLabel { color: %1; background: rgba(%2,%3,%4,40); border-radius: 10px; "
+										  "padding: 3px 12px; font-weight: 600; }")
+									  .arg(color.name())
+									  .arg(color.red())
+									  .arg(color.green())
+									  .arg(color.blue()));
+	}
+	if (addPhoneCard != nullptr)
+		addPhoneCard->setVisible(!freeSlots.empty());
+	if (slotNote != nullptr)
+	{
+		QStringList numbers;
+		for (int slot : freeSlots)
+			numbers << QString::number(slot);
+		QString note = freeSlots.empty() ? tr("All controller slots are in use.")
+										 : tr("Slots %1 available").arg(numbers.join(", "));
+		if (serverMode == ExecutorType::VigemExecutor)
+			note += tr("  \u00B7  XInput games generally support up to 4 controllers. Controllers 5 and 6 appear "
+					   "as PlayStation controllers.");
+		slotNote->setText(note);
+	}
+	// The tester follows one controller; leave it when that controller goes away
+	if (testerSlot != 0)
+	{
+		const bool still = std::any_of(clients.begin(), clients.end(), [this](const std::unique_ptr<Client> &c) {
+			return c->active && c->slot == testerSlot;
+		});
+		if (!still)
+			closeTester();
 	}
 }
 
 void Server::updateClientLabel()
 {
 	updateStatus();
-	QStringList names;
-	for (const auto &client : clients)
-	{
-		if (client->active)
-			names << (client->name.isEmpty() ? client->socket->peerAddress().toString() : client->name);
-	}
-	if (names.isEmpty())
-	{
-		ui->clientLabel->setText(tr("○ No device connected"));
-		return;
-	}
-	ui->clientLabel->setText(names.size() == 1
-								 ? tr("● Connected to %1").arg(names.first())
-								 : tr("● %1 devices connected: %2").arg(names.size()).arg(names.join(", ")));
+	// Only refusals use this line; connected phones are shown on their cards
+	ui->clientLabel->clear();
 }
 
 ExecutorInterface *Server::executorFor(Client &client)
@@ -489,6 +721,11 @@ bool Server::activate(Client &client, QString *failure)
 	const ExecutorType mode = SettingsSingleton::instance().executorType();
 	const bool multiPhone =
 		mode == ExecutorType::GamepadExecutor || mode == ExecutorType::VigemExecutor;
+	const auto slotUsed = [this](int slot) {
+		return std::any_of(clients.begin(), clients.end(),
+						   [slot](const std::unique_ptr<Client> &c) { return c->slot == slot; });
+	};
+	int chosenSlot = 0;
 	if (!multiPhone)
 	{
 		for (const auto &other : clients)
@@ -503,14 +740,56 @@ bool Server::activate(Client &client, QString *failure)
 	else if (mode == ExecutorType::VigemExecutor)
 	{
 #ifdef _WIN32
+		const int xboxInUse = static_cast<int>(std::count_if(
+			clients.begin(), clients.end(),
+			[](const std::unique_ptr<Client> &c) { return c->active && !c->ds4; }));
+		const bool useDs4 = xboxInUse >= 4;
+		if (useDs4)
+		{
+			for (int candidate : {5, 6})
+			{
+				if (!slotUsed(candidate))
+				{
+					chosenSlot = candidate;
+					break;
+				}
+			}
+			if (chosenSlot == 0)
+			{
+				*failure = tr("All 6 controller slots are in use.");
+				return false;
+			}
+		}
 		try
 		{
-			client.executor = std::make_unique<ViGEmExecutor>();
+			client.executor = std::make_unique<ViGEmExecutor>(useDs4, chosenSlot);
 		}
 		catch (const std::exception &e)
 		{
 			*failure = QString::fromUtf8(e.what());
 			return false;
+		}
+		client.ds4 = useDs4;
+		if (!useDs4)
+		{
+			// Xbox controllers take the slot Windows gave them, so games and this app agree on the number
+			const int preferred = client.executor->slot();
+			if (preferred >= 1 && preferred <= 4 && !slotUsed(preferred))
+				chosenSlot = preferred;
+			else
+			{
+				for (int candidate = 1; candidate <= 4 && chosenSlot == 0; ++candidate)
+				{
+					if (!slotUsed(candidate))
+						chosenSlot = candidate;
+				}
+			}
+			if (chosenSlot == 0)
+			{
+				client.executor.reset();
+				*failure = tr("All controller slots are in use.");
+				return false;
+			}
 		}
 #endif
 	}
@@ -525,7 +804,7 @@ bool Server::activate(Client &client, QString *failure)
 			return false;
 		}
 	}
-	client.slot = pickSlot(client.executor.get());
+	client.slot = chosenSlot != 0 ? chosenSlot : pickSlot(client.executor.get());
 	if (client.slot == 0)
 	{
 		*failure = tr("All 6 controller slots are in use.");
@@ -705,6 +984,7 @@ void Server::serveNative(Client &client)
 		}
 		lastRequestTime = currentTime;
 
+		noteInput(client, result.reading);
 		activeExecutor->inject_gamepad_state(result.reading);
 		client.buffer.remove(0, result.bytes_consumed);
 	}
@@ -884,6 +1164,7 @@ void Server::handleWebMessage(Client &client, const QByteArray &payload)
 	reading.left_trigger = trigger("lt");
 	reading.right_trigger = trigger("rt");
 	requestCount++;
+	noteInput(client, reading);
 	activeExecutor->inject_gamepad_state(reading);
 }
 

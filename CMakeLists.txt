@@ -103,6 +103,9 @@ set(PROJECT_SOURCES
     src/ui/badge.cpp
     src/ui/badge.hpp
     src/ui/buttoninputbox.cpp
+    src/ui/controllertester.cpp
+    src/ui/controllertester.hpp
+    src/ui/slotcolors.hpp
     src/ui/buttoninputbox.hpp
     src/ui/mainmenu.cpp
     src/ui/mainmenu.hpp

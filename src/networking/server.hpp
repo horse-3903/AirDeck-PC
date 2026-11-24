@@ -8,6 +8,9 @@
 #include <QFrame>
 #include <QJsonObject>
 #include <QLabel>
+#include <QPushButton>
+#include <QStackedWidget>
+#include "../ui/controllertester.hpp"
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTime>
@@ -63,12 +66,19 @@ class Server : public QWidget
 		};
 		Protocol protocol = Protocol::Unknown;
 		bool active = false;
+		bool ds4 = false;
+		quint32 held = 0;
+		float lx = 0, ly = 0, rx = 0, ry = 0, lt = 0, rt = 0;
 	};
 	struct SlotCard
 	{
 		QLabel *badge = nullptr;
 		QLabel *title = nullptr;
 		QLabel *detail = nullptr;
+		QLabel *state = nullptr;
+		QPushButton *test = nullptr;
+		QLabel *ip = nullptr;
+		QLabel *input = nullptr;
 		QFrame *frame = nullptr;
 	};
 	std::vector<SlotCard> slotCards;
@@ -82,6 +92,21 @@ class Server : public QWidget
 	void sendWebFrame(QTcpSocket *socket, const QByteArray &payload, int opcode = 1);
 	void sendWebJson(Client &client, const QJsonObject &object);
 	void updateQrPixmaps();
+	void showTab(int index);
+	void openTester(int slot);
+	void closeTester();
+	void noteInput(Client &client, const vgp_data_exchange_gamepad_reading &reading);
+	QStackedWidget *pages = nullptr;
+	QStackedWidget *controllersStack = nullptr;
+	QPushButton *tabControllers = nullptr;
+	QPushButton *tabConnect = nullptr;
+	QLabel *summaryLabel = nullptr;
+	QLabel *slotNote = nullptr;
+	QFrame *addPhoneCard = nullptr;
+	QLabel *testerTitle = nullptr;
+	ControllerTester *tester = nullptr;
+	int testerSlot = 0;
+	bool userPickedTab = false;
 	std::vector<QLabel *> qrLabels;
 	QStringList qrAddresses;
 	bool webQr = false;

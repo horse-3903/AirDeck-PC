@@ -542,7 +542,7 @@ bool GamepadExecutor::inject_gamepad_state(vgp_data_exchange_gamepad_reading con
 #include <cstdio>
 #include <stdexcept>
 
-ViGEmExecutor::ViGEmExecutor()
+ViGEmExecutor::ViGEmExecutor(bool ds4, int slot) : m_ds4(ds4), m_slot(slot)
 {
 	m_client = vigem_alloc();
 	if (m_client == nullptr)
@@ -563,7 +563,7 @@ ViGEmExecutor::ViGEmExecutor()
 		throw std::runtime_error(code);
 	}
 
-	m_pad = vigem_target_x360_alloc();
+	m_pad = m_ds4 ? vigem_target_ds4_alloc() : vigem_target_x360_alloc();
 	const VIGEM_ERROR addResult =
 		m_pad != nullptr ? vigem_target_add(m_client, m_pad) : VIGEM_ERROR_INVALID_TARGET;
 	if (!VIGEM_SUCCESS(addResult))
@@ -581,7 +581,7 @@ ViGEmExecutor::ViGEmExecutor()
 				 static_cast<unsigned>(addResult));
 		throw std::runtime_error(code);
 	}
-	qInfo() << "ViGEm virtual Xbox 360 controller created";
+	qInfo() << (m_ds4 ? "ViGEm virtual DualShock 4 created" : "ViGEm virtual Xbox 360 controller created");
 }
 
 ViGEmExecutor::~ViGEmExecutor()
@@ -604,8 +604,84 @@ static SHORT toStickAxis(float value, bool invert)
 	return static_cast<SHORT>(clamped * 32767.0f);
 }
 
+static BYTE toDs4Axis(float value)
+{
+	return static_cast<BYTE>(std::lround((std::clamp(value, -1.0f, 1.0f) + 1.0f) * 127.5f));
+}
+
+static DS4_DPAD_DIRECTIONS ds4Hat(quint32 held)
+{
+	bool up = held & GamepadButtons_DPadUp, down = held & GamepadButtons_DPadDown;
+	bool left = held & GamepadButtons_DPadLeft, right = held & GamepadButtons_DPadRight;
+	if (up && down)
+		up = down = false;
+	if (left && right)
+		left = right = false;
+	if (up && right)
+		return DS4_BUTTON_DPAD_NORTHEAST;
+	if (down && right)
+		return DS4_BUTTON_DPAD_SOUTHEAST;
+	if (down && left)
+		return DS4_BUTTON_DPAD_SOUTHWEST;
+	if (up && left)
+		return DS4_BUTTON_DPAD_NORTHWEST;
+	if (up)
+		return DS4_BUTTON_DPAD_NORTH;
+	if (right)
+		return DS4_BUTTON_DPAD_EAST;
+	if (down)
+		return DS4_BUTTON_DPAD_SOUTH;
+	if (left)
+		return DS4_BUTTON_DPAD_WEST;
+	return DS4_BUTTON_DPAD_NONE;
+}
+
 bool ViGEmExecutor::inject_gamepad_state(vgp_data_exchange_gamepad_reading const &reading)
 {
+	m_held |= reading.buttons_down;
+	m_held &= ~reading.buttons_up;
+
+	if (m_ds4)
+	{
+		DS4_REPORT report;
+		DS4_REPORT_INIT(&report);
+		struct Mapping
+		{
+			uint32_t button;
+			unsigned short bit;
+		};
+		static const Mapping mappings[] = {
+			{GamepadButtons_A, DS4_BUTTON_CROSS},
+			{GamepadButtons_B, DS4_BUTTON_CIRCLE},
+			{GamepadButtons_X, DS4_BUTTON_SQUARE},
+			{GamepadButtons_Y, DS4_BUTTON_TRIANGLE},
+			{GamepadButtons_Menu, DS4_BUTTON_OPTIONS},
+			{GamepadButtons_View, DS4_BUTTON_SHARE},
+			{GamepadButtons_LeftShoulder, DS4_BUTTON_SHOULDER_LEFT},
+			{GamepadButtons_RightShoulder, DS4_BUTTON_SHOULDER_RIGHT},
+			{GamepadButtons_LeftThumbstick, DS4_BUTTON_THUMB_LEFT},
+			{GamepadButtons_RightThumbstick, DS4_BUTTON_THUMB_RIGHT},
+		};
+		for (const Mapping &mapping : mappings)
+		{
+			if (m_held & mapping.button)
+				report.wButtons |= mapping.bit;
+		}
+		if (reading.left_trigger > 0.5f)
+			report.wButtons |= DS4_BUTTON_TRIGGER_LEFT;
+		if (reading.right_trigger > 0.5f)
+			report.wButtons |= DS4_BUTTON_TRIGGER_RIGHT;
+		DS4_SET_DPAD(&report, ds4Hat(m_held));
+		// Both the phone and a DualShock 4 report Y growing downwards
+		report.bThumbLX = toDs4Axis(reading.left_thumbstick_x);
+		report.bThumbLY = toDs4Axis(reading.left_thumbstick_y);
+		report.bThumbRX = toDs4Axis(reading.right_thumbstick_x);
+		report.bThumbRY = toDs4Axis(reading.right_thumbstick_y);
+		report.bTriggerL = static_cast<BYTE>(std::clamp(reading.left_trigger, 0.0f, 1.0f) * 255.0f);
+		report.bTriggerR = static_cast<BYTE>(std::clamp(reading.right_trigger, 0.0f, 1.0f) * 255.0f);
+		return VIGEM_SUCCESS(vigem_target_ds4_update(m_client, m_pad, report));
+	}
+
 	struct Mapping
 	{
 		uint32_t button;
@@ -651,6 +727,8 @@ bool ViGEmExecutor::inject_gamepad_state(vgp_data_exchange_gamepad_reading const
 
 int ViGEmExecutor::slot() const
 {
+	if (m_ds4)
+		return m_slot;
 	ULONG index = 0;
 	if (m_client != nullptr && m_pad != nullptr &&
 		VIGEM_SUCCESS(vigem_target_x360_get_user_index(m_client, m_pad, &index)))
@@ -661,7 +739,18 @@ int ViGEmExecutor::slot() const
 void ViGEmExecutor::release_all()
 {
 	m_buttons = 0;
-	if (m_client != nullptr && m_pad != nullptr)
+	m_held = 0;
+	if (m_client == nullptr || m_pad == nullptr)
+		return;
+	if (m_ds4)
+	{
+		DS4_REPORT report;
+		DS4_REPORT_INIT(&report);
+		vigem_target_ds4_update(m_client, m_pad, report);
+	}
+	else
+	{
 		vigem_target_x360_update(m_client, m_pad, XUSB_REPORT{});
+	}
 }
 #endif

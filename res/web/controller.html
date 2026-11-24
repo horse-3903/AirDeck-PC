@@ -77,6 +77,7 @@ body:not(.xbox) .face-xbox { display: none; }
 #l2, #r2 { bottom: 4dvh; width: 9vw; height: 24dvh; border-radius: 3dvh; }
 #l2 { left: calc(2vw + env(safe-area-inset-left)); }
 #r2 { right: calc(2vw + env(safe-area-inset-right)); }
+.ico { height: 56%; width: auto; max-width: 70%; }
 .xbox-label, .ps-label { display: inline; }
 body.xbox .ps-label { display: none; }
 body:not(.xbox) .xbox-label { display: none; }
@@ -122,6 +123,11 @@ body:not(.xbox) .xbox-label { display: none; }
 .act { padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel);
     font-size: 14px; font-weight: 600; text-align: center; }
 .act.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.sec { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 2px; }
+.sec:first-of-type { margin-top: 4px; }
+.dev { font-size: 12px; color: var(--muted); line-height: 1.5; padding: 6px 0; word-break: break-word; }
+#ioBox { width: 100%; height: 80px; margin-top: 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel);
+    color: var(--fg); font: 12px monospace; padding: 6px; display: none; -webkit-user-select: text; user-select: text; touch-action: manipulation; }
 .actions { display: flex; gap: 8px; margin-top: 12px; }
 .actions .act { flex: 1; }
 #toast { position: fixed; left: 50%; top: 14dvh; transform: translateX(-50%); background: var(--accent);
@@ -157,9 +163,9 @@ body:not(.xbox) .xbox-label { display: none; }
 
   <div class="pill" id="l1" data-b="l1"><span class="ps-label">L1</span><span class="xbox-label">LB</span></div>
   <div class="pill" id="r1" data-b="r1"><span class="ps-label">R1</span><span class="xbox-label">RB</span></div>
-  <div class="pill" id="menuBtn" data-nav="menu">Settings</div>
-  <div class="pill" id="view" data-b="view">Select</div>
-  <div class="pill" id="start" data-b="start">Start</div>
+  <div class="pill" id="menuBtn" data-nav="menu" aria-label="Settings"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></div>
+  <div class="pill" id="view" data-b="view" aria-label="Select"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="6" width="12" height="12" rx="2"/><path d="M8 6V3.5h12.5V16H18" stroke-linecap="round"/></svg></div>
+  <div class="pill" id="start" data-b="start" aria-label="Start"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg></div>
   <div class="pill" id="l2" data-b="l2" data-trig="lt"><span class="ps-label">L2</span><span class="xbox-label">LT</span></div>
   <div class="pill" id="r2" data-b="r2" data-trig="rt"><span class="ps-label">R2</span><span class="xbox-label">RT</span></div>
 
@@ -172,11 +178,20 @@ body:not(.xbox) .xbox-label { display: none; }
 
 <div id="sheetWrap"><div id="sheet">
   <div class="head"><h2>Controller menu</h2><div class="act primary" id="closeBtn">Close</div></div>
+  <div class="sec">Device</div>
   <div class="row"><span>Name</span><input id="nameInput" type="text" maxlength="24" autocomplete="off"></div>
+  <div class="dev" id="devInfo"></div>
+  <div class="sec">Controls</div>
   <div class="row"><span>Button style</span><span class="seg" id="styleSeg"><div data-v="ps">PlayStation</div><div data-v="xbox">Xbox</div></span></div>
+  <div class="row"><span>Snap stick to touch<br><span class="hint">Touching inside a stick's circle moves it there</span></span><span class="seg" id="snapSeg"><div data-v="on">On</div><div data-v="off">Off</div></span></div>
   <div class="row"><span>Vibration<br><span class="hint" id="vibHint">Taps vibrate</span></span><span class="seg" id="vibSeg"><div data-v="on">On</div><div data-v="off">Off</div></span></div>
   <div class="row"><span>Fullscreen<br><span class="hint" id="fsHint"></span></span><span class="act" id="fsBtn">Enter</span></div>
-  <div class="row"><span>Connection<br><span class="hint" id="connHint"></span></span><span style="display:flex;gap:6px"><span class="act" id="reconnBtn">Reconnect</span><span class="act" id="disconnBtn">Disconnect</span></span></div>
+  <div class="sec">Backup</div>
+  <div class="row"><span>Settings<br><span class="hint">Copy or paste as text, or use a file</span></span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><span class="act" id="expBtn">Export</span><span class="act" id="impBtn">Import</span></span></div>
+  <textarea id="ioBox" spellcheck="false" placeholder="Paste exported settings here, then tap Import again"></textarea>
+  <input id="impFile" type="file" accept="application/json,.json" style="display:none">
+  <div class="sec">Connection</div>
+  <div class="row"><span>Status<br><span class="hint" id="connHint"></span></span><span style="display:flex;gap:6px"><span class="act" id="reconnBtn">Reconnect</span><span class="act" id="disconnBtn">Disconnect</span></span></div>
 </div></div>
 
 <script>
@@ -189,17 +204,42 @@ body:not(.xbox) .xbox-label { display: none; }
                 set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 
   // ---- device description for the PC ----
-  function guessModel() {
-    if (isIOS) return /iPad/.test(ua) ? "Apple iPad (Safari)" : "Apple iPhone (Safari)";
-    var m = ua.match(/Android [\d.]+; ([^;)]+)/);
-    if (m && m[1] && m[1].length > 1 && m[1] !== "K") return m[1].trim() + " (Android browser)";
-    return "Android phone (browser)";
-  }
-  function defaultName() { return isIOS ? "iPhone" : "Android phone"; }
+  var devInfo = (function () {
+    var os = "", model = "", browser = "";
+    var m;
+    if (isIOS) {
+      os = (m = ua.match(/OS (\d+)[_.](\d+)/)) ? "iOS " + m[1] + "." + m[2] : "iOS";
+      model = /iPad/.test(ua) || (navigator.platform === "MacIntel") ? "iPad" : "iPhone";
+    } else if ((m = ua.match(/Android ([\d.]+)/))) {
+      os = "Android " + m[1];
+      var mm = ua.match(/Android [\d.]+; ([^;)]+)/);
+      if (mm && mm[1] && mm[1].trim().length > 1 && mm[1].trim() !== "K") model = mm[1].replace(/ Build\/.*/, "").trim();
+    } else if (/Windows/.test(ua)) os = "Windows";
+    else if (/Mac OS X/.test(ua)) os = "macOS";
+    else if (/Linux/.test(ua)) os = "Linux";
+    if ((m = ua.match(/(EdgA|EdgiOS|Edg)\/(\d+)/))) browser = "Edge " + m[2];
+    else if ((m = ua.match(/SamsungBrowser\/(\d+)/))) browser = "Samsung Internet " + m[1];
+    else if ((m = ua.match(/(OPR|OPiOS)\/(\d+)/))) browser = "Opera " + m[2];
+    else if ((m = ua.match(/(Firefox|FxiOS)\/(\d+)/))) browser = "Firefox " + m[2];
+    else if ((m = ua.match(/(Chrome|CriOS)\/(\d+)/))) browser = "Chrome " + m[2];
+    else if ((m = ua.match(/Version\/(\d+)[\d.]*.*Safari/))) browser = "Safari " + m[1];
+    var scr = Math.round(Math.max(screen.width, screen.height)) + "x" + Math.round(Math.min(screen.width, screen.height));
+    var dpr = window.devicePixelRatio ? " @" + (Math.round(window.devicePixelRatio * 100) / 100) + "x" : "";
+    var touch = navigator.maxTouchPoints ? navigator.maxTouchPoints + " touch points" : "";
+    var parts = [];
+    if (model) parts.push(model);
+    if (os) parts.push(os);
+    if (browser) parts.push(browser);
+    return { model: model, os: os, browser: browser, screen: scr + dpr, touch: touch,
+             label: parts.length ? parts.join(", ") : "Web browser", parts: parts };
+  })();
+  function guessModel() { return devInfo.label + (devInfo.screen ? " (" + devInfo.screen + ")" : ""); }
+  function defaultName() { return devInfo.model || (isIOS ? "iPhone" : devInfo.os ? devInfo.os + " device" : "Browser"); }
   var settings = {
     name: store.get("vgp-name", defaultName()),
     style: store.get("vgp-style", "ps"),
-    vib: store.get("vgp-vib", "on")
+    vib: store.get("vgp-vib", "on"),
+    snap: store.get("vgp-snap", "on")
   };
   var canVibrate = typeof navigator.vibrate === "function";
 
@@ -221,12 +261,14 @@ body:not(.xbox) .xbox-label { display: none; }
     $("slotText").textContent = text;
     $("connHint").textContent = text;
   }
+  var SLOT_COLORS = ["#E5484D", "#3E8EF7", "#F5C518", "#30A46C", "#F97316", "#A855F7"];
   function renderSlot() {
     var dots = "";
-    for (var i = 1; i <= 6; i++) dots += '<span class="dot' + (i === slot ? " lit" : "") + '"></span>';
+    for (var i = 1; i <= 6; i++) dots += '<span class="dot' + (i === slot ? " lit" : "") + '" style="background:' + SLOT_COLORS[i - 1] + ';opacity:' + (i === slot ? 1 : 0.28) + '"></span>';
     $("slotDots").innerHTML = slot ? dots : "";
     $("slotDots").style.display = slot ? "inline-flex" : "none";
     $("slotDots").style.gap = "1.2dvh";
+    $("slotText").style.color = slot ? SLOT_COLORS[slot - 1] : "";
   }
   function connect() {
     if (!wantConnection || (ws && ws.readyState <= 1)) return;
@@ -329,7 +371,9 @@ body:not(.xbox) .xbox-label { display: none; }
       set(dx, dy); dirty = true;
     }
     el.addEventListener("pointerdown", function (e) {
-      if (id !== null) return; e.preventDefault(); id = e.pointerId;
+      if (id !== null) return; e.preventDefault();
+      if (settings.snap !== "on" && !e.target.classList.contains("knob")) return;
+      id = e.pointerId;
       try { el.setPointerCapture(id); } catch (x) {}
       var r = el.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; R = r.width * 0.29;
       el.classList.add("active"); move(e); buzz(); firstTouch();
@@ -389,6 +433,20 @@ body:not(.xbox) .xbox-label { display: none; }
     $("vibHint").textContent = canVibrate ? "Taps vibrate" : "Not available on this browser";
     $("fsHint").textContent = isIOS ? "iPhone: Share, then Add to Home Screen" : "Hides the browser bars";
     $("nameInput").value = settings.name;
+    document.querySelectorAll("#snapSeg div").forEach(function (d) { d.classList.toggle("sel", d.dataset.v === settings.snap); });
+    $("devInfo").textContent = devInfo.label + (devInfo.screen ? "  \u00B7  " + devInfo.screen : "") + (devInfo.touch ? "  \u00B7  " + devInfo.touch : "");
+  }
+  function exportText() {
+    return JSON.stringify({ vgp: 1, name: settings.name, style: settings.style, vib: settings.vib, snap: settings.snap }, null, 2);
+  }
+  function importText(t) {
+    var o; try { o = JSON.parse(t); } catch (e) { toast("Not valid settings"); return false; }
+    if (!o || o.vgp !== 1) { toast("Not valid settings"); return false; }
+    if (typeof o.name === "string" && o.name.trim()) { settings.name = o.name.trim().slice(0, 24); store.set("vgp-name", settings.name); dirty = true; }
+    if (o.style === "ps" || o.style === "xbox") { settings.style = o.style; store.set("vgp-style", o.style); }
+    if (o.vib === "on" || o.vib === "off") { settings.vib = o.vib; store.set("vgp-vib", o.vib); }
+    if (o.snap === "on" || o.snap === "off") { settings.snap = o.snap; store.set("vgp-snap", o.snap); }
+    applySettings(); toast("Settings imported"); return true;
   }
   function openMenu() { applySettings(); $("sheetWrap").classList.add("open"); }
   function closeMenu() {
@@ -404,6 +462,32 @@ body:not(.xbox) .xbox-label { display: none; }
   });
   document.querySelectorAll("#vibSeg div").forEach(function (d) {
     d.addEventListener("click", function () { settings.vib = d.dataset.v; store.set("vgp-vib", settings.vib); applySettings(); if (settings.vib === "on") buzz(); });
+  });
+  document.querySelectorAll("#snapSeg div").forEach(function (d) {
+    d.addEventListener("click", function () { settings.snap = d.dataset.v; store.set("vgp-snap", settings.snap); applySettings(); });
+  });
+  $("expBtn").addEventListener("click", function () {
+    var t = exportText(), box = $("ioBox");
+    try {
+      var blob = new Blob([t], { type: "application/json" }), a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = "virtual-gamepad-settings.json";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    } catch (e) {}
+    box.style.display = "block"; box.value = t;
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { toast("Copied and saved"); }, function () { toast("Saved as a file"); });
+    else toast("Saved as a file");
+  });
+  $("impBtn").addEventListener("click", function () {
+    var box = $("ioBox");
+    if (box.style.display === "block" && box.value.trim().charAt(0) === "{") { if (importText(box.value)) box.style.display = "none"; return; }
+    $("impFile").click();
+    box.style.display = "block"; box.value = ""; box.focus();
+  });
+  $("impFile").addEventListener("change", function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () { if (importText(String(r.result))) $("ioBox").style.display = "none"; };
+    r.readAsText(f); this.value = "";
   });
   $("fsBtn").addEventListener("click", function () { enterFullscreen(false); });
   $("reconnBtn").addEventListener("click", function () { closeMenu(); reconnect(); });

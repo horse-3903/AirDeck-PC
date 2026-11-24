@@ -74,7 +74,8 @@ struct _VIGEM_TARGET_T;
 class ViGEmExecutor : public ExecutorInterface
 {
   public:
-	ViGEmExecutor();
+	// ds4 = a DualShock 4 for games that cannot see more than four Xbox controllers
+	explicit ViGEmExecutor(bool ds4 = false, int slot = -1);
 	~ViGEmExecutor() override;
 
 	ViGEmExecutor(const ViGEmExecutor &) = delete;
@@ -88,6 +89,9 @@ class ViGEmExecutor : public ExecutorInterface
 	_VIGEM_CLIENT_T *m_client = nullptr;
 	_VIGEM_TARGET_T *m_pad = nullptr;
 	unsigned short m_buttons = 0;
+	bool m_ds4 = false;
+	int m_slot = -1;
+	quint32 m_held = 0;
 };
 #endif
 
