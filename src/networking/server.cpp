@@ -193,11 +193,6 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		auto *summaryRow = new QHBoxLayout();
 		summaryRow->addWidget(summaryLabel);
 		summaryRow->addStretch();
-		auto *connectShortcut = new QPushButton(tr("Connect device"), listPage);
-		connectShortcut->setCursor(Qt::PointingHandCursor);
-		connectShortcut->setProperty("variant", "ghost");
-		connect(connectShortcut, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(1); });
-		summaryRow->addWidget(connectShortcut);
 		listLayout->addLayout(summaryRow);
 		// Six permanent tiles, three across and two down. Empty ones are grey, a connected one takes its colour
 		cardsGrid = new QGridLayout();
@@ -731,12 +726,7 @@ void Server::refreshIcon(SlotCard &card)
 	if (size.width() <= 8 || size.height() <= 8 || !card.iconColor.isValid())
 		return;
 	const qreal dpr = devicePixelRatioF();
-	if (card.occupied)
-	{
-		card.deviceIcon->setPixmap(controllerPixmap(card.iconPs4, card.iconColor, size, dpr));
-		return;
-	}
-	// An empty slot shows a smaller, quieter controller in the middle of the same space
+	// Empty and connected slots draw the controller at the same size, in the middle of the same space
 	QPixmap full(size * dpr);
 	full.setDevicePixelRatio(dpr);
 	full.fill(Qt::transparent);
