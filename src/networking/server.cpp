@@ -695,18 +695,7 @@ void Server::updateSlots()
 	if (addPhoneCard != nullptr)
 		addPhoneCard->setVisible(!freeSlots.empty());
 	if (slotNote != nullptr)
-	{
-		QStringList numbers;
-		for (int slot : freeSlots)
-			numbers << QString::number(slot);
-		QString note = freeSlots.empty() ? tr("All controller slots are in use.")
-										 : tr("Slots %1 available").arg(numbers.join(", "));
-		if (serverMode == ExecutorType::VigemExecutor)
-			note += tr("  \u00B7  XInput games generally support up to 4 controllers. Controllers 5 and 6 appear "
-					   "as PlayStation controllers.");
-		slotNote->setText(note);
-		flattenLabels();
-	}
+		slotNote->hide();
 	// The tester follows one controller; leave it when that controller goes away
 	if (testerSlot != 0)
 	{
