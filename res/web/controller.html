@@ -251,6 +251,8 @@ body:not(.xbox) .xbox-label { display: none; }
     trigL: store.get("vgp-trigL", "digital"),
     trigR: store.get("vgp-trigR", "digital")
   };
+  // slide, ramp, force and tilt are implemented but hidden from the menu
+  var OFFERED = ["digital", "drag", "zones"];
   var TRIG_MODES = [
     ["digital", "Button", "Plain tap: fully on or off"],
     ["slide", "Slide track", "Finger height sets the value"],
@@ -529,7 +531,7 @@ body:not(.xbox) .xbox-label { display: none; }
     $("fsHint").textContent = isIOS ? "iPhone: Share, then Add to Home Screen" : "Hides the browser bars";
     [["trigL", "tlHint"], ["trigR", "trHint"]].forEach(function (p) {
       var sel = $(p[0]);
-      if (!sel.options.length) TRIG_MODES.forEach(function (m) { var o = document.createElement("option"); o.value = m[0]; o.textContent = m[1]; sel.appendChild(o); });
+      if (!sel.options.length) TRIG_MODES.filter(function (m) { return OFFERED.indexOf(m[0]) >= 0; }).forEach(function (m) { var o = document.createElement("option"); o.value = m[0]; o.textContent = m[1]; sel.appendChild(o); });
       sel.value = settings[p[0]];
       var cur = TRIG_MODES.filter(function (m) { return m[0] === settings[p[0]]; })[0];
       $(p[1]).textContent = cur ? cur[2] : "";
@@ -549,7 +551,7 @@ body:not(.xbox) .xbox-label { display: none; }
     if (o.style === "ps" || o.style === "xbox") { settings.style = o.style; store.set("vgp-style", o.style); }
     if (o.vib === "on" || o.vib === "off") { settings.vib = o.vib; store.set("vgp-vib", o.vib); }
     if (o.snap === "on" || o.snap === "off") { settings.snap = o.snap; store.set("vgp-snap", o.snap); }
-    var ids = TRIG_MODES.map(function (m) { return m[0]; });
+    var ids = OFFERED;
     if (ids.indexOf(o.trigL) >= 0) { settings.trigL = o.trigL; store.set("vgp-trigL", o.trigL); }
     if (ids.indexOf(o.trigR) >= 0) { settings.trigR = o.trigR; store.set("vgp-trigR", o.trigR); }
     applySettings(); toast("Settings imported"); return true;
