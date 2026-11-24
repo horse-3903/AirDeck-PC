@@ -15,20 +15,20 @@
   --bg: #fafafa; --fg: #161616; --muted: #5a5a5a; --panel: #ececf0; --panel-on: #cfcfd6;
   --border: #c4c4cc; --accent: #161616; --accent-fg: #ffffff; --sheet: #ffffff; --shadow: rgba(0,0,0,.25);
   --ok: #1a9d4a; --bad: #d03030; --warn: #c98a00; --card: #f2f2f6; --disc: #e2e2e8; --arm: #cfcfd8; --armedge: #8a8a96; --key: #b9b9c6; --keyedge: #7d7d8a; --keyon: #8e8e9c;
-  --gl-wash: 7%; --gl-edge: 62%;
+  --gl-wash: 0%; --gl-edge: 28%;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     --bg: #0a0a0c; --fg: #f1f1f1; --muted: #9a9a9a; --panel: #15151a; --panel-on: #2c2c34;
     --border: #34343c; --accent: #f5f5f5; --accent-fg: #000000; --sheet: #101014; --shadow: rgba(0,0,0,.6); --card: #17171c; --disc: #0e0e12; --arm: #17171d; --armedge: #34343d; --key: #2a2a32; --keyedge: #4a4a55; --keyon: #6a6a78;
-    --gl-wash: 3%; --gl-edge: 30%;
+    --gl-wash: 0%; --gl-edge: 13%;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
     --bg: #0a0a0c; --fg: #f1f1f1; --muted: #9a9a9a; --panel: #15151a; --panel-on: #2c2c34;
     --border: #34343c; --accent: #f5f5f5; --accent-fg: #000000; --sheet: #101014; --shadow: rgba(0,0,0,.6); --card: #17171c; --disc: #0e0e12; --arm: #17171d; --armedge: #34343d; --key: #2a2a32; --keyedge: #4a4a55; --keyon: #6a6a78;
-    --gl-wash: 3%; --gl-edge: 30%;
+    --gl-wash: 0%; --gl-edge: 13%;
   color-scheme: dark;
 }
 :root[data-theme="light"] { color-scheme: light; }
@@ -40,7 +40,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); o
 #app { position: fixed; inset: 0; height: 100vh; height: 100dvh; }
 #app::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .5s;
     background: color-mix(in srgb, var(--slotc, transparent) var(--gl-wash), transparent);
-    box-shadow: inset 0 0 16dvh 0 color-mix(in srgb, var(--slotc, transparent) var(--gl-edge), transparent); }
+    box-shadow: inset 0 0 10dvh 0 color-mix(in srgb, var(--slotc, transparent) var(--gl-edge), transparent); }
 html.glow #app::before { opacity: 1; }
 
 .btn, .pill, .stick { background: var(--panel); border: 2px solid var(--border); }
@@ -57,19 +57,23 @@ html.glow #app::before { opacity: 1; }
 .stick.click { border-color: var(--fg); box-shadow: 0 0 0 .6dvh var(--panel-on); }
 .stick.click .knob { background: var(--fg); }
 #ls { left: calc(16vw - 15dvh + env(safe-area-inset-left)); top: calc(47dvh - 15dvh); }
-#rs { left: calc(67vw - 15dvh); top: calc(68dvh - 15dvh); }
+#rs { left: calc(67vw - 15dvh); top: calc(70dvh - 15dvh); }
 
 /* d-pad is one cross, face buttons a diamond */
 .cluster { position: absolute; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); }
-#dpad { display: block; width: 30dvh; height: 30dvh; left: calc(30vw - 15dvh); top: calc(72dvh - 15dvh); padding: 0;
+#dpad { display: block; width: 30dvh; height: 30dvh; left: calc(30vw - 15dvh); top: calc(70dvh - 15dvh); padding: 0;
     border-radius: 50%; background: transparent; border: 0; overflow: visible; }
-#dpad .dpv { position: absolute; left: -6%; top: -6%; width: 112%; height: 112%; pointer-events: none; }
+#dpad .dpv { position: absolute; left: 4.1%; top: 4.1%; width: 91.8%; height: 91.8%; pointer-events: none; }
 /* PlayStation mode: the supplied SVG, a round base with four keys; each key is its own button so it lights when pressed */
-#dpadps { position: absolute; width: 30dvh; height: 30dvh; left: calc(30vw - 15dvh); top: calc(72dvh - 15dvh); }
-#dpadps .dpv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#dpadps { position: absolute; width: 30dvh; height: 30dvh; left: calc(30vw - 15dvh); top: calc(70dvh - 15dvh); }
+#dpadps .dpv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; transform: scale(.84); }
 #dpadps .btn { position: absolute; width: 38%; height: 38%; border: 0 !important; background: transparent !important;
     transform: none !important; padding: 0; }
-#dpadps .btn svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+#dpadps .btn svg { width: 100%; height: 100%; display: block; pointer-events: none; transform: scale(.84); }
+#dpadps .up svg { transform-origin: 50% 106.6%; }
+#dpadps .right svg { transform-origin: -6.6% 50%; }
+#dpadps .down svg { transform-origin: 50% -6.6%; }
+#dpadps .left svg { transform-origin: 106.6% 50%; }
 #dpadps .k { fill: var(--key); stroke: var(--keyedge); stroke-width: 1.2; stroke-linejoin: round; }
 #dpadps .btn.on .k { fill: var(--keyon); }
 #dpadps .up { left: 31%; top: 9.5%; }
@@ -105,7 +109,7 @@ body.xbox #dpadps { display: none; }
 .down .arrow { border-width: 2.4dvh 1.5dvh 0 1.5dvh; border-color: var(--fg) transparent transparent transparent; }
 .left .arrow { border-width: 1.5dvh 2.4dvh 1.5dvh 0; border-color: transparent var(--fg) transparent transparent; }
 .right .arrow { border-width: 1.5dvh 0 1.5dvh 2.4dvh; border-color: transparent transparent transparent var(--fg); }
-.glyph { width: 56%; height: 56%; }
+.glyph { width: 49%; height: 49%; }
 .letter { font-weight: 400; font-size: 4.8dvh; }
 .face-ps, .face-xbox { display: contents; }
 body.xbox .face-ps { display: none; }
@@ -114,10 +118,10 @@ body:not(.xbox) .face-xbox { display: none; }
 /* triggers on top, bumpers under them, both in the thumb zone of each hand */
 .pill { position: absolute; display: flex; align-items: center; justify-content: center;
     border-radius: 999px; font-weight: 700; font-size: 3dvh; color: var(--fg); }
-#l2, #r2 { top: 4dvh; width: 17vw; height: 14dvh; border-radius: 2.4dvh 2.4dvh 1.2dvh 1.2dvh; overflow: hidden; }
-#l1, #r1 { top: 20dvh; width: 17vw; height: 10dvh; border-radius: 1.4dvh; font-size: 2.6dvh; }
-#l2, #l1 { left: calc(3vw + env(safe-area-inset-left)); }
-#r2, #r1 { right: calc(3vw + env(safe-area-inset-right)); }
+#l2, #r2 { top: 4dvh; width: 17vw; height: 14dvh; border-radius: 1.8dvh; overflow: hidden; }
+#l1, #r1 { top: 20dvh; width: 17vw; height: 10dvh; border-radius: 1.8dvh; font-size: 2.6dvh; }
+#l2, #l1 { left: calc(7.5vw + env(safe-area-inset-left)); }
+#r2, #r1 { right: calc(7.5vw + env(safe-area-inset-right)); }
 .ico { height: 56%; width: auto; max-width: 70%; }
 .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: var(--fg); opacity: .35; pointer-events: none; }
 .tl { position: relative; pointer-events: none; text-align: center; }
@@ -128,8 +132,8 @@ body.xbox .ps-label { display: none; }
 body:not(.xbox) .xbox-label { display: none; }
 
 /* system buttons, small and muted, in the middle */
-#sys { position: absolute; left: 50%; top: 27dvh; transform: translateX(-50%); display: flex; gap: 1.6dvh; }
-#sys .pill { position: static; width: 11dvh; height: 10dvh; border-radius: 1.6dvh; color: var(--muted); }
+#sys { position: absolute; left: 50%; top: 15dvh; transform: translateX(-50%); display: flex; gap: 1.6dvh; }
+#sys .pill { position: static; width: 8.8dvh; height: 8dvh; border-radius: 1.8dvh; color: var(--muted); }
 
 /* top row: fullscreen, connection status, settings */
 #top { position: absolute; left: 50%; top: 2.5dvh; transform: translateX(-50%); display: flex; align-items: center; gap: 1.4dvh; }
@@ -249,7 +253,7 @@ body:not(.xbox) .xbox-label { display: none; }
     </div>
     <div class="face-xbox">
       <div class="btn y" data-b="y"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5.5 4 L12 13 L18.5 4 M12 13 V20.5"/></svg></div>
-      <div class="btn x" data-b="x"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#3e8ef7" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 4 L19 20 M19 4 L5 20"/></svg></div>
+      <div class="btn x" data-b="x"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#3e8ef7" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M6.3 5.2 L17.7 18.8 M17.7 5.2 L6.3 18.8"/></svg></div>
       <div class="btn b" data-b="b"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#e5484d" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M7 4 V20 M7 4 H12 A4 4 0 0 1 12 12 H7 M7 12 H13 A4 4 0 0 1 13 20 H7"/></svg></div>
       <div class="btn a" data-b="a"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#30a46c" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M4.5 20.5 L12 3.5 L19.5 20.5 M7.8 14.5 H16.2"/></svg></div>
     </div>
