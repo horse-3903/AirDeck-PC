@@ -133,6 +133,8 @@ class Server : public QWidget
 	std::function<QPixmap(const QColor &)> tabPix[2];
 	bool restarting = false;
 	void restartServer();
+	void setServerState(int state);
+	QLabel *serverIcon = nullptr;
 	bool listenServer();
 	void styleTabs();
 	bool debugEnabled() const;

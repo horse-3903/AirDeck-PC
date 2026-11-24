@@ -121,6 +121,7 @@ const char *kStop = "<rect x='5' y='5' width='14' height='14' rx='3'/>";
 const char *kLink = "<path d='M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1'/><path d='M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1'/>";
 const char *kGrid = "<rect x='4' y='4' width='6.5' height='6.5' rx='1.6'/><rect x='13.5' y='4' width='6.5' height='6.5' rx='1.6'/>"
 					"<rect x='4' y='13.5' width='6.5' height='6.5' rx='1.6'/><rect x='13.5' y='13.5' width='6.5' height='6.5' rx='1.6'/>";
+const char *kServer = "<rect x='3' y='4' width='18' height='6.5' rx='2'/><rect x='3' y='13.5' width='18' height='6.5' rx='2'/><path d='M7 7.25h.01M7 16.75h.01'/>";
 const char *kActivity = "<path d='M3 12h4l3-8 4 16 3-8h4'/>";
 
 QPixmap svgPixmap(const QString &body, const QColor &color, int size, qreal dpr)
@@ -190,7 +191,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 	{
 		const ExecutorType mode = SettingsSingleton::instance().executorType();
 		const QString modeName =
-			mode == ExecutorType::VigemExecutor		? tr("Xbox 360 controller (ViGEm)")
+			mode == ExecutorType::VigemExecutor		? tr("Xbox 360 (ViGEm)")
 			: mode == ExecutorType::GamepadExecutor ? tr("Windows virtual gamepad")
 													: tr("Keyboard and mouse");
 		const QString pillStyle =
@@ -218,6 +219,12 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		titleColumn->addLayout(statusRow);
 		titleColumn->addLayout(pillRow);
 		ui->headerLayout->insertLayout(0, titleColumn);
+		serverIcon = new QLabel(this);
+		serverIcon->setFixedSize(48, 48);
+		serverIcon->setAlignment(Qt::AlignCenter);
+		ui->headerLayout->insertWidget(0, serverIcon, 0, Qt::AlignTop);
+		ui->headerLayout->insertSpacing(1, 6);
+		setServerState(0);
 	}
 
 	// Two views on one page: Controllers (who is connected, test inputs) and Connect device (QR, address)
@@ -528,6 +535,7 @@ void Server::initServer()
 							  tr("Unable to start the server: %1.").arg(tcpServer->errorString()));
 		close(); // Close the error dialog
 		tcpServer->close();
+		setServerState(2);
 		return;
 	}
 	ui->IPList->setFixedHeight(120);
@@ -716,7 +724,7 @@ void Server::updateStatus()
 	const int port = tcpServer != nullptr ? tcpServer->serverPort() : 0;
 	if (countPill != nullptr)
 	{
-		const QString modeName = serverMode == ExecutorType::VigemExecutor ? tr("Xbox 360 controller (ViGEm)")
+		const QString modeName = serverMode == ExecutorType::VigemExecutor ? tr("Xbox 360 (ViGEm)")
 								 : serverMode == ExecutorType::GamepadExecutor ? tr("Windows virtual gamepad")
 																			   : tr("Keyboard and mouse");
 		countPill->setText(tr("%1  \u00B7  Port %2").arg(modeName).arg(port));
@@ -791,6 +799,17 @@ void Server::setTestMode(bool on)
 	updateSlots();
 }
 
+void Server::setServerState(int state)
+{
+	if (serverIcon == nullptr)
+		return;
+	const QColor color = state == 0 ? QColor("#34C759") : state == 1 ? QColor("#F5C518") : QColor("#E5484D");
+	const QString tint = state == 0 ? "rgba(52, 199, 89, 0.10)" : state == 1 ? "rgba(245, 197, 24, 0.10)" : "rgba(229, 72, 77, 0.10)";
+	serverIcon->setStyleSheet(QStringLiteral("background: %1; border: 1px solid #2C2C33; border-radius: 12px;").arg(tint));
+	serverIcon->setPixmap(svgPixmap(kServer, color, 24, devicePixelRatioF()));
+	serverIcon->setToolTip(state == 0 ? tr("Server running") : state == 1 ? tr("Server busy") : tr("Server not running"));
+}
+
 void Server::styleTabs()
 {
 	for (int i = 0; i < 2; ++i)
@@ -842,6 +861,7 @@ void Server::restartServer()
 	};
 	lock(false);
 	ui->statusLabel->setText(tr("Restarting server"));
+	setServerState(1);
 	debugLog(QStringLiteral("Restarting server"));
 
 	// Release every virtual controller first so no input stays held
@@ -870,6 +890,7 @@ void Server::restartServer()
 		if (!listenServer())
 		{
 			ui->statusLabel->setText(tr("Restart failed"));
+			setServerState(2);
 			QMessageBox::warning(this, tr("Restart server"), tr("The server could not start again: %1.").arg(tcpServer->errorString()));
 			restarting = false;
 			lock(true);
@@ -883,6 +904,7 @@ void Server::restartServer()
 		}
 		updateQrPixmaps();
 		ui->statusLabel->setText(tr("Server running"));
+		setServerState(0);
 		restarting = false;
 		lock(true);
 		updateStatus();
