@@ -267,28 +267,26 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			card.test = new QPushButton(tr("Test controller"), card.details);
 			card.test->setCursor(Qt::PointingHandCursor);
 			card.test->setMinimumHeight(34);
-			connect(card.test, &QPushButton::clicked, this, [this, i]() {
-				if (slotCards[i].occupied)
-					openTester(i + 1);
-				else
-				{
+			connect(card.test, &QPushButton::clicked, this, [this]() {
 					userPickedTab = true;
 					showTab(1);
-				}
-			});
+				});
 			detailsLayout->addStretch(1);
 			// Equal to the blank strip under the artwork, so the text sits halfway between artwork and button
 			card.padSpacer = new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::Fixed);
 			detailsLayout->addItem(card.padSpacer);
-			QSizePolicy keepTest = card.test->sizePolicy();
-			keepTest.setRetainSizeWhenHidden(true);
-			card.test->setSizePolicy(keepTest);
 			detailsLayout->addWidget(card.test);
 
 			QSizePolicy keep = card.details->sizePolicy();
 			keep.setRetainSizeWhenHidden(true);
 			card.details->setSizePolicy(keep);
 			cardLayout->addWidget(card.details, 1);
+			// Live view that replaces the artwork and text while testing
+			card.live = new ControllerTester(card.frame);
+			card.live->setCompact(true);
+			card.live->setSlot(i + 1);
+			card.live->hide();
+			cardLayout->addWidget(card.live, 1);
 			cardsGrid->addWidget(card.frame, i / 3, i % 3);
 			slotCards.push_back(card);
 		}
@@ -313,37 +311,9 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		slotNote->setWordWrap(true);
 		listLayout->addWidget(slotNote);
 
-		// Tester page
-		auto *testerPage = new QWidget(this);
-		auto *testerLayout = new QVBoxLayout(testerPage);
-		testerLayout->setContentsMargins(0, 0, 0, 0);
-		testerLayout->setSpacing(10);
-		auto *testerHeader = new QHBoxLayout();
-		auto *backToList = new QPushButton(tr("Back to controllers"), testerPage);
-		backToList->setCursor(Qt::PointingHandCursor);
-		testerTitle = new QLabel(testerPage);
-		testerTitle->setProperty("role", "heading");
-		testerHeader->addWidget(backToList);
-		testerHeader->addSpacing(8);
-		testerSubtitle = new QLabel(testerPage);
-		testerSubtitle->setProperty("role", "caption");
-		auto *titleColumn = new QVBoxLayout();
-		titleColumn->setSpacing(2);
-		titleColumn->addWidget(testerTitle);
-		titleColumn->addWidget(testerSubtitle);
-		testerHeader->addLayout(titleColumn, 1);
-		testerLayout->addLayout(testerHeader);
-		tester = new ControllerTester(testerPage);
-		testerLayout->addWidget(tester, 1);
-		connect(backToList, &QPushButton::clicked, this, [this]() { closeTester(); });
-
-		controllersStack = new QStackedWidget(this);
-		controllersStack->addWidget(listPage);
-		controllersStack->addWidget(testerPage);
-
 		pages = new QStackedWidget(this);
 		// Wrapped labels report a very tall minimum at narrow widths, which forced the whole page to scroll
-		pages->addWidget(controllersStack);
+		pages->addWidget(listPage);
 		pages->addWidget(connectPage);
 
 		// Tab bar
@@ -365,6 +335,13 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			tabRow->addWidget(tab);
 		}
 		tabRow->addStretch();
+		modeButton = new QPushButton(tr("Test controllers"), this);
+		modeButton->setCursor(Qt::PointingHandCursor);
+		modeButton->setMinimumHeight(36);
+		modeButton->setMinimumWidth(150);
+		modeButton->setStyleSheet("QPushButton { padding: 4px 18px; min-height: 22px; }");
+		connect(modeButton, &QPushButton::clicked, this, [this]() { setTestMode(!testMode); });
+		tabRow->addWidget(modeButton);
 		connect(tabControllers, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(0); });
 		connect(tabConnect, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(1); });
 		ui->verticalLayout->insertLayout(1, tabRow);
@@ -659,30 +636,16 @@ void Server::showTab(int index)
 {
 	pages->setCurrentIndex(index);
 	tabControllers->setChecked(index == 0);
+	if (modeButton != nullptr)
+		modeButton->setVisible(index == 0);
 	tabConnect->setChecked(index == 1);
 }
 
-void Server::openTester(int slot)
+void Server::setTestMode(bool on)
 {
-	testerSlot = slot;
-	tester->setSlot(slot);
-	for (const auto &client : clients)
-	{
-		if (client->slot == slot)
-		{
-			testerTitle->setText(tr("Controller %1").arg(slot));
-			testerSubtitle->setText(tr("%1  \u00B7  %2  \u00B7  %3")
-										.arg(deviceTitle(*client), client->socket->peerAddress().toString(), outputName(*client)));
-			tester->setState(client->held, client->lx, client->ly, client->rx, client->ry, client->lt, client->rt);
-		}
-	}
-	controllersStack->setCurrentIndex(1);
-}
-
-void Server::closeTester()
-{
-	testerSlot = 0;
-	controllersStack->setCurrentIndex(0);
+	testMode = on;
+	modeButton->setText(on ? tr("Status") : tr("Test controllers"));
+	updateSlots();
 }
 
 void Server::noteInput(Client &client, const vgp_data_exchange_gamepad_reading &reading)
@@ -694,8 +657,9 @@ void Server::noteInput(Client &client, const vgp_data_exchange_gamepad_reading &
 	client.ry = reading.right_thumbstick_y;
 	client.lt = reading.left_trigger;
 	client.rt = reading.right_trigger;
-	if (testerSlot != 0 && client.slot == testerSlot)
-		tester->setState(client.held, client.lx, client.ly, client.rx, client.ry, client.lt, client.rt);
+	if (testMode && client.slot >= 1 && client.slot <= static_cast<int>(slotCards.size()))
+		slotCards[client.slot - 1].live->setState(client.held, client.lx, client.ly, client.rx, client.ry, client.lt,
+												   client.rt);
 }
 
 QString Server::deviceTitle(const Client &client) const
@@ -798,8 +762,20 @@ void Server::updateSlots()
 		card.iconColor = art;
 		refreshIcon(card);
 
+		// Testing turns a connected tile into a live controller
+		const bool live = testMode && active;
+		card.live->setVisible(live);
+		card.deviceIcon->setVisible(!live);
+		card.details->setVisible(!live);
+		if (live)
+		{
+			card.live->setSlot(i + 1);
+			card.live->setState(owner->held, owner->lx, owner->ly, owner->rx, owner->ry, owner->lt, owner->rt);
+		}
+
 		card.chips->setVisible(active);
-		card.test->setText(active ? tr("Test controller") : tr("+  Connect device"));
+		card.test->setText(tr("+  Connect device"));
+		card.test->setVisible(!active);
 		card.test->setStyleSheet("QPushButton { color: #F5F5F5; border: 1px solid #4A4A52; border-radius: 4px; background: transparent; } "
 								 "QPushButton:hover { background: #1E1E22; border-color: #6A6A72; } "
 								 "QPushButton:pressed { background: #141416; }");
@@ -842,15 +818,6 @@ void Server::updateSlots()
 	}
 	if (slotNote != nullptr)
 		slotNote->hide();
-	// The tester follows one controller; leave it when that controller goes away
-	if (testerSlot != 0)
-	{
-		const bool still = std::any_of(clients.begin(), clients.end(), [this](const std::unique_ptr<Client> &c) {
-			return c->active && c->slot == testerSlot;
-		});
-		if (!still)
-			closeTester();
-	}
 }
 
 void Server::updateClientLabel()

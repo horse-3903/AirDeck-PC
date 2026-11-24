@@ -25,6 +25,13 @@ ControllerTester::ControllerTester(QWidget *parent) : QWidget(parent)
 	setMinimumSize(minimumSizeHint());
 }
 
+void ControllerTester::setCompact(bool compact)
+{
+	m_compact = compact;
+	setMinimumSize(compact ? QSize(80, 60) : minimumSizeHint());
+	update();
+}
+
 void ControllerTester::setSlot(int slot)
 {
 	m_slot = slot;
@@ -54,6 +61,14 @@ void ControllerTester::paintEvent(QPaintEvent *)
 	p.setRenderHint(QPainter::TextAntialiasing);
 
 	const double W = width(), H = height();
+	if (m_compact)
+	{
+		const double s = std::min(W / 100.0, H / 72.0);
+		p.translate((W - 100 * s) / 2, (H - 72 * s) / 2);
+		p.scale(s, s);
+		drawController(p);
+		return;
+	}
 	const double gap = 28;
 	const double leftW = std::min(W * 0.40, 360.0);
 

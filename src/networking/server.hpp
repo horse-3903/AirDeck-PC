@@ -89,6 +89,7 @@ class Server : public QWidget
 		QFrame *frame = nullptr;
 		QWidget *details = nullptr;
 		QWidget *chips = nullptr;
+		ControllerTester *live = nullptr;
 		QSpacerItem *padSpacer = nullptr;
 		bool occupied = false;
 		bool iconPs4 = false;
@@ -107,8 +108,7 @@ class Server : public QWidget
 	void updateQrPixmaps();
 	void flattenLabels();
 	void showTab(int index);
-	void openTester(int slot);
-	void closeTester();
+	void setTestMode(bool on);
 	void refreshIcon(SlotCard &card);
 	QString deviceTitle(const Client &client) const;
 	QString outputName(const Client &client) const;
@@ -116,17 +116,14 @@ class Server : public QWidget
 	QStackedWidget *pages = nullptr;
 	QWidget *pagesHolder = nullptr;
 	bool eventFilter(QObject *watched, QEvent *event) override;
-	QStackedWidget *controllersStack = nullptr;
 	QPushButton *tabControllers = nullptr;
 	QPushButton *tabConnect = nullptr;
 	QLabel *summaryLabel = nullptr;
 	QLabel *slotNote = nullptr;
 	QFrame *addPhoneCard = nullptr;
-	QLabel *testerTitle = nullptr;
 	class QGridLayout *cardsGrid = nullptr;
-	QLabel *testerSubtitle = nullptr;
-	ControllerTester *tester = nullptr;
-	int testerSlot = 0;
+	QPushButton *modeButton = nullptr;
+	bool testMode = false;
 	bool userPickedTab = false;
 	std::vector<QLabel *> qrLabels;
 	QStringList qrAddresses;
