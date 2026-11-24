@@ -17,6 +17,7 @@
 #include <QTcpSocket>
 #include <QTime>
 #include <memory>
+#include <functional>
 #include <vector>
 
 namespace Ui
@@ -122,7 +123,19 @@ class Server : public QWidget
 	QLabel *slotNote = nullptr;
 	QFrame *addPhoneCard = nullptr;
 	class QGridLayout *cardsGrid = nullptr;
-	QPushButton *modeButton = nullptr;
+	QPushButton *viewStatus = nullptr;
+	QPushButton *viewInput = nullptr;
+	QPushButton *homeBtn = nullptr;
+	QPushButton *restartBtn = nullptr;
+	QLabel *statusDot = nullptr;
+	QLabel *tabIcon[2] = {nullptr, nullptr};
+	QLabel *tabText[2] = {nullptr, nullptr};
+	QLabel *tabCount = nullptr;
+	std::function<QPixmap(const QColor &)> tabPix[2];
+	bool restarting = false;
+	void restartServer();
+	bool listenServer();
+	void styleTabs();
 	bool debugEnabled() const;
 	QString debugLogPath() const;
 	static QString webPageVersion();

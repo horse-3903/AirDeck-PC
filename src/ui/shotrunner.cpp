@@ -47,7 +47,7 @@ QPushButton *ShotRunner::button(const QString &text) const
 	const auto buttons = m_window->findChildren<QPushButton *>();
 	for (QPushButton *candidate : buttons)
 	{
-		if (candidate->text() == text && candidate->isVisibleTo(m_window))
+		if ((candidate->text() == text || candidate->accessibleName() == text) && candidate->isVisibleTo(m_window))
 			return candidate;
 	}
 	return nullptr;
@@ -278,7 +278,7 @@ void ShotRunner::start()
 		}
 	});
 	schedule([this] { saveWindow("23-controllers-connected"); });
-	schedule([this] { click(button(QStringLiteral("Test controller"))); });
+	schedule([this] { click(button(QStringLiteral("Input test"))); });
 	schedule([this] { saveWindow("24-tester"); });
 
 	QTimer::singleShot(500, this, &ShotRunner::runNext);

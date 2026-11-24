@@ -29,6 +29,8 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPixmap>
+#include <QSvgRenderer>
+#include <functional>
 #include <QThread>
 #include <QTimer>
 #include <algorithm>
@@ -111,6 +113,31 @@ QImage createQR(const QString &data, const int border = 1, const uint scalingFac
 	return image.scaled(image.size() * scalingFactor);
 }
 
+namespace
+{
+const char *kHome = "<path d='M3 11l9-8 9 8'/><path d='M5 10v10h5v-6h4v6h5V10'/>";
+const char *kRestart = "<path d='M20 12a8 8 0 1 1-2.3-5.6'/><path d='M20 4v5h-5'/>";
+const char *kStop = "<rect x='5' y='5' width='14' height='14' rx='3'/>";
+const char *kLink = "<path d='M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1'/><path d='M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1'/>";
+const char *kGrid = "<rect x='4' y='4' width='6.5' height='6.5' rx='1.6'/><rect x='13.5' y='4' width='6.5' height='6.5' rx='1.6'/>"
+					"<rect x='4' y='13.5' width='6.5' height='6.5' rx='1.6'/><rect x='13.5' y='13.5' width='6.5' height='6.5' rx='1.6'/>";
+const char *kActivity = "<path d='M3 12h4l3-8 4 16 3-8h4'/>";
+
+QPixmap svgPixmap(const QString &body, const QColor &color, int size, qreal dpr)
+{
+	const QString svg = QStringLiteral("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%1' "
+									   "stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>%2</svg>")
+							.arg(color.name(), body);
+	QSvgRenderer renderer(svg.toUtf8());
+	QPixmap pixmap(QSize(size, size) * dpr);
+	pixmap.setDevicePixelRatio(dpr);
+	pixmap.fill(Qt::transparent);
+	QPainter painter(&pixmap);
+	renderer.render(&painter, QRectF(0, 0, size, size));
+	return pixmap;
+}
+} // namespace
+
 Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 {
 	qInfo() << "Initializing TCP server";
@@ -119,12 +146,47 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 	ui->IPList->viewport()->setAutoFillBackground(false);
 	// delete this when stop button is clicked
 	connect(ui->stopButton, &QPushButton::clicked, this, &Server::destroyServer);
-	auto *homeButton = new QPushButton(tr("Back to Home"), this);
-	homeButton->setCursor(Qt::PointingHandCursor);
-	homeButton->setMinimumWidth(120);
-	ui->stopButton->setMinimumWidth(120);
-	ui->headerLayout->insertWidget(ui->headerLayout->indexOf(ui->stopButton), homeButton);
-	connect(homeButton, &QPushButton::clicked, this, &Server::homeRequested);
+	{
+		const qreal dpr = devicePixelRatioF();
+		const QString neutral = "QPushButton { background: #17171B; border: 1px solid #2C2C33; border-radius: 10px; padding: 0; } "
+								"QPushButton:hover { background: #202026; border-color: #3A3A43; } "
+								"QPushButton:pressed { background: #2A2A31; } "
+								"QPushButton:focus { border-color: #4A4A55; outline: none; } "
+								"QPushButton:disabled { background: #121215; border-color: #222227; }";
+		const QString danger = "QPushButton { background: #2A1517; border: 1px solid #5A2A2F; border-radius: 10px; padding: 0; } "
+							   "QPushButton:hover { background: #381B1E; border-color: #7A3A40; } "
+							   "QPushButton:pressed { background: #44212A; } "
+							   "QPushButton:focus { border-color: #8A4A50; outline: none; } "
+							   "QPushButton:disabled { background: #1A1112; border-color: #3A2124; }";
+		const auto setup = [&](QPushButton *button, const char *body, const QColor &muted, const QColor &bright, const QString &tip,
+							   const QString &style) {
+			QIcon icon;
+			icon.addPixmap(svgPixmap(body, muted, 20, dpr), QIcon::Normal);
+			icon.addPixmap(svgPixmap(body, bright, 20, dpr), QIcon::Active);
+			button->setIcon(icon);
+			button->setIconSize(QSize(20, 20));
+			button->setText(QString());
+			button->setFixedSize(40, 40);
+			button->setCursor(Qt::PointingHandCursor);
+			button->setToolTip(tip);
+			button->setAccessibleName(tip);
+			button->setStyleSheet(style);
+		};
+		homeBtn = new QPushButton(this);
+		restartBtn = new QPushButton(this);
+		setup(homeBtn, kHome, QColor("#A8A8B0"), QColor("#F2F2F2"), tr("Back to Home"), neutral);
+		setup(restartBtn, kRestart, QColor("#A8A8B0"), QColor("#F2F2F2"), tr("Restart server"), neutral);
+		setup(ui->stopButton, kStop, QColor("#D9737B"), QColor("#FF9AA2"), tr("Stop server"), danger);
+		ui->headerLayout->removeWidget(ui->stopButton);
+		auto *actions = new QHBoxLayout();
+		actions->setSpacing(8);
+		actions->addWidget(homeBtn);
+		actions->addWidget(restartBtn);
+		actions->addWidget(ui->stopButton);
+		ui->headerLayout->addLayout(actions);
+		connect(homeBtn, &QPushButton::clicked, this, &Server::homeRequested);
+		connect(restartBtn, &QPushButton::clicked, this, &Server::restartServer);
+	}
 	{
 		const ExecutorType mode = SettingsSingleton::instance().executorType();
 		const QString modeName =
@@ -152,24 +214,10 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		ui->headerLayout->removeWidget(ui->statusLabel);
 		auto *statusRow = new QHBoxLayout();
 		statusRow->setSpacing(8);
-		const qreal dpr = devicePixelRatioF();
-		QPixmap tick(QSize(22, 22) * dpr);
-		tick.setDevicePixelRatio(dpr);
-		tick.fill(Qt::transparent);
-		{
-			QPainter tp(&tick);
-			tp.setRenderHint(QPainter::Antialiasing);
-			tp.setPen(QPen(QColor("#34C759"), 3.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-			QPainterPath path;
-			path.moveTo(4.5, 11.5);
-			path.lineTo(9.2, 16.2);
-			path.lineTo(17.5, 5.8);
-			tp.drawPath(path);
-		}
-		auto *tickLabel = new QLabel(this);
-		tickLabel->setPixmap(tick);
-		tickLabel->setFixedSize(22, 22);
-		statusRow->addWidget(tickLabel);
+		statusDot = new QLabel(this);
+		statusDot->setFixedSize(10, 10);
+		statusDot->setStyleSheet("background: #34C759; border-radius: 5px;");
+		statusRow->addWidget(statusDot, 0, Qt::AlignVCenter);
 		statusRow->addWidget(ui->statusLabel, 1);
 		titleColumn->addLayout(statusRow);
 		titleColumn->addLayout(pillRow);
@@ -195,8 +243,44 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		summaryLabel = new QLabel(listPage);
 		summaryLabel->setStyleSheet("font-weight: 600; font-size: 12pt;");
 		auto *summaryRow = new QHBoxLayout();
+		summaryLabel->setTextFormat(Qt::RichText);
 		summaryRow->addWidget(summaryLabel);
 		summaryRow->addStretch();
+		{
+			const qreal dpr = devicePixelRatioF();
+			auto *viewSwitch = new QFrame(listPage);
+			viewSwitch->setObjectName("viewSwitch");
+			viewSwitch->setStyleSheet("QFrame#viewSwitch { background: #101014; border: 1px solid #2A2A30; border-radius: 11px; }");
+			auto *switchLayout = new QHBoxLayout(viewSwitch);
+			switchLayout->setContentsMargins(3, 3, 3, 3);
+			switchLayout->setSpacing(2);
+			auto *switchGroup = new QButtonGroup(viewSwitch);
+			switchGroup->setExclusive(true);
+			const auto makeOption = [&](const QString &title, const char *body) {
+				auto *option = new QPushButton(title, viewSwitch);
+				QIcon icon;
+				icon.addPixmap(svgPixmap(body, QColor("#F2F2F2"), 16, dpr), QIcon::Normal, QIcon::On);
+				icon.addPixmap(svgPixmap(body, QColor("#8C8C94"), 16, dpr), QIcon::Normal, QIcon::Off);
+				option->setIcon(icon);
+				option->setIconSize(QSize(16, 16));
+				option->setCheckable(true);
+				option->setCursor(Qt::PointingHandCursor);
+				option->setFixedSize(128, 32);
+				option->setStyleSheet("QPushButton { background: transparent; border: 0; border-radius: 8px; color: #8C8C94; font-weight: 600; padding: 0 10px; } "
+									  "QPushButton:hover:!checked { color: #CFCFD5; } "
+									  "QPushButton:checked { background: #2C2C34; color: #F2F2F2; } "
+									  "QPushButton:focus { outline: none; }");
+				switchGroup->addButton(option);
+				switchLayout->addWidget(option);
+				return option;
+			};
+			viewStatus = makeOption(tr("Status"), kGrid);
+			viewInput = makeOption(tr("Input test"), kActivity);
+			viewStatus->setChecked(true);
+			connect(viewStatus, &QPushButton::clicked, this, [this]() { setTestMode(false); });
+			connect(viewInput, &QPushButton::clicked, this, [this]() { setTestMode(true); });
+			summaryRow->addWidget(viewSwitch);
+		}
 		listLayout->addLayout(summaryRow);
 		// Six permanent tiles, three across and two down. Empty ones are grey, a connected one takes its colour
 		cardsGrid = new QGridLayout();
@@ -321,29 +405,48 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		// Tab bar
 		auto *tabRow = new QHBoxLayout();
 		tabRow->setSpacing(6);
-		tabControllers = new QPushButton(tr("Controllers"), this);
-		tabConnect = new QPushButton(tr("Connect device"), this);
+		const qreal dpr = devicePixelRatioF();
+		tabPix[0] = [dpr](const QColor &c) { return glyphPixmap(Glyph::Gamepad, c, 18, dpr); };
+		tabPix[1] = [dpr](const QColor &c) { return svgPixmap(kLink, c, 18, dpr); };
 		auto *tabGroup = new QButtonGroup(this);
 		tabGroup->setExclusive(true);
-		for (QPushButton *tab : {tabControllers, tabConnect})
+		const QString titles[2] = {tr("Controllers"), tr("Connect device")};
+		QPushButton *tabs[2];
+		for (int i = 0; i < 2; ++i)
 		{
+			auto *tab = new QPushButton(this);
 			tab->setCheckable(true);
 			tab->setCursor(Qt::PointingHandCursor);
-			tab->setMinimumHeight(36);
-			tab->setMinimumWidth(150);
-			tab->setStyleSheet("QPushButton { padding: 4px 18px; min-height: 22px; } "
-							   "QPushButton:checked { background-color: #F5F5F5; color: #000000; border-color: #FFFFFF; }");
+			tab->setFixedHeight(38);
+			tab->setStyleSheet("QPushButton { background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 0; } "
+							   "QPushButton:checked { border-bottom: 2px solid #F2F2F2; } "
+							   "QPushButton:focus { outline: none; }");
+			auto *layout = new QHBoxLayout(tab);
+			layout->setContentsMargins(4, 0, 4, 0);
+			layout->setSpacing(8);
+			tabIcon[i] = new QLabel(tab);
+			tabIcon[i]->setFixedSize(18, 18);
+			tabText[i] = new QLabel(titles[i], tab);
+			layout->addWidget(tabIcon[i]);
+			layout->addWidget(tabText[i]);
+			if (i == 0)
+			{
+				tabCount = new QLabel("0", tab);
+				tabCount->setFixedSize(26, 20);
+				tabCount->setAlignment(Qt::AlignCenter);
+				layout->addWidget(tabCount);
+			}
+			for (QLabel *label : tab->findChildren<QLabel *>())
+				label->setAttribute(Qt::WA_TransparentForMouseEvents);
+			tab->setFixedWidth(layout->sizeHint().width() + 8);
 			tabGroup->addButton(tab);
 			tabRow->addWidget(tab);
+			tabs[i] = tab;
 		}
+		tabControllers = tabs[0];
+		tabConnect = tabs[1];
+		tabRow->setSpacing(22);
 		tabRow->addStretch();
-		modeButton = new QPushButton(tr("Test controllers"), this);
-		modeButton->setCursor(Qt::PointingHandCursor);
-		modeButton->setMinimumHeight(36);
-		modeButton->setMinimumWidth(150);
-		modeButton->setStyleSheet("QPushButton { padding: 4px 18px; min-height: 22px; }");
-		connect(modeButton, &QPushButton::clicked, this, [this]() { setTestMode(!testMode); });
-		tabRow->addWidget(modeButton);
 		connect(tabControllers, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(0); });
 		connect(tabConnect, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(1); });
 		ui->verticalLayout->insertLayout(1, tabRow);
@@ -623,9 +726,11 @@ void Server::updateStatus()
 		countPill->setText(tr("%1  \u00B7  Port %2").arg(modeName).arg(port));
 	}
 	if (summaryLabel != nullptr)
-		summaryLabel->setText(tr("%1 connected  \u00B7  %2 available").arg(active).arg(capacity - active));
-	if (tabControllers != nullptr)
-		tabControllers->setText(active > 0 ? tr("Controllers (%1)").arg(active) : tr("Controllers"));
+		summaryLabel->setText(QStringLiteral("<span style='color:%1'>&#9679;</span>&nbsp; %2")
+								  .arg(active > 0 ? "#34C759" : "#6A6A72",
+									   tr("%1 connected  \u00B7  %2 available").arg(active).arg(capacity - active)));
+	if (tabCount != nullptr)
+		tabCount->setText(QString::number(active));
 	if (!userPickedTab && pages != nullptr)
 		showTab(active > 0 ? 0 : 1);
 	emit statusChanged(tr("Server running  |  Port %1  |  %2")
@@ -638,9 +743,8 @@ void Server::showTab(int index)
 {
 	pages->setCurrentIndex(index);
 	tabControllers->setChecked(index == 0);
-	if (modeButton != nullptr)
-		modeButton->setVisible(index == 0);
 	tabConnect->setChecked(index == 1);
+	styleTabs();
 }
 
 bool Server::debugEnabled() const
@@ -686,8 +790,113 @@ QString Server::deviceKey(const Client &client) const
 void Server::setTestMode(bool on)
 {
 	testMode = on;
-	modeButton->setText(on ? tr("Status") : tr("Test controllers"));
+	if (viewStatus != nullptr)
+		viewStatus->setChecked(!on);
+	if (viewInput != nullptr)
+		viewInput->setChecked(on);
 	updateSlots();
+}
+
+void Server::styleTabs()
+{
+	for (int i = 0; i < 2; ++i)
+	{
+		QPushButton *tab = i == 0 ? tabControllers : tabConnect;
+		if (tab == nullptr || tabIcon[i] == nullptr)
+			continue;
+		const QColor color(tab->isChecked() ? "#F2F2F2" : "#8C8C94");
+		tabIcon[i]->setPixmap(tabPix[i](color));
+		tabText[i]->setStyleSheet(QStringLiteral("color: %1; font-weight: 600; background: transparent;").arg(color.name()));
+	}
+	if (tabCount != nullptr)
+		tabCount->setStyleSheet(QStringLiteral("background: #26262C; color: %1; border-radius: 6px; font-weight: 600; font-size: 9pt;")
+									.arg(tabControllers != nullptr && tabControllers->isChecked() ? "#E4E4EA" : "#8C8C94"));
+}
+
+bool Server::listenServer()
+{
+	int port = SettingsSingleton::instance().port();
+	if (port < 1024 || port > 65535)
+		port = 0;
+	return tcpServer->listen(QHostAddress::AnyIPv4, port) || (port != 0 && tcpServer->listen(QHostAddress::AnyIPv4, 0));
+}
+
+void Server::restartServer()
+{
+	if (restarting)
+		return;
+	const int active = static_cast<int>(std::count_if(
+		clients.begin(), clients.end(), [](const std::unique_ptr<Client> &c) { return c->active; }));
+	if (active > 0)
+	{
+		QMessageBox confirm(this);
+		confirm.setWindowTitle(tr("Restart server"));
+		confirm.setIcon(QMessageBox::Question);
+		confirm.setText(tr("Restart the server?"));
+		confirm.setInformativeText(tr("%n connected controller(s) will be disconnected for a moment. Browser controllers reconnect on their own.", "", active));
+		auto *go = confirm.addButton(tr("Restart"), QMessageBox::AcceptRole);
+		confirm.addButton(tr("Cancel"), QMessageBox::RejectRole);
+		confirm.exec();
+		if (confirm.clickedButton() != go)
+			return;
+	}
+	restarting = true;
+	const auto lock = [this](bool enabled) {
+		homeBtn->setEnabled(enabled);
+		restartBtn->setEnabled(enabled);
+		ui->stopButton->setEnabled(enabled);
+	};
+	lock(false);
+	ui->statusLabel->setText(tr("Restarting server"));
+	statusDot->setStyleSheet("background: #F5C518; border-radius: 5px;");
+	debugLog(QStringLiteral("Restarting server"));
+
+	// Release every virtual controller first so no input stays held
+	for (auto &client : clients)
+	{
+		client->socket->disconnect(this);
+		if (client->executor)
+			client->executor->release_all();
+	}
+	if (executor)
+		executor->release_all();
+	for (auto &client : clients)
+	{
+		client->socket->close();
+		client->socket->deleteLater();
+	}
+	clients.clear();
+	clientConnection = nullptr;
+	isGamepadConnected = false;
+	tcpServer->close();
+	updateClientLabel();
+	updateSlots();
+	updateStatus();
+
+	QTimer::singleShot(700, this, [this, lock]() {
+		if (!listenServer())
+		{
+			ui->statusLabel->setText(tr("Restart failed"));
+			statusDot->setStyleSheet("background: #E5484D; border-radius: 5px;");
+			QMessageBox::warning(this, tr("Restart server"), tr("The server could not start again: %1.").arg(tcpServer->errorString()));
+			restarting = false;
+			lock(true);
+			return;
+		}
+		ui->portLabel->setText(tr("Port: **%1**").arg(tcpServer->serverPort()));
+		if (webUrlLabel != nullptr)
+		{
+			if (QListWidgetItem *current = ui->IPList->currentItem())
+				webUrlLabel->setText(tr("http://%1:%2/").arg(current->data(Qt::UserRole).toString()).arg(tcpServer->serverPort()));
+		}
+		updateQrPixmaps();
+		ui->statusLabel->setText(tr("Server running"));
+		statusDot->setStyleSheet("background: #34C759; border-radius: 5px;");
+		restarting = false;
+		lock(true);
+		updateStatus();
+		debugLog(QStringLiteral("Server restarted on port %1").arg(tcpServer->serverPort()));
+	});
 }
 
 void Server::noteInput(Client &client, const vgp_data_exchange_gamepad_reading &reading)
