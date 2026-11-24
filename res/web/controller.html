@@ -357,7 +357,7 @@ body:not(.xbox) .xbox-label { display: none; }
   }
 
   // ---- input state ----
-  function buzz() { if (canVibrate && settings.vib === "on") navigator.vibrate(8); }
+  function buzz() { if (canVibrate && settings.vib === "on") navigator.vibrate(25); }
   function press(name) {
     if (name === "l2") { ax.lt = 1; } else if (name === "r2") { ax.rt = 1; }
     else { var bit = BIT[name]; if (!(held & bit)) { held |= bit; pendDown |= bit; } }
@@ -421,7 +421,7 @@ body:not(.xbox) .xbox-label { display: none; }
     function mode() { return settings[key === "lt" ? "trigL" : "trigR"]; }
     function setv(raw) {
       var v = raw < 0.05 ? 0 : (raw >= 0.9 ? 1 : raw);
-      if (Math.floor(v * 4) > Math.floor(level * 4) && canVibrate && settings.vib === "on") navigator.vibrate(4);
+      if (Math.floor(v * 4) > Math.floor(level * 4) && canVibrate && settings.vib === "on") navigator.vibrate(15);
       level = v; ax[key] = v; dirty = true;
       fill.style.height = (v * 100) + "%";
       pct.textContent = id !== null && mode() !== "digital" ? Math.round(v * 100) + "%" : "";
