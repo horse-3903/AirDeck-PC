@@ -82,6 +82,13 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 			row->insertWidget(row->indexOf(ui->portSpinBox) + 1, randomPort);
 		connect(randomPort, &QCheckBox::toggled, ui->portSpinBox, [this](bool random) { ui->portSpinBox->setEnabled(!random); });
 	}
+	{
+		auto *debug = new QCheckBox(tr("Debug mode: log connections and allow several controllers per device"), this);
+		debug->setObjectName("debugModeCheck");
+		debug->setToolTip(tr("Writes events to debug.log in the app data folder. Without it, each device gets one controller."));
+		ui->generalTabLayout->insertWidget(ui->generalTabLayout->indexOf(ui->executorGroup) + 1, debug);
+		debug->setChecked(SettingsSingleton::instance().qsettings()->value("server/debug", false).toBool());
+	}
 	ui->profileComboBox->setMaximumWidth(320);
 	if (auto *profilesRow = qobject_cast<QHBoxLayout *>(ui->profilesGroup->layout()))
 		profilesRow->addStretch();
@@ -230,6 +237,9 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 
 		// Save mouse sensitivity
 		settings.setMouseSensitivity(ui->pointerSlider->value() * 100);
+
+		if (auto *debug = findChild<QCheckBox *>("debugModeCheck"))
+			settings.qsettings()->setValue("server/debug", debug->isChecked());
 
 		// Save port number now
 		auto *randomPort = findChild<QCheckBox *>("randomPortCheck");
@@ -645,6 +655,10 @@ void Preferences::restore_defaults()
 	{
 		ui->keyboardMouseExecutorRadio->setChecked(true);
 	}
+
+	if (auto *debug = findChild<QCheckBox *>("debugModeCheck"))
+		debug->setChecked(false);
+	settings.qsettings()->setValue("server/debug", false);
 
 	// Refresh UI to show the default values
 	load_keys();

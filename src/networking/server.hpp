@@ -123,8 +123,7 @@ class Server : public QWidget
 	QFrame *addPhoneCard = nullptr;
 	class QGridLayout *cardsGrid = nullptr;
 	QPushButton *modeButton = nullptr;
-	QPushButton *debugButton = nullptr;
-	bool debugMode = false;
+	bool debugEnabled() const;
 	QString debugLogPath() const;
 	void debugLog(const QString &line, bool force = false);
 	QString deviceKey(const Client &client) const;

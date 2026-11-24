@@ -344,23 +344,6 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		modeButton->setStyleSheet("QPushButton { padding: 4px 18px; min-height: 22px; }");
 		connect(modeButton, &QPushButton::clicked, this, [this]() { setTestMode(!testMode); });
 		tabRow->addWidget(modeButton);
-		debugButton = new QPushButton(tr("Debug mode"), this);
-		debugButton->setCheckable(true);
-		debugButton->setCursor(Qt::PointingHandCursor);
-		debugButton->setMinimumHeight(36);
-		debugButton->setMinimumWidth(150);
-		debugButton->setStyleSheet("QPushButton { padding: 4px 18px; min-height: 22px; } "
-								   "QPushButton:checked { background-color: #F5F5F5; color: #000000; border-color: #FFFFFF; }");
-		debugButton->setChecked(SettingsSingleton::instance().qsettings()->value("server/debug", false).toBool());
-		debugMode = debugButton->isChecked();
-		debugButton->setToolTip(tr("Logs connections to %1 and lets one device hold several controllers").arg(debugLogPath()));
-		connect(debugButton, &QPushButton::toggled, this, [this](bool on) {
-			debugMode = on;
-			SettingsSingleton::instance().qsettings()->setValue("server/debug", on);
-			debugLog(on ? QStringLiteral("Debug mode on") : QStringLiteral("Debug mode off"), true);
-			updateSlots();
-		});
-		tabRow->addWidget(debugButton);
 		connect(tabControllers, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(0); });
 		connect(tabConnect, &QPushButton::clicked, this, [this]() { userPickedTab = true; showTab(1); });
 		ui->verticalLayout->insertLayout(1, tabRow);
@@ -660,6 +643,11 @@ void Server::showTab(int index)
 	tabConnect->setChecked(index == 1);
 }
 
+bool Server::debugEnabled() const
+{
+	return SettingsSingleton::instance().qsettings()->value("server/debug", false).toBool();
+}
+
 QString Server::debugLogPath() const
 {
 	return QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("debug.log");
@@ -667,7 +655,7 @@ QString Server::debugLogPath() const
 
 void Server::debugLog(const QString &line, bool force)
 {
-	if (!debugMode && !force)
+	if (!debugEnabled() && !force)
 		return;
 	qInfo().noquote() << "[debug]" << line;
 	QDir().mkpath(QFileInfo(debugLogPath()).absolutePath());
@@ -886,7 +874,7 @@ ExecutorInterface *Server::executorFor(Client &client)
 
 bool Server::activate(Client &client, QString *failure)
 {
-	if (!debugMode)
+	if (!debugEnabled())
 	{
 		const QString key = deviceKey(client);
 		for (const auto &other : clients)
