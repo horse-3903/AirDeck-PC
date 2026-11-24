@@ -1319,6 +1319,11 @@ void Server::handleWebMessage(Client &client, const QByteArray &payload)
 		updateSlots();
 		return;
 	}
+	if (type == "dbg")
+	{
+		debugLog(QStringLiteral("Browser %1: %2").arg(client.socket->peerAddress().toString(), message.value("msg").toString().left(200)));
+		return;
+	}
 	if (type != "state")
 		return;
 

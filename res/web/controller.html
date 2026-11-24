@@ -458,10 +458,14 @@ body:not(.xbox) .xbox-label { display: none; }
   // ---- input state ----
   // Android uses the Vibration API (short pulses are too faint on many motors); iOS has none, but toggling a
   // switch control from a touch gives a system tick
-  var tick = null;
+  var tick = null, vibLog = 0;
   function buzz(ms) {
     if (!canVibrate || settings.vib !== "on") return;
-    if (typeof navigator.vibrate === "function") { navigator.vibrate(ms || 40); return; }
+    if (typeof navigator.vibrate === "function") {
+      var ok = navigator.vibrate(ms || 40);
+      if (vibLog < 3 && ws && ws.readyState === 1) { vibLog++; ws.send(JSON.stringify({ t: "dbg", msg: "vibrate(" + (ms || 40) + ") returned " + ok + ", activation " + (navigator.userActivation ? navigator.userActivation.hasBeenActive : "n/a") })); }
+      return;
+    }
     if (!tick) {
       tick = document.createElement("label");
       tick.style.cssText = "position:fixed;left:-99px;top:0;width:1px;height:1px;opacity:0;pointer-events:none";
