@@ -24,7 +24,7 @@
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
     -webkit-user-select: none; user-select: none; touch-action: none; }
-html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); overflow: hidden;
+html, body { margin: 0; height: 100%; background: color-mix(in srgb, var(--bg) 91%, var(--slotc, var(--bg))); transition: background .4s; color: var(--fg); overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     overscroll-behavior: none; position: fixed; inset: 0; width: 100%; }
 #app { position: fixed; inset: 0; height: 100vh; height: 100dvh; }
@@ -122,20 +122,14 @@ body:not(.xbox) .xbox-label { display: none; }
 #top .pill { position: static; width: 8dvh; height: 7dvh; border-radius: 1.4dvh; color: var(--muted); }
 #fsPill { display: none; }
 #fsPill.show { display: flex; }
-#badge { min-width: 9dvh; height: 7dvh; display: flex; align-items: center; justify-content: center; padding: 0 2.4dvh;
-    border-radius: 1.4dvh; font-size: 2.8dvh; font-weight: 700; letter-spacing: .02em; white-space: nowrap;
-    color: var(--bad); background: rgba(208, 48, 48, .16); }
-#badge.ok { color: var(--ok); background: rgba(26, 157, 74, .16); }
-#badge.wait { color: var(--warn); background: rgba(201, 138, 0, .16); }
-#badge.bad { color: var(--bad); background: rgba(208, 48, 48, .16); }
-#conn, #slotDots { display: none; }
-.sico { width: 4.2dvh; height: 4.2dvh; display: block; flex: none; }
-#sIcon { display: flex; }
-#slotText:empty { display: none; }
-#slotText { margin-left: 1dvh; }
-#hIcon { display: inline-flex; vertical-align: middle; margin-right: 8px; }
-#hIcon .sico { width: 20px; height: 20px; }
-#connHint { vertical-align: middle; }
+#badge { width: 14dvh; height: 7dvh; display: flex; align-items: center; justify-content: center; gap: 1.3dvh;
+    border-radius: 1.4dvh; background: var(--panel); border: 2px solid var(--border); font-size: 2.8dvh; font-weight: 700;
+    letter-spacing: .02em; white-space: nowrap; color: var(--muted); }
+#slotText { min-width: 3.4dvh; text-align: center; }
+.sd { width: 1.5dvh; height: 1.5dvh; border-radius: 50%; background: var(--bad); flex: none; box-sizing: border-box; }
+.sd.ok { background: var(--ok); }
+.sd.wait { background: transparent; border: .35dvh solid var(--warn); border-right-color: transparent; animation: sdspin .9s linear infinite; }
+@keyframes sdspin { to { transform: rotate(360deg); } }
 
 #rotate { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
     flex-direction: column; background: var(--bg); text-align: center; padding: 8vw; z-index: 20; gap: 12px; }
@@ -166,16 +160,15 @@ body:not(.xbox) .xbox-label { display: none; }
     background: var(--panel); color: var(--fg); font-size: 16px; -webkit-user-select: text; user-select: text; }
 .devtext.editing #nameInput { display: block; }
 .devtext.editing .devname { display: none; }
-.statusrow { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 14px; }
-.sdot { width: 9px; height: 9px; border-radius: 50%; background: var(--bad); flex: none; }
-.sdot.ok { background: var(--ok); } .sdot.wait { background: var(--warn); }
-.spill { flex: 1; text-align: center; padding: 9px 12px; border-radius: 8px; font-size: 14px; font-weight: 700;
-    color: var(--bad); background: rgba(208, 48, 48, .16); }
-.spill.ok { color: var(--ok); background: rgba(26, 157, 74, .16); }
-.spill.wait { color: var(--warn); background: rgba(201, 138, 0, .16); }
-.spill.bad { color: var(--bad); background: rgba(208, 48, 48, .16); }
-.sbtn { border: 1px solid var(--border); background: transparent; color: var(--fg); font-size: 14px; font-weight: 700; padding: 9px 14px; border-radius: 8px; white-space: nowrap; }
-.sbtn.bad { color: var(--bad); border-color: rgba(208, 48, 48, .45); }
+.statusrow { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); min-height: 66px; }
+.statusrow .sd { width: 10px; height: 10px; margin-left: 4px; }
+.statusrow .sd.wait { border-width: 2px; border-right-color: transparent; }
+.stext { flex: 1; min-width: 0; line-height: 1.3; }
+.stext b { display: block; font-size: 15px; font-weight: 700; }
+.stext span { display: block; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbtn { border: 1px solid var(--border); background: transparent; color: var(--fg); font-size: 14px; font-weight: 600; width: 128px; height: 42px;
+    border-radius: 10px; white-space: nowrap; display: flex; align-items: center; justify-content: center; }
+.sbtn.bad { color: #d18a8d; }
 .link { border: 0; background: transparent; color: var(--fg); font-size: 14px; font-weight: 700; padding: 6px 4px; }
 .sec { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 6px; }
 .label { font-size: 15px; font-weight: 700; margin: 6px 0; }
@@ -258,7 +251,7 @@ body:not(.xbox) .xbox-label { display: none; }
   </div>
   <div id="top">
   <div class="pill" id="fsPill" aria-label="Fullscreen"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></div>
-    <div id="badge" class="wait"><span id="conn" class="wait"></span><span id="slotDots"></span><span id="sIcon"></span><span id="slotText"></span></div>
+    <div id="badge" class="wait"><span class="sd wait" id="sDot"></span><span id="slotText">&mdash;</span></div>
     <div class="pill" id="menuBtn" data-nav="menu" aria-label="Settings"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></div>
   </div>
 </div>
@@ -279,7 +272,7 @@ body:not(.xbox) .xbox-label { display: none; }
       </div>
       <button class="iconbtn" id="editName" aria-label="Rename"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg></button>
     </div>
-    <div class="statusrow"><span class="spill wait"><span id="hIcon"></span><span id="connHint"></span></span><button class="link" id="retryBtn">Retry</button><button class="sbtn bad" id="disconnBtn">Disconnect</button><button class="sbtn" id="reconnBtn" style="display:none">Reconnect</button></div>
+    <div class="statusrow"><span class="sd wait" id="hDot"></span><div class="stext"><b id="connTitle"></b><span id="connHint"></span></div><button class="sbtn bad" id="disconnBtn">Disconnect</button><button class="sbtn" id="reconnBtn" style="display:none">Reconnect</button></div>
   </div>
 
   <div class="sec">Appearance</div>
@@ -377,34 +370,24 @@ body:not(.xbox) .xbox-label { display: none; }
   }
 
   // ---- network ----
-  var STATUS_ICONS = {
-    ok: '<svg class="sico" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6"><g transform="translate(12 12) rotate(-45)"><rect x="-10.6" y="-3.2" width="8.4" height="6.4" rx="3.2" fill-opacity=".2" /><rect x="2.2" y="-3.2" width="8.4" height="6.4" rx="3.2" fill-opacity=".2" /><rect x="-4.8" y="-1.3" width="9.6" height="2.6" rx="1.3" fill-opacity="1" stroke="none" /></g></svg>',
-    bad: '<svg class="sico" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6"><g transform="translate(12 12) rotate(-45)"><rect x="-11.4" y="-3.2" width="8.4" height="6.4" rx="3.2" fill-opacity=".2" /><rect x="3.0" y="-3.2" width="8.4" height="6.4" rx="3.2" fill-opacity=".2" /><rect x="-5.6" y="-1.3" width="4.0" height="2.6" rx="1.1" fill-opacity="1" stroke="none" /><rect x="1.6" y="-1.3" width="4.0" height="2.6" rx="1.1" fill-opacity="1" stroke="none" /></g></svg>',
-    wait: '<svg class="sico" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6"><path d="M7.2 4.2C7.2 8.2 10.6 10.2 10.6 12C10.6 13.8 7.2 15.8 7.2 19.8H16.8C16.8 15.8 13.4 13.8 13.4 12C13.4 10.2 16.8 8.2 16.8 4.2Z" fill-opacity=".2" /><rect x="5.5" y="2.2" width="13" height="2" rx="1" fill-opacity=".45" /><rect x="5.5" y="19.8" width="13" height="2" rx="1" fill-opacity=".45" /><path d="M8.7 6.5Q12 7.8 15.3 6.5C14.7 8.8 13 10.1 12.3 11.4H11.7C11 10.1 9.3 8.8 8.7 6.5Z" fill-opacity=".85" stroke="none" /><path d="M8.2 19.1C9.5 18.6 11.1 16.1 12 16.1C12.9 16.1 14.5 18.6 15.8 19.1Z" fill-opacity=".85" stroke="none" /></svg>'
-  };
   var connKind = "wait";
   function setStatus(kind, text, hint) {
     connKind = kind;
-    $("conn").className = kind;
-    $("badge").className = kind;
-    $("connHint").parentNode.className = "spill " + kind;
-    var icon = kind === "ok" ? STATUS_ICONS.ok : (kind === "wait" || text === "Reconnecting") ? STATUS_ICONS.wait : STATUS_ICONS.bad;
-    $("sIcon").innerHTML = icon; $("hIcon").innerHTML = icon;
-    $("badge").title = hint || text;
-    $("slotText").textContent = kind === "ok" ? text : "";
-    $("connHint").textContent = hint || text;
-    $("retryBtn").style.display = kind === "ok" ? "none" : "";
-    $("disconnBtn").style.display = wantConnection ? "" : "none";
-    $("reconnBtn").style.display = wantConnection ? "none" : "";
+    var st = kind === "ok" ? "ok" : (kind === "wait" || text === "Reconnecting") ? "wait" : "bad";
+    $("sDot").className = "sd " + st; $("hDot").className = "sd " + st;
+    $("connTitle").textContent = st === "ok" ? "Connected" : st === "wait" ? (text === "Reconnecting" ? "Reconnecting" : "Connecting") : "Disconnected";
+    $("connHint").textContent = st === "ok" ? "Controller " + slot : (st === "bad" && text === "Disconnected") ? "No active connection" : (hint || text);
+    $("badge").title = $("connTitle").textContent;
+    $("disconnBtn").style.display = wantConnection && st !== "bad" ? "" : "none";
+    $("reconnBtn").style.display = wantConnection && st !== "bad" ? "none" : "";
+    renderSlot();
   }
   var SLOT_COLORS = ["#E5484D", "#3E8EF7", "#F5C518", "#30A46C", "#F97316", "#A855F7"];
   function renderSlot() {
-    var dots = "";
-    for (var i = 1; i <= 6; i++) dots += '<span class="dot' + (i === slot ? " lit" : "") + '" style="background:' + SLOT_COLORS[i - 1] + ';opacity:' + (i === slot ? 1 : 0.28) + '"></span>';
-    $("slotDots").innerHTML = slot ? dots : "";
-    $("slotDots").style.display = slot ? "inline-flex" : "none";
-    $("slotDots").style.gap = "1.2dvh";
-    $("slotText").style.color = slot ? SLOT_COLORS[slot - 1] : "";
+    var on = slot && connKind === "ok", c = on ? SLOT_COLORS[slot - 1] : "";
+    $("slotText").textContent = on ? "P" + slot : "\u2014";
+    $("slotText").style.color = c;
+    if (c) document.documentElement.style.setProperty("--slotc", c); else document.documentElement.style.removeProperty("--slotc");
   }
   function connect() {
     if (!wantConnection || (ws && ws.readyState <= 1)) return;
@@ -718,7 +701,6 @@ body:not(.xbox) .xbox-label { display: none; }
     applySettings();
   }
   $("nameInput").addEventListener("keydown", function (e) { if (e.key === "Enter") { $("devText").classList.remove("editing"); closeMenuName(); } });
-  $("retryBtn").addEventListener("click", function () { reconnect(); });
   ["trigL", "trigR"].forEach(function (k) {
     $(k).addEventListener("change", function () { settings[k] = this.value; store.set("vgp-" + k, this.value); applySettings(); });
   });
