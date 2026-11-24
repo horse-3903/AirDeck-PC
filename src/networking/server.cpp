@@ -191,90 +191,80 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		summaryLabel = new QLabel(listPage);
 		summaryLabel->setStyleSheet("font-weight: 600; font-size: 12pt;");
 		listLayout->addWidget(summaryLabel);
-		// Connected controllers sit in a grid, three across and two down
+		// Six permanent tiles, three across and two down. Empty ones are grey, a connected one takes its colour
 		cardsGrid = new QGridLayout();
-		cardsGrid->setSpacing(12);
+		cardsGrid->setSpacing(14);
 		for (int column = 0; column < 3; ++column)
 			cardsGrid->setColumnStretch(column, 1);
+		for (int row = 0; row < 2; ++row)
+			cardsGrid->setRowStretch(row, 1);
 		auto *cardsLayout = cardsGrid;
 		for (int i = 0; i < 6; ++i)
 		{
 			SlotCard card;
 			card.frame = new QFrame(listPage);
-			card.frame->setProperty("role", "card");
+			card.frame->setObjectName("slotTile");
+			card.frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+			card.frame->installEventFilter(this);
 			auto *cardLayout = new QVBoxLayout(card.frame);
-			cardLayout->setContentsMargins(14, 14, 14, 14);
-			cardLayout->setSpacing(10);
-
-			card.deviceIcon = new QLabel(card.frame);
-			card.deviceIcon->setFixedSize(48, 48);
-			card.deviceIcon->setAlignment(Qt::AlignCenter);
+			cardLayout->setContentsMargins(16, 12, 16, 14);
+			cardLayout->setSpacing(6);
 
 			card.badge = new QLabel(QString::number(i + 1), card.frame);
-			card.badge->setFixedSize(24, 24);
-			card.badge->setAlignment(Qt::AlignCenter);
-			card.title = new QLabel(card.frame);
+			card.badge->setFixedSize(32, 28);
+			card.badge->move(16, 10);
+
+			card.deviceIcon = new QLabel(card.frame);
+			card.deviceIcon->setAlignment(Qt::AlignCenter);
+			card.deviceIcon->setFixedHeight(92);
+			cardLayout->addWidget(card.deviceIcon);
+			cardLayout->addStretch(1);
+
+			// Everything below the icon only exists while a device is connected, but keeps its space
+			card.details = new QWidget(card.frame);
+			auto *detailsLayout = new QVBoxLayout(card.details);
+			detailsLayout->setContentsMargins(0, 0, 0, 0);
+			detailsLayout->setSpacing(4);
+			card.title = new QLabel(card.details);
+			card.title->setAlignment(Qt::AlignHCenter);
 			card.title->setMinimumWidth(0);
 			card.title->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-			card.detail = new QLabel(card.frame);
-			card.detail->setProperty("role", "caption");
+			card.detail = new QLabel(card.details);
+			card.detail->setAlignment(Qt::AlignHCenter);
 			card.detail->setMinimumWidth(0);
 			card.detail->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-			card.state = new QLabel(card.frame);
-			card.state->setAlignment(Qt::AlignCenter);
+			detailsLayout->addWidget(card.title);
+			detailsLayout->addWidget(card.detail);
 
-			auto *header = new QHBoxLayout();
-			header->setSpacing(10);
-			auto *titleRow = new QHBoxLayout();
-			titleRow->setSpacing(8);
-			titleRow->addWidget(card.badge);
-			titleRow->addWidget(card.title, 1);
-			auto *headerText = new QVBoxLayout();
-			headerText->setSpacing(2);
-			headerText->addLayout(titleRow);
-			headerText->addWidget(card.detail);
-			header->addWidget(card.deviceIcon, 0, Qt::AlignTop);
-			header->addLayout(headerText, 1);
-			cardLayout->addLayout(header);
-
-			const auto makeChip = [&](QLabel *&icon, QLabel *&text) {
-				auto *chip = new QFrame(card.frame);
-				chip->setStyleSheet("QFrame { background: #1F1F24; border: none; border-radius: 10px; } "
-									"QLabel { background: transparent; border: none; }");
+			const auto makeChip = [&](QLabel *&text) {
+				auto *chip = new QFrame(card.details);
 				auto *chipLayout = new QHBoxLayout(chip);
-				chipLayout->setContentsMargins(8, 3, 10, 3);
-				chipLayout->setSpacing(6);
-				icon = new QLabel(chip);
-				icon->setFixedSize(16, 16);
+				chipLayout->setContentsMargins(10, 2, 10, 2);
 				text = new QLabel(chip);
-				text->setStyleSheet("color: #E5E5E5; font-weight: 600; font-size: 9pt;");
-				chipLayout->addWidget(icon);
+				text->setStyleSheet("background: transparent; border: none; font-weight: 600; font-size: 9pt;");
 				chipLayout->addWidget(text);
 				return chip;
 			};
-			auto *chipsA = new QHBoxLayout();
-			chipsA->setSpacing(6);
-			QLabel *ipIcon = nullptr;
-			chipsA->addWidget(makeChip(ipIcon, card.ip));
-			chipsA->addWidget(makeChip(card.srcIcon, card.srcText));
-			ipIcon->hide();
-			chipsA->addStretch();
-			auto *chipsB = new QHBoxLayout();
-			chipsB->setSpacing(6);
-			chipsB->addWidget(makeChip(card.outIcon, card.outText));
-			chipsB->addWidget(card.state);
-			chipsB->addStretch();
-			cardLayout->addLayout(chipsA);
-			cardLayout->addLayout(chipsB);
-			cardLayout->addStretch();
+			auto *chips = new QHBoxLayout();
+			chips->setSpacing(6);
+			chips->addStretch();
+			chips->addWidget(makeChip(card.ip));
+			chips->addWidget(makeChip(card.outText));
+			chips->addStretch();
+			detailsLayout->addLayout(chips);
 
-			card.test = new QPushButton(tr("Test controller"), card.frame);
+			card.test = new QPushButton(tr("Test controller"), card.details);
 			card.test->setCursor(Qt::PointingHandCursor);
-			card.test->setMinimumHeight(36);
+			card.test->setMinimumHeight(34);
 			connect(card.test, &QPushButton::clicked, this, [this, i]() { openTester(i + 1); });
-			cardLayout->addWidget(card.test);
-			card.frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-			card.frame->hide();
+			detailsLayout->addSpacing(2);
+			detailsLayout->addWidget(card.test);
+
+			QSizePolicy keep = card.details->sizePolicy();
+			keep.setRetainSizeWhenHidden(true);
+			card.details->setSizePolicy(keep);
+			cardLayout->addWidget(card.details);
+			cardsGrid->addWidget(card.frame, i / 3, i % 3);
 			slotCards.push_back(card);
 		}
 		listLayout->addLayout(cardsLayout);
@@ -291,6 +281,8 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 		addLayout->addWidget(addButton);
 		addLayout->addStretch();
 		listLayout->addWidget(addPhoneCard);
+		addPhoneCard->hide();
+		summaryLabel->hide();
 
 		slotNote = new QLabel(listPage);
 		slotNote->setProperty("role", "caption");
@@ -723,67 +715,53 @@ void Server::updateSlots()
 				owner = client.get();
 		}
 		SlotCard &card = slotCards[i];
-		const QColor color = slotColor(i + 1);
 		const bool active = owner != nullptr;
-		// Only connected phones get a card, the free slots are summarised underneath
-		card.frame->setVisible(active && i < slotCapacity());
-		if (!active && i < slotCapacity())
+		const bool usable = i < slotCapacity();
+		card.occupied = active;
+		if (!active && usable)
 			freeSlots.push_back(i + 1);
+		// Controllers 5 and 6 are always the PlayStation style ones
+		const bool ps4 = i >= 4;
+		const QColor gray("#4A4A52");
+		const QColor color = active ? slotColor(i + 1) : gray;
+		const qreal dpr = devicePixelRatioF();
+		const QString css = QString("%1,%2,%3").arg(color.red()).arg(color.green()).arg(color.blue());
+
+		card.frame->setStyleSheet(QString("QFrame#slotTile { background: #0C0C0E; border: 2px solid %1; border-radius: 14px; } "
+										  "QFrame#slotTile QLabel { background: transparent; border: none; }")
+									  .arg(color.name()));
+		card.frame->setCursor(active ? Qt::ArrowCursor : Qt::PointingHandCursor);
+		card.frame->setToolTip(active ? QString() : (usable ? tr("Empty. Click to connect a device.") : tr("Not available in this mode")));
+		card.badge->setStyleSheet(QString("font-weight: 800; font-size: 15pt; color: %1;").arg(color.name()));
+		card.deviceIcon->setPixmap(controllerPixmap(ps4, color, QSize(180, 92), dpr));
+		card.details->setVisible(active);
 		if (!active)
 			continue;
-		const qreal dpr = devicePixelRatioF();
-		card.badge->setStyleSheet(QString("QLabel { background: %1; color: #000000; border-radius: 12px; "
-										  "font-weight: 800; font-size: 10pt; }")
-									  .arg(color.name()));
+
 		const bool web = owner->protocol == Client::Protocol::WebSocket;
-		card.deviceIcon->setStyleSheet(QString("QLabel { background: rgba(%1,%2,%3,36); border-radius: 12px; }")
-										   .arg(color.red())
-										   .arg(color.green())
-										   .arg(color.blue()));
-		card.deviceIcon->setPixmap(glyphPixmap(web ? Glyph::Browser : Glyph::Phone, color, 28, dpr));
 		card.title->setText(deviceTitle(*owner));
-		card.title->setStyleSheet("font-weight: 700; font-size: 13pt; color: #F5F5F5;");
-		// Platform and browser for web controllers, the phone model for the app
+		card.title->setStyleSheet(QString("font-weight: 700; font-size: 12pt; color: %1;").arg(color.name()));
+		// Source, platform and browser for web controllers, the phone model for the app
 		QString detail = owner->model;
 		const int sizeAt = detail.lastIndexOf(QStringLiteral(" ("));
 		if (web && sizeAt > 0 && detail.endsWith(QLatin1Char(')')))
 			detail.truncate(sizeAt);
 		if (detail.isEmpty())
 			detail = web ? tr("Web browser") : tr("Android");
-		card.detail->setText(detail);
+		card.detail->setText((web ? tr("Browser") : tr("App")) + QStringLiteral("  \u00B7  ") + detail);
 		card.detail->setToolTip(owner->model);
+		card.detail->setStyleSheet(QString("font-size: 9pt; color: rgba(%1,200);").arg(css));
+		const QString chipStyle = QString("QFrame { background: rgba(%1,34); border: 1px solid %2; border-radius: 10px; } "
+										  "QLabel { color: %2; }")
+									  .arg(css, color.name());
 		card.ip->setText(owner->socket->peerAddress().toString());
-		card.srcIcon->setPixmap(glyphPixmap(web ? Glyph::Browser : Glyph::Phone, QColor("#BDBDC4"), 16, dpr));
-		card.srcText->setText(web ? tr("Browser") : tr("App"));
-		const Glyph out = serverMode == ExecutorType::KeyboardMouseExecutor ? Glyph::Keyboard
-						  : serverMode == ExecutorType::GamepadExecutor		? Glyph::Gear
-																			: Glyph::Gamepad;
-		card.outIcon->setPixmap(glyphPixmap(out, QColor("#BDBDC4"), 16, dpr));
+		card.ip->parentWidget()->setStyleSheet(chipStyle);
 		card.outText->setText(outputName(*owner));
-		card.state->setText(tr("Connected"));
-		card.state->setStyleSheet(QString("QLabel { color: %1; background: rgba(%2,%3,%4,40); border-radius: 10px; "
-										  "padding: 3px 12px; font-weight: 600; }")
-									  .arg(color.name())
-									  .arg(color.red())
-									  .arg(color.green())
-									  .arg(color.blue()));
+		card.outText->parentWidget()->setStyleSheet(chipStyle);
+		card.test->setStyleSheet(QString("QPushButton { color: %1; border: 1px solid %1; background: transparent; } "
+										 "QPushButton:hover { background: rgba(%2,40); }")
+									 .arg(color.name(), css));
 	}
-	if (cardsGrid != nullptr)
-	{
-		int placed = 0;
-		for (SlotCard &card : slotCards)
-			cardsGrid->removeWidget(card.frame);
-		for (SlotCard &card : slotCards)
-		{
-			if (!card.frame->isVisibleTo(card.frame->parentWidget()))
-				continue;
-			cardsGrid->addWidget(card.frame, placed / 3, placed % 3);
-			++placed;
-		}
-		cardsGrid->setRowStretch(2, 1);
-	}
-	if (addPhoneCard != nullptr)
-		addPhoneCard->setVisible(!freeSlots.empty());
 	if (slotNote != nullptr)
 		slotNote->hide();
 	// The tester follows one controller; leave it when that controller goes away
@@ -1303,6 +1281,18 @@ bool Server::eventFilter(QObject *watched, QEvent *event)
 {
 	if (watched == pagesHolder && event->type() == QEvent::Resize && pages != nullptr)
 		pages->setGeometry(pagesHolder->rect());
+	if (event->type() == QEvent::MouseButtonRelease)
+	{
+		for (const SlotCard &card : slotCards)
+		{
+			if (watched == card.frame && !card.occupied)
+			{
+				userPickedTab = true;
+				showTab(1);
+				break;
+			}
+		}
+	}
 	return QWidget::eventFilter(watched, event);
 }
 

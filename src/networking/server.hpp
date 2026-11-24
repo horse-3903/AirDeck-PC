@@ -86,6 +86,8 @@ class Server : public QWidget
 		QLabel *outIcon = nullptr;
 		QLabel *outText = nullptr;
 		QFrame *frame = nullptr;
+		QWidget *details = nullptr;
+		bool occupied = false;
 	};
 	std::vector<SlotCard> slotCards;
 	ExecutorInterface *executorFor(Client &client);

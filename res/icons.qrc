@@ -7,5 +7,7 @@
         <file>logos/HeroController.png</file>
         <file>logos/AppIcon.png</file>
         <file>theme.qss</file>
+        <file>controllers/ps4.svg</file>
+        <file>controllers/xbox.svg</file>
     </qresource>
 </RCC>

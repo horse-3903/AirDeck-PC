@@ -1,7 +1,10 @@
 #include "glyphs.hpp"
 
+#include <QFile>
 #include <QPainter>
+#include <QSvgRenderer>
 #include <QPainterPath>
+#include <algorithm>
 
 QPixmap glyphPixmap(Glyph kind, const QColor &color, int size, qreal dpr)
 {
@@ -64,5 +67,26 @@ QPixmap glyphPixmap(Glyph kind, const QColor &color, int size, qreal dpr)
 		}
 		break;
 	}
+	return pm;
+}
+
+QPixmap controllerPixmap(bool ps4, const QColor &color, const QSize &size, qreal dpr)
+{
+	QPixmap pm(size * dpr);
+	pm.setDevicePixelRatio(dpr);
+	pm.fill(Qt::transparent);
+	QFile file(ps4 ? ":/controllers/ps4.svg" : ":/controllers/xbox.svg");
+	if (!file.open(QIODevice::ReadOnly))
+		return pm;
+	QByteArray data = file.readAll();
+	data.replace("currentColor", color.name().toUtf8());
+	QSvgRenderer renderer(data);
+	// The artwork is 200 x 148, fit it in the middle of the requested size
+	const double s = std::min(size.width() / 200.0, size.height() / 148.0);
+	const QSizeF drawn(200 * s, 148 * s);
+	QPainter p(&pm);
+	p.setRenderHint(QPainter::Antialiasing);
+	renderer.render(&p, QRectF((size.width() - drawn.width()) / 2, (size.height() - drawn.height()) / 2,
+							   drawn.width(), drawn.height()));
 	return pm;
 }
