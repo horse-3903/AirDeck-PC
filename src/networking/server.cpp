@@ -223,7 +223,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			card.deviceIcon->setMinimumSize(10, 80);
 			card.deviceIcon->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 			card.deviceIcon->installEventFilter(this);
-			cardLayout->addWidget(card.deviceIcon, 1);
+			cardLayout->addWidget(card.deviceIcon, 2);
 
 			// Everything below the icon only exists while a device is connected, but keeps its space
 			card.details = new QWidget(card.frame);
@@ -238,6 +238,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			card.detail->setAlignment(Qt::AlignHCenter);
 			card.detail->setMinimumWidth(0);
 			card.detail->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+			detailsLayout->addStretch(1);
 			detailsLayout->addWidget(card.title);
 			detailsLayout->addWidget(card.detail);
 
@@ -275,6 +276,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 					showTab(1);
 				}
 			});
+			detailsLayout->addStretch(1);
 			detailsLayout->addSpacing(2);
 			QSizePolicy keepTest = card.test->sizePolicy();
 			keepTest.setRetainSizeWhenHidden(true);
@@ -284,7 +286,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			QSizePolicy keep = card.details->sizePolicy();
 			keep.setRetainSizeWhenHidden(true);
 			card.details->setSizePolicy(keep);
-			cardLayout->addWidget(card.details);
+			cardLayout->addWidget(card.details, 1);
 			cardsGrid->addWidget(card.frame, i / 3, i % 3);
 			slotCards.push_back(card);
 		}
