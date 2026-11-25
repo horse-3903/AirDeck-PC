@@ -39,6 +39,8 @@ class Server : public QWidget
 	~Server() override;
 	QTcpServer *tcpServer = nullptr;
 	Q_INVOKABLE bool isServerRunning() const { return !stopped; }
+	// Called after Preferences are saved: a running server restarts so the new settings apply
+	Q_INVOKABLE void applySettings();
 
   private slots:
 	void handleConnection();
@@ -81,6 +83,7 @@ class Server : public QWidget
 		QLabel *detail = nullptr;
 		QLabel *state = nullptr;
 		QPushButton *test = nullptr;
+		QPushButton *disconnect = nullptr;
 		QLabel *ip = nullptr;
 		QLabel *input = nullptr;
 		QLabel *deviceIcon = nullptr;
@@ -134,6 +137,8 @@ class Server : public QWidget
 	std::function<QPixmap(const QColor &)> tabPix[2];
 	bool restarting = false;
 	void restartServer();
+	void restartNow();
+	void disconnectSlot(int slot);
 	void stopServer();
 	void dropClients();
 	bool stopped = false;

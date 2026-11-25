@@ -262,6 +262,7 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		settings.setActiveProfileName(currentProfile);
 		settings.saveActiveProfile();
 
+		emit saved();
 		emit navigateBack();
 		this->deleteLater();
 	});

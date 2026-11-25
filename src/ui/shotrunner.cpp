@@ -123,6 +123,7 @@ void ShotRunner::pollFlags()
 
 void ShotRunner::start()
 {
+	const ExecutorType original = SettingsSingleton::instance().executorType();
 	auto accept = [](QWidget *modal) {
 		if (auto *box = qobject_cast<QMessageBox *>(modal))
 		{
@@ -280,6 +281,8 @@ void ShotRunner::start()
 	schedule([this] { saveWindow("23-controllers-connected"); });
 	schedule([this] { click(button(QStringLiteral("Input test"))); });
 	schedule([this] { saveWindow("24-tester"); });
+	// The shots switch the input method, so put it back for the person whose settings file this is
+	schedule([original] { SettingsSingleton::instance().setExecutorType(original); });
 
 	QTimer::singleShot(500, this, &ShotRunner::runNext);
 }

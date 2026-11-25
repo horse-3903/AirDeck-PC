@@ -7,6 +7,7 @@
 #include "../settings/settings_singleton.hpp"
 #include "ui_server.h"
 
+#include <QPointer>
 #include <QApplication>
 #include <QDateTime>
 #include <QDir>
@@ -365,6 +366,17 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			card.padSpacer = new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::Fixed);
 			detailsLayout->addItem(card.padSpacer);
 			detailsLayout->addWidget(card.test);
+
+			card.disconnect = new QPushButton(tr("Disconnect"), card.details);
+			card.disconnect->setCursor(Qt::PointingHandCursor);
+			card.disconnect->setMinimumHeight(34);
+			card.disconnect->setStyleSheet("QPushButton { color: #E5484D; border: 1px solid #5A2A2D; border-radius: 4px; background: transparent; } "
+										   "QPushButton:hover { background: #2A1517; border-color: #E5484D; } "
+										   "QPushButton:pressed { background: #1C0E10; }");
+			card.disconnect->hide();
+			const int slotNumber = i + 1;
+			connect(card.disconnect, &QPushButton::clicked, this, [this, slotNumber]() { disconnectSlot(slotNumber); });
+			detailsLayout->addWidget(card.disconnect);
 
 			QSizePolicy keep = card.details->sizePolicy();
 			keep.setRetainSizeWhenHidden(true);
@@ -730,7 +742,7 @@ void Server::updateStatus()
 		countPill->setText(tr("%1  \u00B7  Port %2").arg(modeName).arg(port));
 	}
 	if (summaryLabel != nullptr)
-		summaryLabel->setText(tr("%1 connected  \u00B7  %2 available").arg(active).arg(capacity - active));
+		summaryLabel->setText(tr("%1 connected  \u00B7  %2 available").arg(active).arg(std::max(0, capacity - active)));
 	if (tabCount != nullptr)
 		tabCount->setText(QString::number(active));
 	if (!userPickedTab && pages != nullptr)
@@ -897,6 +909,35 @@ void Server::restartServer()
 		if (confirm.clickedButton() != go)
 			return;
 	}
+	restartNow();
+}
+
+void Server::applySettings()
+{
+	if (stopped || restarting)
+		return;
+	restartNow();
+}
+
+void Server::disconnectSlot(int slot)
+{
+	const auto it = std::find_if(clients.begin(), clients.end(),
+								 [slot](const std::unique_ptr<Client> &c) { return c->active && c->slot == slot; });
+	if (it == clients.end())
+		return;
+	QTcpSocket *socket = (*it)->socket;
+	debugLog(QStringLiteral("Disconnected controller %1 from the PC").arg(slot));
+	// Browser controllers get a notice and wait a few seconds before they try again
+	refuse(**it, tr("Disconnected from the PC"));
+	QPointer<QTcpSocket> guard(socket);
+	QTimer::singleShot(250, this, [guard]() {
+		if (guard)
+			guard->abort();
+	});
+}
+
+void Server::restartNow()
+{
 	restarting = true;
 	const auto lock = [this](bool enabled) {
 		homeBtn->setEnabled(enabled);
@@ -909,6 +950,11 @@ void Server::restartServer()
 	debugLog(QStringLiteral("Restarting server"));
 
 	dropClients();
+	// Pick up a changed input method
+	serverMode = SettingsSingleton::instance().executorType();
+	executor.reset();
+	if (serverMode == ExecutorType::KeyboardMouseExecutor)
+		executor = std::make_unique<KeyboardMouseExecutor>();
 	updateStatus();
 
 	QTimer::singleShot(700, this, [this, lock]() {
@@ -1079,6 +1125,7 @@ void Server::updateSlots()
 		card.detail->setVisible(active);
 		card.test->setText(tr("+  Connect device"));
 		card.test->setVisible(!active);
+		card.disconnect->setVisible(active);
 		card.test->setStyleSheet("QPushButton { color: #F5F5F5; border: 1px solid #4A4A52; border-radius: 4px; background: transparent; } "
 								 "QPushButton:hover { background: #1E1E22; border-color: #6A6A72; } "
 								 "QPushButton:pressed { background: #141416; }");

@@ -105,6 +105,11 @@ void MainMenu::launch_preferences()
 	stack->addWidget(preferences);
 	stack->setCurrentWidget(preferences);
 	// When preferences is closed, switch back to main menu
+	// A running server restarts so the saved settings take effect
+	connect(preferences, &Preferences::saved, this, [this]() {
+		if (activeServer)
+			QMetaObject::invokeMethod(activeServer, "applySettings", Qt::QueuedConnection);
+	});
 	connect(preferences, &Preferences::navigateBack, this, [this]() {
 		stack->setCurrentWidget(this);
 	});
