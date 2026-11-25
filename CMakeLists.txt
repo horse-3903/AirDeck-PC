@@ -109,6 +109,8 @@ set(PROJECT_SOURCES
     src/ui/glyphs.hpp
     src/platform/toast.cpp
     src/platform/toast.hpp
+    src/platform/padcleanup.cpp
+    src/platform/padcleanup.hpp
     src/ui/toastpopup.hpp
     src/ui/controllertester.hpp
     src/ui/slotcolors.hpp
@@ -164,6 +166,8 @@ if(WIN32)
         WindowsApp
         ViGEmClient
         setupapi
+        cfgmgr32
+        shell32
     )
 elseif(LINUX)
     target_link_libraries(AirDeck PRIVATE

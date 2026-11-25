@@ -61,6 +61,8 @@ void MainWindow::stopServerAndQuit()
 	if (QWidget *server = findChild<QWidget *>("Server"))
 		QMetaObject::invokeMethod(server, "destroyServer", Qt::DirectConnection);
 	clearNativeToasts();
+	// Delete the server now so its virtual pads are unplugged before the process ends
+	QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
 	quitRequested = true;
 	QApplication::quit();
 }

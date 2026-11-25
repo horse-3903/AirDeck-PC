@@ -75,7 +75,9 @@ class ViGEmExecutor : public ExecutorInterface
 {
   public:
 	// ds4 = a DualShock 4 for games that cannot see more than four Xbox controllers
-	explicit ViGEmExecutor(bool ds4 = false, int slot = -1);
+	// expectedIndex: the XInput number (0 to 3) this Xbox pad should get, so player N is controller N.
+	// Windows hands out the lowest free number, so a pad that lands elsewhere is plugged in again.
+	explicit ViGEmExecutor(bool ds4 = false, int slot = -1, int expectedIndex = -1);
 	~ViGEmExecutor() override;
 
 	ViGEmExecutor(const ViGEmExecutor &) = delete;
@@ -91,6 +93,7 @@ class ViGEmExecutor : public ExecutorInterface
 	unsigned short m_buttons = 0;
 	bool m_ds4 = false;
 	int m_slot = -1;
+	int m_userIndex = -1;
 	quint32 m_held = 0;
 };
 #endif

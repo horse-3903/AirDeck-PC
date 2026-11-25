@@ -71,6 +71,8 @@ class Server : public QWidget
 			WebSocket
 		};
 		Protocol protocol = Protocol::Unknown;
+		// An Xbox pad that belongs to the server, not to this phone, so it stays plugged in between connections
+		ExecutorInterface *pad = nullptr;
 		bool active = false;
 		bool ds4 = false;
 		quint32 held = 0;
@@ -131,6 +133,10 @@ class Server : public QWidget
 	QPushButton *viewInput = nullptr;
 	QPushButton *homeBtn = nullptr;
 	QPushButton *restartBtn = nullptr;
+	QPushButton *fixPadsBtn = nullptr;
+	// One virtual Xbox pad per slot in XInput order, kept plugged in until the server stops or restarts
+	std::vector<std::unique_ptr<ExecutorInterface>> xboxPads;
+	void checkLeftoverPads();
 	QLabel *tabIcon[2] = {nullptr, nullptr};
 	QLabel *tabText[2] = {nullptr, nullptr};
 	QLabel *tabCount = nullptr;

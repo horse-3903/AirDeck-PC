@@ -8,6 +8,7 @@
 
 #include <QApplication>
 #include <QDebug>
+#include <QThread>
 #include <algorithm>
 #include <cmath>
 #include <errno.h>
@@ -539,10 +540,49 @@ bool GamepadExecutor::inject_gamepad_state(vgp_data_exchange_gamepad_reading con
 
 #ifdef _WIN32
 #include <ViGEm/Client.h>
+#include <windows.h>
 #include <cstdio>
 #include <stdexcept>
 
-ViGEmExecutor::ViGEmExecutor(bool ds4, int slot) : m_ds4(ds4), m_slot(slot)
+// The XInput number (0 to 3) a freshly plugged virtual Xbox pad really has, or -1 when it cannot be told
+static int probeXInputIndex(PVIGEM_CLIENT client, PVIGEM_TARGET pad)
+{
+	using XInputGetStateFn = DWORD(WINAPI *)(DWORD, void *);
+	static const HMODULE lib = LoadLibraryW(L"xinput1_4.dll");
+	if (lib == nullptr)
+		return -1;
+	const auto getState = reinterpret_cast<XInputGetStateFn>(GetProcAddress(lib, "XInputGetState"));
+	if (getState == nullptr)
+		return -1;
+	struct State
+	{
+		DWORD packet;
+		WORD buttons;
+		BYTE leftTrigger, rightTrigger;
+		SHORT lx, ly, rx, ry;
+	};
+	constexpr SHORT marker = 12345;
+	XUSB_REPORT report{};
+	int found = -1;
+	for (int tries = 0; tries < 20 && found < 0; ++tries)
+	{
+		report.sThumbLX = marker;
+		vigem_target_x360_update(client, pad, report);
+		for (DWORD i = 0; i < 4 && found < 0; ++i)
+		{
+			State state{};
+			if (getState(i, &state) == ERROR_SUCCESS && state.lx == marker)
+				found = static_cast<int>(i);
+		}
+		if (found < 0)
+			QThread::msleep(25);
+	}
+	report.sThumbLX = 0;
+	vigem_target_x360_update(client, pad, report);
+	return found;
+}
+
+ViGEmExecutor::ViGEmExecutor(bool ds4, int slot, int expectedIndex) : m_ds4(ds4), m_slot(slot)
 {
 	m_client = vigem_alloc();
 	if (m_client == nullptr)
@@ -582,6 +622,40 @@ ViGEmExecutor::ViGEmExecutor(bool ds4, int slot) : m_ds4(ds4), m_slot(slot)
 		throw std::runtime_error(code);
 	}
 	qInfo() << (m_ds4 ? "ViGEm virtual DualShock 4 created" : "ViGEm virtual Xbox 360 controller created");
+
+	if (!m_ds4)
+	{
+		// ViGEm numbers its own pads, but games use the number Windows' XInput gives, and a leftover pad can
+		// shift it. So find the real XInput number by sending a recognisable value and seeing where it appears.
+		for (int attempt = 0;; ++attempt)
+		{
+			ULONG busIndex = 0;
+			const bool haveBus = VIGEM_SUCCESS(vigem_target_x360_get_user_index(m_client, m_pad, &busIndex));
+			const int probed = probeXInputIndex(m_client, m_pad);
+			m_userIndex = probed >= 0 ? probed : (haveBus ? static_cast<int>(busIndex) : -1);
+			qInfo() << "Virtual Xbox pad is XInput controller" << m_userIndex + 1 << "(ViGEm says"
+					<< (haveBus ? static_cast<int>(busIndex) + 1 : -1) << ")";
+			if (expectedIndex < 0 || m_userIndex < 0 || m_userIndex == expectedIndex || attempt >= 3)
+				break;
+			qInfo() << "Controller" << expectedIndex + 1 << "was expected, plugging the pad in again";
+			vigem_target_remove(m_client, m_pad);
+			vigem_target_free(m_pad);
+			m_pad = nullptr;
+			// Windows frees the old number a moment after the pad is removed
+			QThread::msleep(250);
+			m_pad = vigem_target_x360_alloc();
+			if (m_pad == nullptr || !VIGEM_SUCCESS(vigem_target_add(m_client, m_pad)))
+			{
+				if (m_pad != nullptr)
+					vigem_target_free(m_pad);
+				m_pad = nullptr;
+				vigem_disconnect(m_client);
+				vigem_free(m_client);
+				m_client = nullptr;
+				throw std::runtime_error("Could not recreate the virtual controller.");
+			}
+		}
+	}
 }
 
 ViGEmExecutor::~ViGEmExecutor()
@@ -729,11 +803,7 @@ int ViGEmExecutor::slot() const
 {
 	if (m_ds4)
 		return m_slot;
-	ULONG index = 0;
-	if (m_client != nullptr && m_pad != nullptr &&
-		VIGEM_SUCCESS(vigem_target_x360_get_user_index(m_client, m_pad, &index)))
-		return static_cast<int>(index) + 1;
-	return -1;
+	return m_userIndex >= 0 ? m_userIndex + 1 : -1;
 }
 
 void ViGEmExecutor::release_all()

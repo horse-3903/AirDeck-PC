@@ -8,6 +8,7 @@
 #include "ui_server.h"
 
 #include <QPointer>
+#include "../platform/padcleanup.hpp"
 #include <QApplication>
 #include <QDateTime>
 #include <QDir>
@@ -210,6 +211,19 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			adminPill->setStyleSheet(pillStyle.arg("#8A6A1F", "#F2C14E"));
 			pillRow->addWidget(adminPill);
 		}
+		fixPadsBtn = new QPushButton(tr("Fix controller numbering"), this);
+		fixPadsBtn->setCursor(Qt::PointingHandCursor);
+		fixPadsBtn->setToolTip(tr("Virtual controllers from an earlier run are still plugged in, so new ones get the wrong "
+								  "number. Windows asks for permission to remove them."));
+		fixPadsBtn->setStyleSheet(
+			"QPushButton { color: #F2C14E; border: 1px solid #8A6A1F; border-radius: 4px; padding: 4px 12px; "
+			"background: transparent; font-weight: 600; } QPushButton:hover { background: #2A220F; }");
+		fixPadsBtn->hide();
+		connect(fixPadsBtn, &QPushButton::clicked, this, [this]() {
+			removeVirtualPadsElevated();
+			checkLeftoverPads();
+		});
+		pillRow->addWidget(fixPadsBtn);
 		pillRow->addStretch();
 		auto *titleColumn = new QVBoxLayout();
 		titleColumn->setSpacing(6);
@@ -499,6 +513,7 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 	}
 
 	initServer();
+	QTimer::singleShot(1200, this, [this]() { checkLeftoverPads(); });
 
 	// The home screen connects to statusChanged after construction, so announce the state again
 	QTimer::singleShot(0, this, [this]() { updateStatus(); });
@@ -515,6 +530,8 @@ Server::~Server()
 		client->socket->disconnect(this);
 		if (client->executor)
 			client->executor->release_all();
+		else if (client->pad != nullptr)
+			client->pad->release_all();
 	}
 	if (executor)
 		executor->release_all();
@@ -859,6 +876,8 @@ void Server::dropClients()
 		client->socket->disconnect(this);
 		if (client->executor)
 			client->executor->release_all();
+		else if (client->pad != nullptr)
+			client->pad->release_all();
 	}
 	if (executor)
 		executor->release_all();
@@ -870,6 +889,8 @@ void Server::dropClients()
 	clients.clear();
 	clientConnection = nullptr;
 	isGamepadConnected = false;
+	// Unplug the virtual Xbox pads too, so a stop or restart starts from nothing
+	xboxPads.clear();
 	tcpServer->close();
 	updateClientLabel();
 	updateSlots();
@@ -910,6 +931,25 @@ void Server::restartServer()
 			return;
 	}
 	restartNow();
+}
+
+void Server::checkLeftoverPads()
+{
+	if (fixPadsBtn == nullptr)
+		return;
+	bool leftovers = false;
+	// Our own pads are only just gone, so wait until nothing of ours is plugged in
+	if (serverMode == ExecutorType::VigemExecutor && xboxPads.empty() && clients.empty())
+	{
+		leftovers = !findVirtualPads().isEmpty();
+		if (leftovers && isElevated())
+		{
+			// With administrator rights there is no need to ask
+			removeVirtualPads();
+			leftovers = !findVirtualPads().isEmpty();
+		}
+	}
+	fixPadsBtn->setVisible(leftovers);
 }
 
 void Server::applySettings()
@@ -985,6 +1025,7 @@ void Server::restartNow()
 		lock(true);
 		updateStatus();
 		debugLog(QStringLiteral("Server restarted on port %1").arg(tcpServer->serverPort()));
+		QTimer::singleShot(1200, this, [this]() { checkLeftoverPads(); });
 	});
 }
 
@@ -1179,6 +1220,8 @@ void Server::updateClientLabel()
 
 ExecutorInterface *Server::executorFor(Client &client)
 {
+	if (client.pad != nullptr)
+		return client.pad;
 	return client.executor ? client.executor.get() : executor.get();
 }
 
@@ -1240,37 +1283,49 @@ bool Server::activate(Client &client, QString *failure)
 				return false;
 			}
 		}
-		try
+		if (useDs4)
 		{
-			client.executor = std::make_unique<ViGEmExecutor>(useDs4, chosenSlot);
-		}
-		catch (const std::exception &e)
-		{
-			*failure = QString::fromUtf8(e.what());
-			return false;
-		}
-		client.ds4 = useDs4;
-		if (!useDs4)
-		{
-			// Xbox controllers take the slot Windows gave them, so games and this app agree on the number
-			const int preferred = client.executor->slot();
-			if (preferred >= 1 && preferred <= 4 && !slotUsed(preferred))
-				chosenSlot = preferred;
-			else
+			try
 			{
-				for (int candidate = 1; candidate <= 4 && chosenSlot == 0; ++candidate)
-				{
-					if (!slotUsed(candidate))
-						chosenSlot = candidate;
-				}
+				client.executor = std::make_unique<ViGEmExecutor>(true, chosenSlot, -1);
 			}
-			if (chosenSlot == 0)
+			catch (const std::exception &e)
 			{
-				client.executor.reset();
-				*failure = tr("All controller slots are in use.");
+				*failure = QString::fromUtf8(e.what());
 				return false;
 			}
 		}
+		else
+		{
+			// Xbox pads stay plugged in, one per slot in XInput order, so player N is always controller N
+			int wanted = 0;
+			for (int candidate = 1; candidate <= 4 && wanted == 0; ++candidate)
+			{
+				if (!slotUsed(candidate))
+					wanted = candidate;
+			}
+			if (wanted == 0)
+			{
+				*failure = tr("All controller slots are in use.");
+				return false;
+			}
+			try
+			{
+				while (static_cast<int>(xboxPads.size()) < wanted)
+					xboxPads.push_back(std::make_unique<ViGEmExecutor>(false, -1, static_cast<int>(xboxPads.size())));
+			}
+			catch (const std::exception &e)
+			{
+				*failure = QString::fromUtf8(e.what());
+				return false;
+			}
+			client.pad = xboxPads[wanted - 1].get();
+			if (client.pad->slot() != wanted)
+				qWarning() << "Player" << wanted << "is XInput controller" << client.pad->slot()
+						   << "because another virtual pad is still plugged in";
+			chosenSlot = wanted;
+		}
+		client.ds4 = useDs4;
 #endif
 	}
 	else
@@ -1339,6 +1394,8 @@ void Server::handleConnection()
 			wasActive = (*it)->active;
 			if ((*it)->executor)
 				(*it)->executor->release_all();
+			else if ((*it)->pad != nullptr)
+				(*it)->pad->release_all();
 			else if (wasActive && executor)
 				executor->release_all();
 			clients.erase(it);

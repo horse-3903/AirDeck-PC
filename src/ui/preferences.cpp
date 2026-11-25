@@ -89,6 +89,16 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		ui->generalTabLayout->insertWidget(ui->generalTabLayout->indexOf(ui->executorGroup) + 1, debug);
 		debug->setChecked(SettingsSingleton::instance().qsettings()->value("server/debug", false).toBool());
 	}
+#ifdef _WIN32
+	{
+		auto *admin = new QCheckBox(tr("Always run as administrator (Windows asks for permission each time AirDeck starts)"), this);
+		admin->setObjectName("runAsAdminCheck");
+		admin->setToolTip(tr("Lets AirDeck clear leftover virtual controllers by itself when the server starts or restarts. "
+							 "Off by default, and it applies the next time AirDeck starts."));
+		ui->generalTabLayout->insertWidget(ui->generalTabLayout->indexOf(ui->executorGroup) + 2, admin);
+		admin->setChecked(SettingsSingleton::instance().qsettings()->value("app/run_as_admin", false).toBool());
+	}
+#endif
 	ui->profileComboBox->setMaximumWidth(320);
 	if (auto *profilesRow = qobject_cast<QHBoxLayout *>(ui->profilesGroup->layout()))
 		profilesRow->addStretch();
@@ -240,6 +250,8 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 
 		if (auto *debug = findChild<QCheckBox *>("debugModeCheck"))
 			settings.qsettings()->setValue("server/debug", debug->isChecked());
+		if (auto *admin = findChild<QCheckBox *>("runAsAdminCheck"))
+			settings.qsettings()->setValue("app/run_as_admin", admin->isChecked());
 
 		// Save port number now
 		auto *randomPort = findChild<QCheckBox *>("randomPortCheck");
@@ -660,6 +672,9 @@ void Preferences::restore_defaults()
 	if (auto *debug = findChild<QCheckBox *>("debugModeCheck"))
 		debug->setChecked(false);
 	settings.qsettings()->setValue("server/debug", false);
+	if (auto *admin = findChild<QCheckBox *>("runAsAdminCheck"))
+		admin->setChecked(false);
+	settings.qsettings()->setValue("app/run_as_admin", false);
 
 	// Refresh UI to show the default values
 	load_keys();

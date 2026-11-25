@@ -2,6 +2,9 @@
 #include "platform/windows/console.hpp"
 #include "ui/mainwindow.hpp"
 #include "platform/toast.hpp"
+#include "platform/elevation.hpp"
+#include "platform/padcleanup.hpp"
+#include "settings/settings_singleton.hpp"
 #include "ui/shotrunner.hpp"
 
 #include <QLocalServer>
@@ -140,6 +143,24 @@ int main(int argc, char *argv[])
 	QApplication::setApplicationVersion(APP_VERSION);
 	qInfo() << "App data directory:" << getAppDataDir();
 
+	// Started elevated by the "Fix controller numbering" button: remove leftover virtual pads, then stop
+	for (int i = 1; i < argc; ++i)
+	{
+		if (QString(argv[i]) == kCleanPadsArgument)
+			return isElevated() ? (removeVirtualPads() >= 0 ? 0 : 1) : 1;
+	}
+
+	// Diagnostic: write the leftover virtual pads to the log and exit with how many were found
+	for (int i = 1; i < argc; ++i)
+	{
+		if (QString(argv[i]) == "--list-pads")
+		{
+			const QStringList pads = findVirtualPads();
+			qInfo() << "Virtual Xbox pads on the ViGEm bus:" << pads.size() << pads;
+			return static_cast<int>(pads.size());
+		}
+	}
+
 	// Developer tool: --ui-shots <folder> saves a PNG of every page and dialog
 	QString shotsFolder;
 	for (int i = 1; i + 1 < argc; ++i)
@@ -170,6 +191,10 @@ int main(int argc, char *argv[])
 		}
 	}
 	if (stopRequested)
+		return 0;
+	// Off by default. When switched on in Preferences, AirDeck restarts itself with administrator rights.
+	if (shotsFolder.isEmpty() && !isElevated() &&
+		SettingsSingleton::instance().qsettings()->value("app/run_as_admin", false).toBool() && relaunchElevated())
 		return 0;
 	initToastIdentity();
 	// A "still running" notice left by an earlier run is out of date
