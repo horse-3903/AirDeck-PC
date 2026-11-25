@@ -60,12 +60,14 @@ void MainWindow::stopServerAndQuit()
 {
 	if (QWidget *server = findChild<QWidget *>("Server"))
 		QMetaObject::invokeMethod(server, "destroyServer", Qt::DirectConnection);
+	clearNativeToasts();
 	quitRequested = true;
 	QApplication::quit();
 }
 
 void MainWindow::showFromTray()
 {
+	clearNativeToasts();
 	showNormal();
 	raise();
 	activateWindow();
@@ -73,7 +75,10 @@ void MainWindow::showFromTray()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-	const bool serverRunning = findChild<QWidget *>("Server") != nullptr;
+	// A server that was stopped with its Stop button is still on screen, but nothing is left running
+	bool serverRunning = false;
+	if (QWidget *server = findChild<QWidget *>("Server"))
+		QMetaObject::invokeMethod(server, "isServerRunning", Qt::DirectConnection, Q_RETURN_ARG(bool, serverRunning));
 	if (trayIcon != nullptr && serverRunning && !quitRequested)
 	{
 		hide();

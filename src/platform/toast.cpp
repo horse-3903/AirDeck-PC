@@ -66,9 +66,21 @@ bool showNativeToast(const QString &title, const QString &text, const QString &a
 	}
 }
 
+void clearNativeToasts()
+{
+	try
+	{
+		winrt::Windows::UI::Notifications::ToastNotificationManager::History().Clear(kAppId);
+	}
+	catch (...)
+	{
+	}
+}
+
 #else
 
 void initToastIdentity() {}
+void clearNativeToasts() {}
 bool showNativeToast(const QString &, const QString &, const QString &) { return false; }
 
 #endif

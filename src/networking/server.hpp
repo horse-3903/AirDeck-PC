@@ -38,6 +38,7 @@ class Server : public QWidget
 	explicit Server(QWidget *parent = nullptr);
 	~Server() override;
 	QTcpServer *tcpServer = nullptr;
+	Q_INVOKABLE bool isServerRunning() const { return !stopped; }
 
   private slots:
 	void handleConnection();

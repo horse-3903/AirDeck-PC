@@ -12,3 +12,6 @@ void initToastIdentity();
 
 // Returns false when Windows would not take the toast, so the caller can fall back.
 bool showNativeToast(const QString &title, const QString &text, const QString &actionLabel);
+
+// Takes our notifications off the screen and out of the notification centre.
+void clearNativeToasts();

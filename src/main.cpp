@@ -172,6 +172,9 @@ int main(int argc, char *argv[])
 	if (stopRequested)
 		return 0;
 	initToastIdentity();
+	// A "still running" notice left by an earlier run is out of date
+	clearNativeToasts();
+	QObject::connect(&a, &QCoreApplication::aboutToQuit, []() { clearNativeToasts(); });
 	QLocalServer::removeServer(instanceKey);
 	QLocalServer instanceServer;
 	instanceServer.listen(instanceKey);

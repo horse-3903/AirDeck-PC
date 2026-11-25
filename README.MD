@@ -43,6 +43,7 @@ The question behind the fork is how little a person has to do to use a phone as 
 The page at `res/web/controller.html` is one self-contained file. The server injects a version code into it, so an open page reloads itself after you install a newer build.
 
 - **Layout** - two sticks, a D-pad, four face buttons, bumpers, analog triggers and View and Start, laid out to match the Android app.
+- **Fixed stage** - the controller is drawn on a fixed 2000 by 900 stage and scaled to fit, so a different screen shrinks it evenly instead of moving controls around. Portrait turns it a quarter turn.
 - **Styles** - PlayStation or Xbox symbols, with a matching D-pad for each.
 - **Theme** - system, light or dark.
 - **D-pad** - multi-press by default, so a thumb near a diagonal holds two directions and two fingers hold two. One at a time is available in settings.
