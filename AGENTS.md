@@ -168,6 +168,7 @@ Releases are published as pre-releases, tagged `v<version>` since the rename (ea
 ## 10. Known limitations and ideas
 
 - Untested: real iPhone, haptic strength and length on a real phone, two fingers on the Android D-pad, several real phones at once, slots 5 to 8 in games, the 8-card server page layout, release APK signing, the InputInjector mode with multiple phones.
+- Hardware fidelity on iPhone: Apple's web API only supports basic timed pulses, so the browser controller's haptics (a switch-control tick) cannot match the Taptic Engine. Stick vibration is off by default on Android (the Sticks haptics switch), and the browser controller does not vibrate when a stick is touched.
 - The Android D-pad and right stick sit about 1 percent lower than the browser's.
 - Ideas not done: web manifest and touch icon for iPhone fullscreen, HTTPS for real web notifications and wake lock, a layout editor for the web controller, matching web settings (dead zone, sensitivity, opacity, haptic strength), a PC-side connection log panel, a shared secret for the connection.
 

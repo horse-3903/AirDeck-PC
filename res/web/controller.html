@@ -738,7 +738,7 @@ body:not(.xbox) .xbox-label { display: none; }
       var r = R(el), q0 = P(e); cx = r.left + r.width / 2; cy = r.top + r.height / 2; Rad = r.width * 0.28;
       sx = q0.x; sy = q0.y; moved = false; downT = Date.now(); clearTimeout(hold);
       hold = setTimeout(function () { if (id !== null && !moved) toggleClick(); }, 450);
-      el.classList.add("active"); move(e); buzz(0, "stick"); firstTouch();
+      el.classList.add("active"); move(e); firstTouch();
     });
     var onMove = function (e) { if (e.pointerId === id) { e.preventDefault(); move(e); } };
     el.addEventListener("pointermove", onMove);
