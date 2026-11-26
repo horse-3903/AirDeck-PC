@@ -1006,31 +1006,36 @@ void Server::releaseAllPads(std::function<void()> done)
 	auto attempts = std::make_shared<int>(0);
 	auto check = std::make_shared<std::function<void()>>();
 	*check = [self, attempts, check, done]() {
-		if (!self)
+		// Clearing *check below destroys this closure, so everything used afterwards is copied out first
+		const QPointer<Server> me = self;
+		const auto tries = attempts;
+		const auto keep = check;
+		const std::function<void()> finish = done;
+		if (!me)
 			return;
 		// Pads this server just dropped take a moment to disappear
-		if (!findVirtualPads().isEmpty() && ++*attempts <= 6)
+		if (!findVirtualPads().isEmpty() && ++*tries <= 6)
 		{
-			QTimer::singleShot(150, self, *check);
+			QTimer::singleShot(150, me, *keep);
 			return;
 		}
 		const QStringList left = findVirtualPads();
-		*check = nullptr;
+		*keep = nullptr;
 		if (left.isEmpty())
 		{
-			done();
+			finish();
 			return;
 		}
 		qInfo() << "Unplugging" << left.size() << "virtual pad entries still on this PC";
 		const bool elevated = isElevated();
-		std::thread([self, done, elevated]() {
+		std::thread([me, finish, elevated]() {
 			if (elevated)
 				removeVirtualPads();
 			else
 				removeVirtualPadsElevated();
-			QMetaObject::invokeMethod(qApp, [self, done]() {
-				if (self)
-					done();
+			QMetaObject::invokeMethod(qApp, [me, finish]() {
+				if (me)
+					finish();
 			}, Qt::QueuedConnection);
 		}).detach();
 	};

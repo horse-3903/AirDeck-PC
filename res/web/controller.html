@@ -15,20 +15,20 @@
   --u: 1dvh; --w: 1vw;
   --bg: #fafafa; --fg: #161616; --muted: #5a5a5a; --panel: #ececf0; --panel-on: #cfcfd6;
   --border: #c4c4cc; --accent: #161616; --accent-fg: #ffffff; --sheet: #ffffff; --shadow: rgba(0,0,0,.25);
-  --ok: #1a9d4a; --bad: #d03030; --warn: #c98a00; --card: #f2f2f6; --disc: #e2e2e8; --arm: #cfcfd8; --armedge: #8a8a96; --key: #b9b9c6; --keyedge: #7d7d8a; --keyon: #8e8e9c;
+  --ok: #1a9d4a; --bad: #d03030; --warn: #c98a00; --card: #f2f2f6; --disc: #e2e2e8; --arm: #cfcfd8; --armedge: #8a8a96; --key: #b9b9c6; --keyedge: #7d7d8a; --keyon: #8e8e9c; --ink2: #30303a;
   --gl-wash: 0%; --gl-edge: 45%;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     --bg: #0a0a0c; --fg: #f1f1f1; --muted: #9a9a9a; --panel: #15151a; --panel-on: #2c2c34;
-    --border: #34343c; --accent: #f5f5f5; --accent-fg: #000000; --sheet: #101014; --shadow: rgba(0,0,0,.6); --card: #17171c; --disc: #0e0e12; --arm: #17171d; --armedge: #34343d; --key: #2a2a32; --keyedge: #4a4a55; --keyon: #6a6a78;
+    --border: #34343c; --accent: #f5f5f5; --accent-fg: #000000; --sheet: #101014; --shadow: rgba(0,0,0,.6); --card: #17171c; --disc: #0e0e12; --arm: #17171d; --armedge: #34343d; --key: #2a2a32; --keyedge: #4a4a55; --keyon: #6a6a78; --ink2: #c4c4ce;
     --gl-wash: 0%; --gl-edge: 26%;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
     --bg: #0a0a0c; --fg: #f1f1f1; --muted: #9a9a9a; --panel: #15151a; --panel-on: #2c2c34;
-    --border: #34343c; --accent: #f5f5f5; --accent-fg: #000000; --sheet: #101014; --shadow: rgba(0,0,0,.6); --card: #17171c; --disc: #0e0e12; --arm: #17171d; --armedge: #34343d; --key: #2a2a32; --keyedge: #4a4a55; --keyon: #6a6a78;
+    --border: #34343c; --accent: #f5f5f5; --accent-fg: #000000; --sheet: #101014; --shadow: rgba(0,0,0,.6); --card: #17171c; --disc: #0e0e12; --arm: #17171d; --armedge: #34343d; --key: #2a2a32; --keyedge: #4a4a55; --keyon: #6a6a78; --ink2: #c4c4ce;
     --gl-wash: 0%; --gl-edge: 26%;
   color-scheme: dark;
 }
@@ -89,7 +89,20 @@ body.swbusy .hsw { pointer-events: none; }
 #dpadps .down { left: 31%; top: 52.5%; }
 #dpadps .left { left: 9.5%; top: 31%; }
 body:not(.xbox) #dpad { display: none; }
-body.xbox #dpadps { display: none; }
+body.xbox #dpadps, body.nintendo #dpadps { display: none; }
+/* Joy-Con mode: four separate round keys with an arrow each */
+#dpadns { position: absolute; width: calc(30 * var(--u)); height: calc(30 * var(--u)); left: calc(30% - calc(15 * var(--u))); top: calc(calc(79 * var(--u)) - calc(15 * var(--u))); }
+#dpadns .btn { position: absolute; width: 36%; height: 36%; border-radius: 50%; background: var(--key); border: 1.2px solid var(--keyedge); color: var(--ink2); display: flex; align-items: center; justify-content: center; }
+#dpadns .btn.on { background: var(--keyon); transform: none; }
+#dpadns .btn svg { width: 60%; height: 60%; pointer-events: none; }
+#dpadns .up { left: 32%; top: 2%; }
+#dpadns .right { left: 62%; top: 32%; }
+#dpadns .right svg { transform: rotate(90deg); }
+#dpadns .down { left: 32%; top: 62%; }
+#dpadns .down svg { transform: rotate(180deg); }
+#dpadns .left { left: 2%; top: 32%; }
+#dpadns .left svg { transform: rotate(-90deg); }
+body:not(.nintendo) #dpadns { display: none; }
 #face { width: calc(32 * var(--u)); height: calc(32 * var(--u)); left: calc(84% - calc(16 * var(--u))); top: calc(calc(56 * var(--u)) - calc(16 * var(--u))); gap: calc(.8 * var(--u)); }
 .cluster .btn { display: flex; align-items: center; justify-content: center; }
 /* a raised plus on a round base: four arms with no outlines, so the cross reads as one piece */
@@ -120,8 +133,10 @@ body.xbox #dpadps { display: none; }
 .glyph { width: 49%; height: 49%; }
 .letter { font-weight: 400; font-size: calc(4.8 * var(--u)); }
 .face-ps, .face-xbox { display: contents; }
-body.xbox .face-ps { display: none; }
+.face-ns { display: contents; }
+body.xbox .face-ps, body.nintendo .face-ps { display: none; }
 body:not(.xbox) .face-xbox { display: none; }
+body:not(.nintendo) .face-ns { display: none; }
 
 /* triggers on top, bumpers under them, both in the thumb zone of each hand */
 .pill { position: absolute; display: flex; align-items: center; justify-content: center;
@@ -136,8 +151,14 @@ body:not(.xbox) .face-xbox { display: none; }
 .pct { display: block; font-size: calc(2.2 * var(--u)); font-weight: 600; }
 .zline { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--border); pointer-events: none; }
 .xbox-label, .ps-label { display: inline; }
-body.xbox .ps-label { display: none; }
+body.xbox .ps-label, body.nintendo .ps-label { display: none; }
 body:not(.xbox) .xbox-label { display: none; }
+.ns-label { display: inline; }
+body:not(.nintendo) .ns-label { display: none; }
+.ico.ns { display: none; }
+body.nintendo .ico.std { display: none; }
+body.nintendo .ico.ns { display: inline-block; }
+.nsl { font-size: 20px; font-weight: 800; width: 26px; text-align: center; }
 
 /* system buttons, small and muted, in the middle */
 #sys { position: absolute; left: 50%; top: calc(46 * var(--u)); transform: translateX(-50%); display: flex; gap: calc(34 * var(--w)); }
@@ -221,12 +242,20 @@ body:not(.xbox) .xbox-label { display: none; }
 .link { border: 0; background: transparent; color: var(--fg); font-size: 14px; font-weight: 700; padding: 6px 4px; }
 .sec { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 6px; }
 .label { font-size: 15px; font-weight: 700; margin: 6px 0; }
-.styles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.styles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .stylecard { border: 1px solid var(--border); background: var(--card); border-radius: 12px; padding: 14px 8px; box-sizing: border-box; height: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 8px; text-align: center; font-size: 15px; line-height: 20px; font-weight: 700; }
 .stylecard.picked { background: var(--panel-on); border-color: var(--fg); }
 .syms { display: flex; justify-content: center; align-items: center; gap: 14px; height: 26px; width: 100%; flex: none; }
 .syms svg { width: 26px; height: 26px; display: block; flex: none; }
+@media (orientation: portrait) {
+  #sheet { max-height: 90dvh; }
+  .styles { gap: 6px; }
+  .stylecard { padding: 10px 2px; font-size: 13px; }
+  .syms { gap: 3px; }
+  .syms svg { width: 18px; height: 18px; }
+  .nsl { width: 18px; font-size: 15px; }
+}
 .row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--border); font-size: 15px; font-weight: 700; }
 .row:first-of-type { border-top: 0; }
 #themeRow { border-top: 0; margin-top: 4px; }
@@ -276,12 +305,25 @@ body:not(.xbox) .xbox-label { display: none; }
     <div class="btn left" data-b="left"><svg viewBox="9.5 31 38 38"><g transform="translate(9.5 31) scale(1.0556)"><path class="k" d="M8 5.6Q8 2.6 11 2.6H25Q28 2.6 28 5.6V24.5L18.7 33.8Q18 34.5 17.3 33.8L8 24.5Z" transform="rotate(-90 18 18)"/></g></svg></div>
   </div>
 
+  <div id="dpadns">
+    <div class="btn up" data-b="up"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7 L18 16 H6 Z"/></svg></div>
+    <div class="btn right" data-b="right"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7 L18 16 H6 Z"/></svg></div>
+    <div class="btn down" data-b="down"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7 L18 16 H6 Z"/></svg></div>
+    <div class="btn left" data-b="left"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7 L18 16 H6 Z"/></svg></div>
+  </div>
+
   <div class="cluster" id="face">
     <div class="face-ps">
       <div class="btn y" data-b="y"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#1fa37a" stroke-width="2.6" stroke-linejoin="round"><path d="M12 4 L21 19 H3 Z"/></svg></div>
       <div class="btn x" data-b="x"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#c850a8" stroke-width="2.6" stroke-linejoin="round"><rect x="4.5" y="4.5" width="15" height="15"/></svg></div>
       <div class="btn b" data-b="b"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#e5394d" stroke-width="2.6"><circle cx="12" cy="12" r="8"/></svg></div>
       <div class="btn a" data-b="a"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#2f6fe0" stroke-width="2.6" stroke-linecap="round"><path d="M5 5 L19 19 M19 5 L5 19"/></svg></div>
+    </div>
+    <div class="face-ns">
+      <div class="btn y" data-b="y"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M6.3 5.2 L17.7 18.8 M17.7 5.2 L6.3 18.8"/></svg></div>
+      <div class="btn x" data-b="x"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5.5 4 L12 13 L18.5 4 M12 13 V20.5"/></svg></div>
+      <div class="btn b" data-b="b"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M4.5 20.5 L12 3.5 L19.5 20.5 M7.8 14.5 H16.2"/></svg></div>
+      <div class="btn a" data-b="a"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M7 4 V20 M7 4 H12 A4 4 0 0 1 12 12 H7 M7 12 H13 A4 4 0 0 1 13 20 H7"/></svg></div>
     </div>
     <div class="face-xbox">
       <div class="btn y" data-b="y"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5.5 4 L12 13 L18.5 4 M12 13 V20.5"/></svg></div>
@@ -291,14 +333,14 @@ body:not(.xbox) .xbox-label { display: none; }
     </div>
   </div>
 
-  <div class="pill" id="l1" data-b="l1"><span class="ps-label">L1</span><span class="xbox-label">LB</span></div>
-  <div class="pill" id="r1" data-b="r1"><span class="ps-label">R1</span><span class="xbox-label">RB</span></div>
-  <div class="pill" id="l2" data-t="lt"><div class="fill"></div><span class="tl"><span class="ps-label">L2</span><span class="xbox-label">LT</span><span class="pct"></span></span></div>
-  <div class="pill" id="r2" data-t="rt"><div class="fill"></div><span class="tl"><span class="ps-label">R2</span><span class="xbox-label">RT</span><span class="pct"></span></span></div>
+  <div class="pill" id="l1" data-b="l1"><span class="ps-label">L1</span><span class="xbox-label">LB</span><span class="ns-label">L</span></div>
+  <div class="pill" id="r1" data-b="r1"><span class="ps-label">R1</span><span class="xbox-label">RB</span><span class="ns-label">R</span></div>
+  <div class="pill" id="l2" data-t="lt"><div class="fill"></div><span class="tl"><span class="ps-label">L2</span><span class="xbox-label">LT</span><span class="ns-label">ZL</span><span class="pct"></span></span></div>
+  <div class="pill" id="r2" data-t="rt"><div class="fill"></div><span class="tl"><span class="ps-label">R2</span><span class="xbox-label">RT</span><span class="ns-label">ZR</span><span class="pct"></span></span></div>
 
   <div id="sys">
-    <div class="pill" id="view" data-b="view" aria-label="Select"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="7" width="12" height="12" rx="2"/><path d="M8 7V4.5h12.5V16H18" stroke-linecap="round"/></svg></div>
-      <div class="pill" id="start" data-b="start" aria-label="Start"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></div>
+    <div class="pill" id="view" data-b="view" aria-label="Select"><svg class="ico ns" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 12h12"/></svg><svg class="ico std" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="7" width="12" height="12" rx="2"/><path d="M8 7V4.5h12.5V16H18" stroke-linecap="round"/></svg></div>
+      <div class="pill" id="start" data-b="start" aria-label="Start"><svg class="ico ns" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg><svg class="ico std" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></div>
   </div>
   <div id="top">
   <div class="pill" id="fsPill" aria-label="Fullscreen"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></div>
@@ -336,6 +378,7 @@ body:not(.xbox) .xbox-label { display: none; }
   <div class="styles" id="styleSeg">
     <div class="stylecard" data-v="ps"><div class="syms"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 L21 19 H3 Z" stroke="#3fb68b"/></svg><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linejoin="round"><rect x="4.5" y="4.5" width="15" height="15" rx="1" stroke="#d96ba6"/></svg><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4"><circle cx="12" cy="12" r="8" stroke="#e5484d"/></svg><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round"><path d="M5 5 L19 19 M19 5 L5 19" stroke="#3e8ef7"/></svg></div><span>PlayStation</span></div>
     <div class="stylecard" data-v="xbox"><div class="syms"><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5.5 4 L12 13 L18.5 4 M12 13 V20.5"/></svg><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3e8ef7" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M5 4 L19 20 M19 4 L5 20"/></svg><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e5484d" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M7 4 V20 M7 4 H12 A4 4 0 0 1 12 12 H7 M7 12 H13 A4 4 0 0 1 13 20 H7"/></svg><svg class="g26" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#30a46c" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter"><path d="M4.5 20.5 L12 3.5 L19.5 20.5 M7.8 14.5 H16.2"/></svg></div><span>Xbox</span></div>
+    <div class="stylecard wide" data-v="ns"><div class="syms"><span class="nsl">X</span><span class="nsl">Y</span><span class="nsl">A</span><span class="nsl">B</span></div><span>Joy-Con</span></div>
   </div>
 
   <div class="row" id="dpadRow"><span>D-pad<span class="hint">Multi-press holds several directions at once, including diagonals.</span></span><select id="dpadSel" class="sel"><option value="multi">Multi-press</option><option value="single">One at a time</option></select></div>
@@ -613,7 +656,7 @@ body:not(.xbox) .xbox-label { display: none; }
   // D-pad: every finger on the pad picks its direction from where it is, and the pad holds the union, so two
   // fingers (or one thumb near a diagonal) press several directions at once. "One at a time" mode keeps a single
   // finger and a single cardinal direction.
-  ["dpad", "dpadps"].forEach(function (cid) {
+  ["dpad", "dpadps", "dpadns"].forEach(function (cid) {
     var el = $(cid), ptrs = {}, DIRS = ["up", "down", "left", "right"];
     function setDir(name, on) {
       var is = (held & BIT[name]) !== 0, arm = el.querySelector(".btn." + name);
@@ -753,7 +796,7 @@ body:not(.xbox) .xbox-label { display: none; }
   // ---- sticks ----
   // Long press on a stick holds its click (L3 or R3) until the next long press, a quick double tap clicks once
   function bindStick(el, set, btn) {
-    var knob = el.querySelector(".knob"), id = null, cx = 0, cy = 0, Rad = 1;
+    var knob = el.querySelector(".knob"), id = null, cx = 0, cy = 0, Rad = 1, ks = 1;
     var sx = 0, sy = 0, moved = false, hold = 0, downT = 0, lastTap = 0;
     function toggleClick() {
       if (el._on) { el._on = false; el.classList.remove("click"); release(btn); }
@@ -765,7 +808,8 @@ body:not(.xbox) .xbox-label { display: none; }
       if (Math.hypot(q.x - sx, q.y - sy) > 10) { moved = true; clearTimeout(hold); }
       var dx = (q.x - cx) / Rad, dy = (q.y - cy) / Rad, m = Math.hypot(dx, dy);
       if (m > 1) { dx /= m; dy /= m; }
-      knob.style.transform = "translate(" + (dx * Rad) + "px," + (dy * Rad) + "px)";
+      // The stage is scaled to fit the screen, so a distance measured on screen is stretched back into stage units
+      knob.style.transform = "translate(" + (dx * Rad / ks) + "px," + (dy * Rad / ks) + "px)";
       set(dx, dy); dirty = true; flush();
     }
     el.addEventListener("pointerdown", function (e) {
@@ -773,7 +817,7 @@ body:not(.xbox) .xbox-label { display: none; }
       if (settings.snap !== "on" && !e.target.classList.contains("knob")) return;
       id = e.pointerId;
       try { el.setPointerCapture(id); } catch (x) {}
-      var r = R(el), q0 = P(e); cx = r.left + r.width / 2; cy = r.top + r.height / 2; Rad = r.width * 0.28;
+      var r = R(el), q0 = P(e); cx = r.left + r.width / 2; cy = r.top + r.height / 2; Rad = r.width * 0.28; ks = r.width / el.offsetWidth || 1;
       sx = q0.x; sy = q0.y; moved = false; downT = Date.now(); clearTimeout(hold);
       hold = setTimeout(function () { if (id !== null && !moved) toggleClick(); }, 450);
       el.classList.add("active"); move(e); firstTouch();
@@ -882,6 +926,7 @@ body:not(.xbox) .xbox-label { display: none; }
   function applySettings() {
     applyTheme();
     document.body.classList.toggle("xbox", settings.style === "xbox");
+    document.body.classList.toggle("nintendo", settings.style === "ns");
     document.querySelectorAll("#styleSeg .stylecard").forEach(function (d) { d.classList.toggle("picked", d.dataset.v === settings.style); });
     $("vibSw").classList.toggle("on", settings.vib === "on");
     document.body.classList.toggle("novib", settings.vib !== "on");
@@ -909,7 +954,7 @@ body:not(.xbox) .xbox-label { display: none; }
     var o; try { o = JSON.parse(t); } catch (e) { toast("Not valid settings"); return false; }
     if (!o || o.vgp !== 1) { toast("Not valid settings"); return false; }
     if (typeof o.name === "string" && o.name.trim()) { settings.name = o.name.trim().slice(0, 24); store.set("vgp-name", settings.name); dirty = true; }
-    if (o.style === "ps" || o.style === "xbox") { settings.style = o.style; store.set("vgp-style", o.style); }
+    if (o.style === "ps" || o.style === "xbox" || o.style === "ns") { settings.style = o.style; store.set("vgp-style", o.style); }
     if (o.vib === "on" || o.vib === "off") { settings.vib = o.vib; store.set("vgp-vib", o.vib); }
     if (o.snap === "on" || o.snap === "off") { settings.snap = o.snap; store.set("vgp-snap", o.snap); }
     var ids = OFFERED;

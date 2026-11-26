@@ -1,0 +1,31 @@
+# Roadmap
+
+Planned work for AirDeck-PC, roughly in the order it will be built. Nothing here is a promise, and the order changes as things are tried.
+
+## Done
+
+- Game rumble from ViGEm to the phone and the browser (PC side logged, end to end with a game still to confirm)
+- Layout library, import and export, and layout switching (Android app)
+- Clean controller slate when the server starts or restarts
+- Bounded debug log
+- Joy-Con button style in the browser controller
+
+## Next
+
+- **Round-trip latency readout** - a ping in the input tester and the debug log, then published measurements for input latency and jitter.
+- **Secure pairing** - a PC-side approve prompt or a short code, so only devices you accept can connect.
+- **Trigger detents** - haptic ticks at set trigger thresholds on the phone.
+
+## Later
+
+- **Browser layout editor** - the same editor the Android app has, so no install is needed to customize a layout.
+- **Automatic game profiles** - read Steam's `RunningAppID` registry value and load the layout saved for that game, with the foreground process name as a fallback for non-Steam games.
+- **Split controller** - two phones feeding one virtual controller, for co-op on a single player's pad or steering and pedals on separate devices.
+- **Haptic pattern editor** - custom vibration patterns that can be shared.
+- **Layout sharing** - a place to publish and download layouts.
+
+## Known limits
+
+- Controllers 5 to 8 appear as DualShock 4 style pads, so games that only read XInput will not see them.
+- There is no encryption or login, so use it on networks you trust.
+- The browser controller has a fixed layout.
