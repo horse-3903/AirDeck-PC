@@ -3,14 +3,14 @@
   xmlns:asmv3="urn:schemas-microsoft-com:asm.v3">
   <assemblyIdentity
     type="win32"
-    name="io.github.kitswas.VirtualGamePad"
+    name="io.github.horse3903.AirDeck"
     version="1.0.0.0"
     processorArchitecture="*" />
 
   <description>
-    A Free and Open Source virtual gamepad system for PCs.
-    [GitHub Repository](https://github.com/kitswas/VirtualGamePad)
-    [Project Website](https://kitswas.github.io/VirtualGamePad/)
+    A free and open source way to use phones as game controllers for a PC.
+    [GitHub Repository](https://github.com/horse-3903/AirDeck-PC)
+    [Project Website](https://horse-3903.github.io/showcase/airdeck/)
   </description>
 
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">

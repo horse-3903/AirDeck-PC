@@ -7,7 +7,8 @@
 #include <QDebug>
 
 SettingsSingleton::SettingsSingleton()
-	: settings(QDir::toNativeSeparators(getConfigDir() + "/VirtualGamePad.ini"), QSettings::IniFormat),
+	: settings(QDir::toNativeSeparators(getAppDataDir() + "/AirDeck.ini"),
+			   QSettings::IniFormat),
 	  executor_type(DEFAULT_EXECUTOR_TYPE)
 {
 	qInfo() << "Settings file path:" << settings.fileName();
@@ -20,7 +21,7 @@ SettingsSingleton::SettingsSingleton()
 	m_activeProfileName = activeProfile;
 	{
 		QString profilePath =
-			QDir::toNativeSeparators(getDataDir() + "/profiles/" + m_activeProfileName + ".ini");
+			QDir::toNativeSeparators(getAppDataDir() + "/profiles/" + m_activeProfileName + ".ini");
 		m_activeKeymapProfile.load(profilePath);
 	}
 }
@@ -31,7 +32,7 @@ void SettingsSingleton::setMouseSensitivity(int value)
 	saveSetting(setting_keys::mouse_sensitivity, mouse_sensitivity / MOUSE_SENSITIVITY_MULTIPLIER);
 }
 
-void SettingsSingleton::setPort(quint16 value)
+void SettingsSingleton::setPort(int value)
 {
 	port_number = value;
 	saveSetting(setting_keys::server_port, port_number);
@@ -56,20 +57,21 @@ QVariant SettingsSingleton::loadSetting(const QString &key)
 
 void SettingsSingleton::loadMouseSensitivity()
 {
-	mouse_sensitivity = MOUSE_SENSITIVITY_MULTIPLIER *
-						settings.value(setting_keys::mouse_sensitivity, DEFAULT_MOUSE_SENSITIVITY).toInt();
+	mouse_sensitivity =
+		MOUSE_SENSITIVITY_MULTIPLIER *
+		settings.value(setting_keys::mouse_sensitivity, DEFAULT_MOUSE_SENSITIVITY).toInt();
 }
 
 void SettingsSingleton::loadPort()
 {
-	port_number =
-		static_cast<quint16>(settings.value(setting_keys::server_port, DEFAULT_PORT_NUMBER).toUInt());
+	port_number = settings.value(setting_keys::server_port, DEFAULT_PORT_NUMBER).toInt();
 }
 
 void SettingsSingleton::loadExecutorType()
 {
 	executor_type = static_cast<ExecutorType>(
-		settings.value(setting_keys::executor_type, static_cast<int>(DEFAULT_EXECUTOR_TYPE)).toInt());
+		settings.value(setting_keys::executor_type, static_cast<int>(DEFAULT_EXECUTOR_TYPE))
+			.toInt());
 }
 
 void SettingsSingleton::loadAll()
@@ -93,9 +95,7 @@ void SettingsSingleton::loadAll()
 	}
 }
 
-/**
- * Active keymap profile accessors
- */
+// Active keymap profile accessors
 QString SettingsSingleton::activeProfileName() const
 {
 	return m_activeProfileName;
@@ -116,12 +116,10 @@ KeymapProfile &SettingsSingleton::activeKeymapProfile()
 	return m_activeKeymapProfile;
 }
 
-/**
- * Profile management methods
- */
+// Profile management methods
 QString SettingsSingleton::getProfilesDir() const
 {
-	return getDataDir() + "/profiles";
+	return getAppDataDir() + "/profiles";
 }
 
 QStringList SettingsSingleton::listAvailableProfiles() const
@@ -285,7 +283,7 @@ void SettingsSingleton::resetToDefaults()
 
 	// Reset port number
 	setPort(DEFAULT_PORT_NUMBER);
-
+	
 	// Reset executor type
 	setExecutorType(DEFAULT_EXECUTOR_TYPE);
 

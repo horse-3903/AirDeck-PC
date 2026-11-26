@@ -32,7 +32,7 @@ void MouseInjector::ensureDevice()
 	}
 
 	// Set device properties
-	libevdev_set_name(dev, "Virtual Gamepad PC Mouse");
+	libevdev_set_name(dev, "AirDeck Mouse");
 	libevdev_set_id_bustype(dev, BUS_USB);
 	libevdev_set_id_vendor(dev, 0x1d6b);  // Linux Foundation
 	libevdev_set_id_product(dev, 0x0002); // Generic mouse
@@ -74,7 +74,8 @@ void MouseInjector::moveMouseToPosition(int x, int y)
 	// This would require a different approach or additional setup
 	// For now, we'll implement this as a relative move
 	// TODO: Implement absolute positioning if needed
-	qWarning() << "Absolute mouse positioning not implemented on Linux. Use moveMouseByOffset instead.";
+	qWarning()
+		<< "Absolute mouse positioning not implemented on Linux. Use moveMouseByOffset instead.";
 }
 
 void MouseInjector::moveMouseByOffset(int x, int y)

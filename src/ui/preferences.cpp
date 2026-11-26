@@ -1,4 +1,5 @@
-#include "preferences.hpp"
+﻿#include "preferences.hpp"
+#include "../debuglog.hpp"
 
 #include "../settings/input_types.hpp"
 #include "../settings/settings.hpp"
@@ -6,97 +7,291 @@
 #include "buttoninputbox.hpp"
 #include "ui_preferences.h"
 
+#include <QCheckBox>
+#include <QRadioButton>
+#include <QScrollArea>
+
 #include <QDebug>
+#include <QPushButton>
+#include <QFrame>
+#include <QDoubleSpinBox>
+#include <QHBoxLayout>
+#include <QListWidget>
+#include <QTabBar>
 #include <QDir>
 #include <QFile>
 #include <QInputDialog>
+#include <QTimer>
+#include <QLabel>
 #include <QMessageBox>
 #include <QSlider>
 #include <QStandardPaths>
-
-#if defined(__linux__) || defined(__unix__)
-#include <unistd.h>
-#endif
 
 Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferences)
 {
 	qDebug() << "Initializing Preferences dialog";
 
 	ui->setupUi(this);
+	{
+		QTabWidget *tabs = ui->preferencesTabWidget;
+		auto *sidebar = new QListWidget(this);
+		sidebar->setObjectName("prefsSidebar");
+		sidebar->setFixedWidth(170);
+		sidebar->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+		for (int i = 0; i < tabs->count(); ++i)
+			sidebar->addItem(tabs->tabText(i));
+		sidebar->setCurrentRow(tabs->currentIndex());
+		connect(sidebar, &QListWidget::currentRowChanged, tabs, &QTabWidget::setCurrentIndex);
+		tabs->tabBar()->hide();
+		ui->verticalLayout->removeWidget(tabs);
+		auto *row = new QHBoxLayout();
+		row->setSpacing(32);
+		auto *bodyScroll = new QScrollArea(this);
+		bodyScroll->setWidgetResizable(true);
+		bodyScroll->setFrameShape(QFrame::NoFrame);
+		bodyScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+		bodyScroll->setStyleSheet("QScrollArea { background: transparent; border: none; } "
+								  "QScrollArea > QWidget > QWidget { background: transparent; }");
+		auto fitCurrentPage = [tabs](int current) {
+			for (int i = 0; i < tabs->count(); ++i)
+			{
+				QSizePolicy policy = tabs->widget(i)->sizePolicy();
+				policy.setVerticalPolicy(i == current ? QSizePolicy::Preferred
+													  : QSizePolicy::Ignored);
+				tabs->widget(i)->setSizePolicy(policy);
+			}
+			tabs->updateGeometry();
+		};
+		connect(tabs, &QTabWidget::currentChanged, tabs, fitCurrentPage);
+		fitCurrentPage(tabs->currentIndex());
+		bodyScroll->setWidget(tabs);
+		row->addWidget(sidebar, 0, Qt::AlignTop);
+		row->addWidget(bodyScroll, 1);
+		ui->verticalLayout->insertLayout(0, row, 1);
+	}
 	setupKeymapTabs();
 	ui->pointerSlider->adjustSize();
+	ui->pointerSlider->setMaximumWidth(320);
+	ui->portSpinBox->setMaximumWidth(140);
+	ui->portSpinBox->setRange(1024, 65535);
+	ui->portSpinBox->setValue(SettingsSingleton::DEFAULT_PORT_NUMBER);
+	ui->portSpinBox->setToolTip(tr("The port the server uses every time it starts (1024-65535)."));
+	{
+		auto *randomPort = new QCheckBox(tr("Use a different port each time"), this);
+		randomPort->setObjectName("randomPortCheck");
+		if (auto *row = qobject_cast<QHBoxLayout *>(ui->horizontalLayout_port))
+			row->insertWidget(row->indexOf(ui->portSpinBox) + 1, randomPort);
+		connect(randomPort, &QCheckBox::toggled, ui->portSpinBox, [this](bool random) { ui->portSpinBox->setEnabled(!random); });
+	}
+	{
+		auto *debug = new QCheckBox(tr("Debug mode: logs everything"), this);
+		debug->setObjectName("debugModeCheck");
+		debug->setToolTip(tr("Writes every event to debug.log in the app data folder."));
+		ui->generalTabLayout->insertWidget(ui->generalTabLayout->indexOf(ui->executorGroup), debug);
+		debug->setChecked(SettingsSingleton::instance().qsettings()->value("server/debug", false).toBool());
+	}
+	{
+		auto *several = new QCheckBox(tr("Allow several controllers per device"), this);
+		several->setObjectName("multiControllerCheck");
+		several->setToolTip(tr("Without it, each phone or browser gets one controller."));
+		ui->generalTabLayout->insertWidget(ui->generalTabLayout->indexOf(ui->executorGroup), several);
+		several->setChecked(SettingsSingleton::instance().qsettings()->value("server/multi_controller", false).toBool());
+	}
+#ifdef _WIN32
+	{
+		auto *admin = new QCheckBox(tr("Always run as administrator"), this);
+		admin->setObjectName("runAsAdminCheck");
+		admin->setToolTip(tr("Windows asks for permission each time AirDeck starts. Lets AirDeck clear leftover virtual controllers "
+							 "without asking again. Off by default, and it applies the next time AirDeck starts."));
+		ui->generalTabLayout->insertWidget(ui->generalTabLayout->indexOf(ui->executorGroup), admin);
+		admin->setChecked(SettingsSingleton::instance().qsettings()->value("app/run_as_admin", false).toBool());
+	}
+#endif
+	ui->profileComboBox->setMaximumWidth(320);
+	if (auto *profilesRow = qobject_cast<QHBoxLayout *>(ui->profilesGroup->layout()))
+		profilesRow->addStretch();
+	const auto mappingFields = findChildren<ButtonInputBox *>();
+	for (ButtonInputBox *field : mappingFields)
+		field->setMaximumWidth(360);
+	const auto thresholds = findChildren<QDoubleSpinBox *>();
+	for (QDoubleSpinBox *spin : thresholds)
+		spin->setMaximumWidth(140);
 
-	connect(ui->buttonBox,
-			&QDialogButtonBox::rejected,
-			this,
-			[this]
-			{
-				load_keys();
-				emit navigateBack();
-				this->deleteLater();
-			});
-	connect(ui->buttonBox,
-			&QDialogButtonBox::accepted,
-			this,
-			[this]
-			{
-				this->deleteLater();
-			});
+	if (QPushButton *save = ui->buttonBox->button(QDialogButtonBox::Ok))
+		save->setText(tr("Save Changes"));
+	ui->buttonBox->setCenterButtons(false);
+
+	// Replace the centered standard button group with a footer that separates the destructive
+	// "Restore Defaults" action from the Cancel / Save Changes pair.
+	{
+		ui->buttonBox->hide();
+		auto *footer = new QWidget(this);
+		auto *footerLayout = new QHBoxLayout(footer);
+		footerLayout->setContentsMargins(0, 0, 0, 0);
+		footerLayout->setAlignment(Qt::AlignVCenter);
+		footer->setMinimumHeight(60);
+		auto *restoreButton = new QPushButton(tr("Restore Defaults"), footer);
+		restoreButton->setProperty("variant", "ghost");
+		auto *cancelButton = new QPushButton(tr("Cancel"), footer);
+		auto *saveButton = new QPushButton(tr("Save Changes"), footer);
+		saveButton->setProperty("variant", "primary");
+		saveButton->setMinimumWidth(0);
+		for (QPushButton *button : {restoreButton, cancelButton, saveButton})
+		{
+			button->setStyleSheet("font-size: 10pt; padding: 4px 18px; min-height: 20px;");
+			button->setFixedHeight(44);
+		}
+		saveButton->setStyleSheet("font-size: 10pt; font-weight: 600; padding: 12px 22px; min-height: 24px;");
+		for (QPushButton *button : {restoreButton, cancelButton, saveButton})
+			button->setFixedHeight(50);
+		footerLayout->addWidget(restoreButton);
+		auto *footerNotice = new QLabel(footer);
+		footerNotice->setObjectName("footerStatus");
+		footerNotice->setProperty("role", "caption");
+		footerLayout->addSpacing(12);
+		footerLayout->addWidget(footerNotice);
+		footerLayout->addStretch();
+		footerLayout->addWidget(cancelButton);
+		footerLayout->addWidget(saveButton);
+		auto *divider = new QFrame(this);
+		divider->setFrameShape(QFrame::HLine);
+		ui->verticalLayout->addWidget(divider);
+		ui->verticalLayout->addWidget(footer);
+		connect(restoreButton, &QPushButton::clicked, this,
+				[this] { ui->buttonBox->button(QDialogButtonBox::RestoreDefaults)->click(); });
+		connect(cancelButton, &QPushButton::clicked, this,
+				[this] { ui->buttonBox->button(QDialogButtonBox::Cancel)->click(); });
+		connect(saveButton, &QPushButton::clicked, this,
+				[this] { ui->buttonBox->button(QDialogButtonBox::Ok)->click(); });
+	}
+
+	connect(ui->buttonBox, &QDialogButtonBox::rejected, this, [this] {
+		load_keys();
+		emit navigateBack();
+		this->deleteLater();
+	});
+	connect(ui->buttonBox, &QDialogButtonBox::accepted, this, [this] { this->deleteLater(); });
 	connect(ui->buttonBox, &QDialogButtonBox::helpRequested, this, &Preferences::show_help);
-	connect(ui->buttonBox->button(QDialogButtonBox::RestoreDefaults),
-			&QPushButton::clicked,
-			this,
+	connect(ui->buttonBox->button(QDialogButtonBox::RestoreDefaults), &QPushButton::clicked, this,
 			&Preferences::restore_defaults);
 
 	ui->buttonBox->setCenterButtons(true);
 	ui->pointerSlider->setValue(SettingsSingleton::instance().mouseSensitivity() / 100);
 	ui->executorNotesLabel->setOpenExternalLinks(true);
+	{
+		ui->executorGroup->setMaximumWidth(720);
+		ui->gamepadExecutorRadio->setText(tr("InputInjector (Experimental)"));
+		auto makeHint = [this](const QString &text) {
+			auto *hint = new QLabel(text, ui->executorGroup);
+			hint->setProperty("role", "caption");
+			hint->setContentsMargins(30, 0, 0, 8);
+			return hint;
+		};
+		ui->executorLayout->removeWidget(ui->executorNotesLabel);
+		ui->executorLayout->insertWidget(1, makeHint(tr("Experimental. Needs Administrator and Developer Mode. Can crash on some systems.")));
+		ui->executorLayout->insertWidget(3, makeHint(tr("No driver needed. Turns gamepad input into keys and mouse. One phone at a time.")));
+#ifdef _WIN32
+		auto *vigemRadio = new QRadioButton(tr("Virtual Xbox 360 Controller (ViGEm)"), ui->executorGroup);
+		vigemRadio->setObjectName("vigemExecutorRadio");
+		ui->executorLayout->insertWidget(0, vigemRadio);
+		ui->executorLayout->insertWidget(
+			1, makeHint(tr("Recommended for most games. A real XInput controller per phone. Needs the ViGEmBus driver.")));
+		connect(vigemRadio, &QRadioButton::toggled, this, &Preferences::executor_type_changed);
+#endif
+		auto *card = new QFrame(ui->executorGroup);
+		card->setStyleSheet("QFrame { background-color: #1A1A1A; border: none; border-radius: 4px; }");
+		auto *cardLayout = new QVBoxLayout(card);
+		cardLayout->setContentsMargins(16, 14, 16, 14);
+		auto *cardTitle = new QLabel(card);
+		cardTitle->setObjectName("executorDetailsTitle");
+		cardTitle->setStyleSheet("font-weight: 600; font-size: 11pt; background: transparent;");
+		cardLayout->addWidget(cardTitle);
+		ui->executorNotesLabel->setParent(card);
+		ui->executorNotesLabel->setMinimumHeight(130);
+		cardLayout->addWidget(ui->executorNotesLabel);
+		ui->executorLayout->addWidget(card);
+	}
 
 	setup_profile_management();
+	ui->deleteProfileButton->setEnabled(ui->profileComboBox->currentText() != "Default");
 
 	// Load preferences into UI
 	load_port();
 	load_executor_type();
 
 	// Connect executor type radio buttons
-	connect(ui->gamepadExecutorRadio, &QRadioButton::toggled, this, &Preferences::executor_type_changed);
-	connect(ui->keyboardMouseExecutorRadio,
-			&QRadioButton::toggled,
-			this,
+	connect(ui->gamepadExecutorRadio, &QRadioButton::toggled, this,
 			&Preferences::executor_type_changed);
+	connect(ui->keyboardMouseExecutorRadio, &QRadioButton::toggled, this,
+			&Preferences::executor_type_changed);
+
+	// The keymap only applies when keys and mouse are simulated
+	{
+		auto *sidebar = findChild<QListWidget *>("prefsSidebar");
+		auto applyKeymapState = [this, sidebar]() {
+			if (sidebar == nullptr)
+				return;
+			const bool enabled = ui->keyboardMouseExecutorRadio->isChecked();
+			for (int i = 0; i < sidebar->count(); ++i)
+			{
+				QListWidgetItem *item = sidebar->item(i);
+				if (item->text() != tr("Keymap") && item->text() != QStringLiteral("Keymap"))
+					continue;
+				item->setFlags(enabled ? (item->flags() | Qt::ItemIsEnabled) : (item->flags() & ~Qt::ItemIsEnabled));
+				item->setToolTip(enabled ? QString() : tr("Only used in Keyboard/Mouse mode"));
+				item->setForeground(enabled ? QBrush() : QBrush(QColor("#5A5A60")));
+				if (!enabled && sidebar->currentRow() == i)
+					sidebar->setCurrentRow(0);
+			}
+		};
+		connect(ui->keyboardMouseExecutorRadio, &QRadioButton::toggled, this, applyKeymapState);
+		applyKeymapState();
+	}
 
 	// No immediate save connections - only save when OK is clicked
 	disconnect(ui->buttonBox, &QDialogButtonBox::accepted, nullptr, nullptr);
-	connect(ui->buttonBox,
-			&QDialogButtonBox::accepted,
-			this,
-			[this]
-			{
-				auto &settings = SettingsSingleton::instance();
+	connect(ui->buttonBox, &QDialogButtonBox::accepted, this, [this] {
+		auto &settings = SettingsSingleton::instance();
 
-				// Save mouse sensitivity
-				settings.setMouseSensitivity(ui->pointerSlider->value() * 100);
+		// Save mouse sensitivity
+		settings.setMouseSensitivity(ui->pointerSlider->value() * 100);
 
-				// Save port number now
-				settings.setPort(static_cast<quint16>(ui->portSpinBox->value()));
+		if (auto *debug = findChild<QCheckBox *>("debugModeCheck"))
+		{
+			settings.qsettings()->setValue("server/debug", debug->isChecked());
+			DebugLog::write(debug->isChecked() ? QStringLiteral("Debug mode switched on") : QStringLiteral("Debug mode switching off"), true);
+			DebugLog::setEnabled(debug->isChecked());
+		}
+		if (auto *several = findChild<QCheckBox *>("multiControllerCheck"))
+			settings.qsettings()->setValue("server/multi_controller", several->isChecked());
+		if (auto *admin = findChild<QCheckBox *>("runAsAdminCheck"))
+			settings.qsettings()->setValue("app/run_as_admin", admin->isChecked());
 
-				// Save executor type
-				ExecutorType executorType = ui->gamepadExecutorRadio->isChecked()
-												? ExecutorType::GamepadExecutor
-												: ExecutorType::KeyboardMouseExecutor;
-				settings.setExecutorType(executorType);
+		// Save port number now
+		auto *randomPort = findChild<QCheckBox *>("randomPortCheck");
+		settings.setPort(randomPort != nullptr && randomPort->isChecked() ? 0 : ui->portSpinBox->value());
 
-				// Update key mapping in the active profile
-				change_key_inputs();
+		// Save executor type
+		ExecutorType executorType = ui->gamepadExecutorRadio->isChecked()
+										? ExecutorType::GamepadExecutor
+										: ExecutorType::KeyboardMouseExecutor;
+		if (auto *vigemRadio = findChild<QRadioButton *>("vigemExecutorRadio");
+			vigemRadio != nullptr && vigemRadio->isChecked())
+			executorType = ExecutorType::VigemExecutor;
+		settings.setExecutorType(executorType);
 
-				// Update and save the active profile
-				currentProfile = ui->profileComboBox->currentText();
-				settings.setActiveProfileName(currentProfile);
-				settings.saveActiveProfile();
+		// Update key mapping in the active profile
+		change_key_inputs();
 
-				emit navigateBack();
-				this->deleteLater();
-			});
+		// Update and save the active profile
+		currentProfile = ui->profileComboBox->currentText();
+		settings.setActiveProfileName(currentProfile);
+		settings.saveActiveProfile();
+
+		emit saved();
+		emit navigateBack();
+		this->deleteLater();
+	});
 }
 
 Preferences::~Preferences()
@@ -116,9 +311,7 @@ void Preferences::setup_profile_management()
 	// Connect buttons
 	connect(ui->newProfileButton, &QPushButton::clicked, this, &Preferences::new_profile);
 	connect(ui->deleteProfileButton, &QPushButton::clicked, this, &Preferences::delete_profile);
-	connect(ui->profileComboBox,
-			&QComboBox::currentTextChanged,
-			this,
+	connect(ui->profileComboBox, &QComboBox::currentTextChanged, this,
 			&Preferences::profile_selection_changed);
 
 	// Initialize with available profiles
@@ -150,9 +343,14 @@ void Preferences::refresh_profile_list()
 
 void Preferences::new_profile()
 {
-	bool ok;
-	QString profileName =
-		QInputDialog::getText(this, "New Profile", "Enter profile name:", QLineEdit::Normal, "", &ok);
+	QInputDialog dialog(this);
+	dialog.setWindowTitle(tr("New Profile"));
+	dialog.setLabelText(tr("Profile name"));
+	dialog.setOkButtonText(tr("Create Profile"));
+	dialog.setCancelButtonText(tr("Cancel"));
+	dialog.setMinimumWidth(400);
+	const bool ok = dialog.exec() == QDialog::Accepted;
+	const QString profileName = dialog.textValue().trimmed();
 	auto &settings = SettingsSingleton::instance();
 
 	if (ok && !profileName.isEmpty())
@@ -164,8 +362,7 @@ void Preferences::new_profile()
 		{
 			qWarning() << "Profile creation failed - profile already exists:" << profileName;
 			QMessageBox::warning(
-				this,
-				"Profile Exists",
+				this, "Profile Exists",
 				"A profile with this name already exists. Please choose a different name.");
 			return;
 		}
@@ -181,9 +378,6 @@ void Preferences::new_profile()
 			ui->profileComboBox->setCurrentText(profileName);
 			currentProfile = profileName;
 
-			QMessageBox::information(this,
-									 "Profile Created",
-									 "Profile '" + profileName + "' created successfully");
 		}
 		else
 		{
@@ -205,45 +399,47 @@ void Preferences::delete_profile()
 
 	auto &settings = SettingsSingleton::instance();
 
-	// Don't delete active profile
-	if (profileName == settings.activeProfileName())
-	{
-		QMessageBox::warning(this,
-							 "Cannot Delete",
-							 "Cannot delete the active profile. Switch to another profile first.");
+	// The built-in Default profile is never deleted (the button is disabled for it)
+	if (profileName == "Default")
 		return;
-	}
-
-	// Confirm deletion
-	QMessageBox::StandardButton reply;
-	reply = QMessageBox::question(this,
-								  "Delete Profile",
-								  "Are you sure you want to delete profile '" + profileName + "'?",
-								  QMessageBox::Yes | QMessageBox::No);
-
-	if (reply == QMessageBox::Yes)
+	
+	QMessageBox confirm(this);
+	confirm.setWindowTitle(tr("Delete profile"));
+	confirm.setIcon(QMessageBox::Question);
+	confirm.setText(tr("Delete the profile \"%1\"?").arg(profileName));
+	confirm.setInformativeText(profileName == settings.activeProfileName()
+			? tr("It is the active profile, so Default becomes active. This cannot be undone.")
+			: tr("This cannot be undone."));
+	auto *deleteButton = confirm.addButton(tr("Delete Profile"), QMessageBox::DestructiveRole);
+	confirm.addButton(tr("Cancel"), QMessageBox::RejectRole);
+	confirm.exec();
+	if (confirm.clickedButton() != deleteButton)
+		return;
+	
+	if (profileName == settings.activeProfileName())
+		ui->profileComboBox->setCurrentText("Default");
+	
+	if (settings.deleteProfile(profileName))
 	{
-		if (settings.deleteProfile(profileName))
-		{
-			qInfo() << "Profile deleted successfully:" << profileName;
-			refresh_profile_list();
-			QMessageBox::information(this,
-									 "Profile Deleted",
-									 "Profile '" + profileName + "' deleted successfully");
-		}
-		else
-		{
-			qCritical() << "Failed to delete profile:" << profileName;
-			QMessageBox::warning(this, "Error", "Failed to delete profile '" + profileName + "'");
-		}
+		qInfo() << "Profile deleted successfully:" << profileName;
+		refresh_profile_list();
+		ui->profileComboBox->setCurrentText(settings.activeProfileName());
 	}
-}
-
+	else
+	{
+		qCritical() << "Failed to delete profile:" << profileName;
+		QMessageBox::warning(this, "Error", "Failed to delete profile '" + profileName + "'");
+	}
+	}
+	
 void Preferences::profile_selection_changed(const QString &profileName)
 {
 	if (profileName.isEmpty())
 		return;
 
+	ui->deleteProfileButton->setEnabled(profileName != "Default");
+	ui->deleteProfileButton->setToolTip(profileName == "Default" ? tr("The Default profile cannot be deleted")
+																: QString());
 	qDebug() << "Profile selection changed to:" << profileName;
 
 	auto &settings = SettingsSingleton::instance();
@@ -294,7 +490,8 @@ void Preferences::load_triggers()
 	auto leftTrigger = profile.triggerInput(Trigger::Left);
 	ui->leftTriggerButtonMap->setKeyCodeAndDisplayName(leftTrigger.button_input.vk,
 													   leftTrigger.button_input.displayName);
-	ui->leftTriggerThreshold->setValue(leftTrigger.threshold * 100.0); // Convert from [0.0-1.0] to [0-100]%
+	ui->leftTriggerThreshold->setValue(leftTrigger.threshold *
+									   100.0); // Convert from [0.0-1.0] to [0-100]%
 
 	// Right trigger
 	auto rightTrigger = profile.triggerInput(Trigger::Right);
@@ -307,8 +504,7 @@ void Preferences::load_triggers()
 void Preferences::change_key_inputs()
 {
 	auto &profile = SettingsSingleton::instance().activeKeymapProfile();
-	auto getBox = [&](ButtonInputBox const *box, GamepadButtons btn)
-	{
+	auto getBox = [&](ButtonInputBox const *box, GamepadButtons btn) {
 		InputKeyCode vk = box->keyCode();
 		QString displayName = box->displayName();
 		profile.setButtonInput(btn, vk, displayName);
@@ -391,8 +587,7 @@ void Preferences::change_trigger_inputs()
 void Preferences::load_keys()
 {
 	auto const &profile = SettingsSingleton::instance().activeKeymapProfile();
-	auto setBox = [&](ButtonInputBox *box, GamepadButtons btn)
-	{
+	auto setBox = [&](ButtonInputBox *box, GamepadButtons btn) {
 		box->setKeyCodeAndDisplayName(profile.buttonMap(btn), profile.buttonDisplayName(btn));
 	};
 	setBox(ui->xmap, GamepadButtons_X);
@@ -446,27 +641,32 @@ You can share profiles with others (same OS only) by copying the files in the Pr
 
 void Preferences::load_port()
 {
-	int port = SettingsSingleton::instance().port();
-	ui->portSpinBox->setValue(port);
+	const int port = SettingsSingleton::instance().port();
+	const bool random = port < 1024 || port > 65535;
+	ui->portSpinBox->setValue(random ? SettingsSingleton::DEFAULT_PORT_NUMBER : port);
+	ui->portSpinBox->setEnabled(!random);
+	if (auto *check = findChild<QCheckBox *>("randomPortCheck"))
+		check->setChecked(random);
 }
 
 void Preferences::change_port(int value)
 {
-	SettingsSingleton::instance().setPort(static_cast<quint16>(value));
+	SettingsSingleton::instance().setPort(value);
 }
 
 void Preferences::restore_defaults()
 {
-	// Show confirmation dialog
-	QMessageBox::StandardButton reply;
-	reply = QMessageBox::question(this,
-								  "Restore Defaults",
-								  "Are you sure you want to restore all settings to their default values?",
-								  QMessageBox::Yes | QMessageBox::No);
-
-	if (reply != QMessageBox::Yes)
+	QMessageBox confirm(this);
+	confirm.setWindowTitle(tr("Restore defaults"));
+	confirm.setIcon(QMessageBox::Question);
+	confirm.setText(tr("Restore all settings to their defaults?"));
+	confirm.setInformativeText(tr("This resets the port, input mode, pointer speed and the active key mapping."));
+	auto *restoreButton = confirm.addButton(tr("Restore Defaults"), QMessageBox::DestructiveRole);
+	confirm.addButton(tr("Cancel"), QMessageBox::RejectRole);
+	confirm.exec();
+	if (confirm.clickedButton() != restoreButton)
 		return;
-
+	
 	// Delegate to SettingsSingleton to reset the settings
 	auto &settings = SettingsSingleton::instance();
 	settings.resetToDefaults();
@@ -483,22 +683,38 @@ void Preferences::restore_defaults()
 		ui->keyboardMouseExecutorRadio->setChecked(true);
 	}
 
+	if (auto *debug = findChild<QCheckBox *>("debugModeCheck"))
+		debug->setChecked(false);
+	settings.qsettings()->setValue("server/debug", false);
+	if (auto *several = findChild<QCheckBox *>("multiControllerCheck"))
+		several->setChecked(false);
+	settings.qsettings()->setValue("server/multi_controller", false);
+	if (auto *admin = findChild<QCheckBox *>("runAsAdminCheck"))
+		admin->setChecked(false);
+	settings.qsettings()->setValue("app/run_as_admin", false);
+
 	// Refresh UI to show the default values
 	load_keys();
 	load_port();
 	load_executor_type();
 
-	QMessageBox::information(this,
-							 "Defaults Restored",
-							 "Default settings have been applied.\n"
-							 "Press OK in the preferences dialog to save these changes.");
+	if (auto *notice = findChild<QLabel *>("footerStatus"))
+	{
+		notice->setText(tr("Defaults loaded. Save Changes to keep them."));
+		QTimer::singleShot(6000, notice, [notice]() { notice->clear(); });
+	}
 }
 
 void Preferences::load_executor_type()
 {
 	ExecutorType executorType = SettingsSingleton::instance().executorType();
 
-	if (executorType == ExecutorType::GamepadExecutor)
+	auto *vigemRadio = findChild<QRadioButton *>("vigemExecutorRadio");
+	if (executorType == ExecutorType::VigemExecutor && vigemRadio != nullptr)
+	{
+		vigemRadio->setChecked(true);
+	}
+	else if (executorType == ExecutorType::GamepadExecutor)
 	{
 		ui->gamepadExecutorRadio->setChecked(true);
 	}
@@ -518,8 +734,6 @@ void Preferences::executor_type_changed()
 void Preferences::update_executor_notes()
 {
 	QString notes;
-
-#if defined(__linux__)
 	auto linux_common_notes =
 		"Requires access to /dev/uinput. "
 		"uinput kernel module must be loaded.\n"
@@ -534,6 +748,7 @@ void Preferences::update_executor_notes()
 		"GROUP=\\\"uinput\\\" > /etc/udev/rules.d/99-uinput.rules' ```\n"
 		"4. Log out and back in for the group changes to take effect.";
 
+#if defined(__linux__)
 	// Test for access
 	if (access("/dev/uinput", R_OK | W_OK) != 0)
 	{
@@ -545,7 +760,17 @@ void Preferences::update_executor_notes()
 	}
 #endif
 
-	if (ui->gamepadExecutorRadio->isChecked())
+	auto *vigemRadio = findChild<QRadioButton *>("vigemExecutorRadio");
+	const bool vigemSelected = vigemRadio != nullptr && vigemRadio->isChecked();
+	if (vigemSelected)
+	{
+		notes = "- Windows 10 or later\n"
+				"- Needs the [ViGEmBus driver](https://github.com/nefarius/ViGEmBus/releases) "
+				"installed once\n"
+				"- Each phone becomes its own Xbox 360 controller (up to 4)\n"
+				"- Works with any game that supports XInput";
+	}
+	else if (ui->gamepadExecutorRadio->isChecked())
 	{
 		// notes for GamepadExecutor
 #ifdef _WIN32
@@ -554,8 +779,8 @@ void Preferences::update_executor_notes()
 				"- Enable [app sideloading (developer mode) in Settings](ms-settings:developers)\n"
 				"- Creates a virtual gamepad device\n"
 				"- **Experimental**: "
-				"Known to crash at server launch. [Complain here for "
-				"fix.](https://github.com/microsoft/microsoft-ui-xaml/issues/8639)";
+				"Known to crash at server launch. [View known "
+				"issue.](https://github.com/microsoft/microsoft-ui-xaml/issues/8639)";
 #elif defined(__linux__)
 #else
 		notes = "Platform-specific notes apply for virtual gamepad creation.";
@@ -575,6 +800,9 @@ void Preferences::update_executor_notes()
 #endif
 	}
 
-	ui->executorNotesLabel->setTextInteractionFlags(Qt::TextInteractionFlag::TextBrowserInteraction);
 	ui->executorNotesLabel->setText(notes);
+	if (auto *title = findChild<QLabel *>("executorDetailsTitle"))
+		title->setText(vigemSelected							  ? tr("Virtual Xbox 360 Controller")
+					   : ui->gamepadExecutorRadio->isChecked() ? tr("InputInjector")
+															   : tr("Keyboard/Mouse Simulation"));
 }

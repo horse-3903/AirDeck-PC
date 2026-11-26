@@ -15,7 +15,8 @@
 enum class ExecutorType
 {
 	GamepadExecutor,
-	KeyboardMouseExecutor
+	KeyboardMouseExecutor,
+	VigemExecutor
 };
 
 class SettingsSingleton : public QObject
@@ -39,11 +40,11 @@ class SettingsSingleton : public QObject
 	}
 	void setMouseSensitivity(int value);
 
-	quint16 port() const
+	int port() const
 	{
 		return port_number;
 	}
-	void setPort(quint16 value);
+	void setPort(int value);
 
 	ExecutorType executorType() const
 	{
@@ -72,8 +73,12 @@ class SettingsSingleton : public QObject
 
 	static constexpr int DEFAULT_MOUSE_SENSITIVITY = 10;
 	static constexpr int MOUSE_SENSITIVITY_MULTIPLIER = 10;
-	static constexpr quint16 DEFAULT_PORT_NUMBER = 0;
+	static constexpr int DEFAULT_PORT_NUMBER = 39268;
+	#ifdef _WIN32
+	static constexpr ExecutorType DEFAULT_EXECUTOR_TYPE = ExecutorType::VigemExecutor;
+#else
 	static constexpr ExecutorType DEFAULT_EXECUTOR_TYPE = ExecutorType::KeyboardMouseExecutor;
+#endif
 
   private:
 	SettingsSingleton();
@@ -83,7 +88,7 @@ class SettingsSingleton : public QObject
 
 	QSettings settings;
 	int mouse_sensitivity;
-	quint16 port_number;
+	int port_number;
 	ExecutorType executor_type;
 
 	QString m_activeProfileName;

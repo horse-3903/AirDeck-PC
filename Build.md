@@ -25,8 +25,8 @@ Optional: with [mise](https://mise.jdx.dev/) installed, `mise run doctor` checks
 1. **Clone the repository with submodules:**
 
    ```bash
-   git clone --recurse-submodules https://github.com/kitswas/VirtualGamePad-PC.git
-   cd VirtualGamePad-PC
+   git clone --recurse-submodules https://github.com/horse-3903/AirDeck-PC.git
+   cd AirDeck-PC
    ```
 
 2. **Configure Qt paths (if needed):**

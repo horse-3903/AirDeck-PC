@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 380" width="960" height="760" role="img" aria-label="Xbox-style controller">
+  <title>Xbox-style controller</title>
+
+  <g id="shoulders">
+    <g id="shoulder-left">
+      <path d="M100 92 L106 48 C109 20 121 6 140 5 L152 6 L154 84 C132 84 114 87 100 92 Z" fill="#17171b" stroke="#33333a" stroke-width="2.4" stroke-linejoin="round"/>
+      <path d="M96 100 C100 88 136 78 184 78 C202 79 212 84 215 92 L212 103 C196 98 168 98 144 102 C124 106 110 111 98 116 C94 111 94 105 96 100 Z" fill="#1a1a1f" stroke="#3a3a42" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M101 98 C106 89 138 81 184 80 C198 81 207 84 211 90 C196 87 168 87 142 91 C124 94 110 99 99 105 C98 102 99 100 101 98 Z" fill="#2b2b32"/>
+      <path d="M104 87 C124 83 140 81 154 81" fill="none" stroke="#3a3a42" stroke-width="1.8" stroke-linecap="round"/>
+    </g>
+    <g id="shoulder-right" transform="matrix(-1 0 0 1 480 0)">
+      <path d="M100 92 L106 48 C109 20 121 6 140 5 L152 6 L154 84 C132 84 114 87 100 92 Z" fill="#17171b" stroke="#33333a" stroke-width="2.4" stroke-linejoin="round"/>
+      <path d="M96 100 C100 88 136 78 184 78 C202 79 212 84 215 92 L212 103 C196 98 168 98 144 102 C124 106 110 111 98 116 C94 111 94 105 96 100 Z" fill="#1a1a1f" stroke="#3a3a42" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M101 98 C106 89 138 81 184 80 C198 81 207 84 211 90 C196 87 168 87 142 91 C124 94 110 99 99 105 C98 102 99 100 101 98 Z" fill="#2b2b32"/>
+      <path d="M104 87 C124 83 140 81 154 81" fill="none" stroke="#3a3a42" stroke-width="1.8" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <path id="body" fill="#121215" stroke="#2c2c33" stroke-width="3" stroke-linejoin="round" d="M240 108 L204 108 C186 106 152 108 124 116 C94 124 70 138 56 164 C34 202 18 254 26 300 C30 334 52 354 76 346 C100 338 120 302 160 280 C180 270 205 268 240 268 C275 268 300 270 320 280 C360 302 380 338 404 346 C428 354 450 334 454 300 C462 254 446 202 424 164 C410 138 386 124 356 116 C328 108 294 106 276 108 L240 108 Z"/>
+
+  <g id="stick-left">
+    <circle id="stick-left-ring" cx="122" cy="165" r="35" fill="#08080a" stroke="#2d2d34" stroke-width="3"/>
+    <circle id="stick-left-cap" cx="122" cy="165" r="23" fill="#1c1c21" stroke="#3b3b43" stroke-width="2.2"/>
+  </g>
+  <g id="dpad">
+    <circle cx="190" cy="222" r="36" fill="#08080a" stroke="#2d2d34" stroke-width="3"/>
+    <path id="dpad-cross" fill="#1c1c21" stroke="#3b3b43" stroke-width="2.2" stroke-linejoin="round" d="M179.5 195 H200.5 V211.5 H217 V232.5 H200.5 V249 H179.5 V232.5 H163 V211.5 H179.5 Z"/>
+  </g>
+  <g id="stick-right">
+    <circle id="stick-right-ring" cx="309" cy="212" r="35" fill="#08080a" stroke="#2d2d34" stroke-width="3"/>
+    <circle id="stick-right-cap" cx="309" cy="212" r="23" fill="#1c1c21" stroke="#3b3b43" stroke-width="2.2"/>
+  </g>
+
+  <g id="face" fill="#17171b" stroke="#33333a" stroke-width="2.4">
+    <circle id="button-y" cx="372" cy="144" r="14"/>
+    <circle id="button-x" cx="346" cy="170" r="14"/>
+    <circle id="button-b" cx="398" cy="170" r="14"/>
+    <circle id="button-a" cx="372" cy="196" r="14"/>
+  </g>
+
+  <circle id="guide" cx="240" cy="131" r="13" fill="#17171b" stroke="#33333a" stroke-width="2.4"/>
+
+  <g id="small-buttons" fill="#17171b" stroke="#33333a" stroke-width="2">
+    <circle id="button-view" cx="208" cy="150" r="9.5"/>
+    <circle id="button-menu" cx="272" cy="150" r="9.5"/>
+  </g>
+</svg>

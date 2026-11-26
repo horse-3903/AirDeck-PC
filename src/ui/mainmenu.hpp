@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QPointer>
 #include <QStackedWidget>
 #include <QWidget>
 
@@ -24,4 +25,5 @@ class MainMenu : public QWidget
   private:
 	Ui::MainMenu *ui;
 	QStackedWidget *stack;
+	QPointer<QWidget> activeServer;
 };

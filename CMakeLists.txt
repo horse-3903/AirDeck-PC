@@ -1,14 +1,16 @@
-cmake_minimum_required(VERSION 3.19)
+﻿cmake_minimum_required(VERSION 3.19)
 
-set(APP_VERSION 0.4.1)
+set(APP_VERSION 0.5.2)
 add_definitions(-DAPP_VERSION="${APP_VERSION}")
+if(WIN32)
+    add_definitions(-DNOMINMAX)
+endif()
 
-project("Virtual Gamepad PC" VERSION ${APP_VERSION} LANGUAGES CXX C)
-
-# Build mode option: portable vs installable
-# Portable: stores data alongside executable (default)
-# Installable: stores data in standard OS locations (~/.config, %APPDATA%, etc.)
-option(PORTABLE_BUILD "Create a portable build that stores data alongside executable" ON)
+project("AirDeck" VERSION ${APP_VERSION} LANGUAGES CXX C)
+if(WIN32)
+    enable_language(RC)
+    list(APPEND PROJECT_SOURCES_WIN res/AirDeck.rc)
+endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -46,11 +48,9 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network Svg)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-include(OpenSSFHardening)
-
 # Platform-specific setup
 if(WIN32)
     # Include CppWinRT setup for Windows
@@ -67,15 +67,21 @@ set(QR_CODE_GEN_SOURCES
     third-party-libs/QR-Code-generator/cpp/qrcodegen.hpp
 )
 
+if(WIN32)
+    add_subdirectory(third-party-libs/ViGEmClient EXCLUDE_FROM_ALL)
+endif()
+
 add_library(QR_Code_Generator SHARED ${QR_CODE_GEN_SOURCES})
+set_target_properties(QR_Code_Generator PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 # Manifest file for the application
 # This file is used to request permissions on Windows
-SET(APP_MANIFEST_FILE "${CMAKE_SOURCE_DIR}/res/VGamepadPC.exe.manifest")
+SET(APP_MANIFEST_FILE "${CMAKE_SOURCE_DIR}/res/AirDeck.exe.manifest")
 
 # Add project files sorted in alphabetical order
 set(PROJECT_SOURCES
     res/icons.qrc
+    res/web.qrc
     src/appdir.hpp
     src/main.cpp
     src/networking/executor.cpp
@@ -97,6 +103,19 @@ set(PROJECT_SOURCES
     src/ui/badge.cpp
     src/ui/badge.hpp
     src/ui/buttoninputbox.cpp
+    src/ui/controllertester.cpp
+    src/ui/toastpopup.cpp
+    src/ui/glyphs.cpp
+    src/ui/glyphs.hpp
+    src/platform/toast.cpp
+    src/platform/toast.hpp
+    src/platform/padcleanup.cpp
+    src/platform/padcleanup.hpp
+    src/debuglog.cpp
+    src/debuglog.hpp
+    src/ui/toastpopup.hpp
+    src/ui/controllertester.hpp
+    src/ui/slotcolors.hpp
     src/ui/buttoninputbox.hpp
     src/ui/mainmenu.cpp
     src/ui/mainmenu.hpp
@@ -107,6 +126,8 @@ set(PROJECT_SOURCES
     src/ui/preferences.cpp
     src/ui/preferences.hpp
     src/ui/preferences.ui
+    src/ui/shotrunner.cpp
+    src/ui/shotrunner.hpp
 )
 
 # Platform-specific simulation sources
@@ -126,49 +147,47 @@ elseif(LINUX)
     )
 endif()
 
-qt_add_executable(VGamepadPC
+qt_add_executable(AirDeck
     ${PROJECT_SOURCES}
+    ${PROJECT_SOURCES_WIN}
 )
 
-target_link_libraries(VGamepadPC PRIVATE
+target_link_libraries(AirDeck PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Network
+    Qt${QT_VERSION_MAJOR}::Svg
     Data_Exchange
     QR_Code_Generator
 )
 
-# Define portable build mode
-if(PORTABLE_BUILD)
-    target_compile_definitions(VGamepadPC PRIVATE PORTABLE_BUILD=1)
-    message(STATUS "Building in PORTABLE mode - data stored alongside executable")
-else()
-    message(STATUS "Building in INSTALLABLE mode - data stored in standard OS locations")
-endif()
-
 # Platform-specific linking and include directories
 if(WIN32)
-    target_link_libraries(VGamepadPC PRIVATE
+    target_link_libraries(AirDeck PRIVATE
         cppwinrt
         WindowsApp
+        ViGEmClient
+        setupapi
+        cfgmgr32
+        psapi
+        shell32
     )
 elseif(LINUX)
-    target_link_libraries(VGamepadPC PRIVATE
+    target_link_libraries(AirDeck PRIVATE
         ${UINPUT_LIBRARIES}
     )
-    target_include_directories(VGamepadPC PRIVATE
+    target_include_directories(AirDeck PRIVATE
         ${UINPUT_INCLUDE_DIRS}
     )
 endif()
 
-# Apply hardening
-openssf_harden_target(VGamepadPC)
-
-set_target_properties(VGamepadPC PROPERTIES
+set_target_properties(AirDeck PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-install(TARGETS VGamepadPC QR_Code_Generator
+set(CMAKE_INSTALL_DIR "${CMAKE_SOURCE_DIR}/dist")
+
+install(TARGETS AirDeck Data_Exchange QR_Code_Generator
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -178,7 +197,7 @@ install(TARGETS VGamepadPC QR_Code_Generator
 if(WIN32)
     # Manifest file for the application
     # This file is used to request permissions on Windows
-    SET(APP_MANIFEST_FILE "${CMAKE_SOURCE_DIR}/res/VGamepadPC.exe.manifest")
+    SET(APP_MANIFEST_FILE "${CMAKE_SOURCE_DIR}/res/AirDeck.exe.manifest")
 
     # Windows deployment tool
     if(NOT DEFINED WINDEPLOYQT_EXECUTABLE)
@@ -198,28 +217,23 @@ if(WIN32)
         DESTINATION "${CMAKE_INSTALL_BINDIR}"
     )
 
+    install(
+        CODE "execute_process(COMMAND \"${WINDEPLOYQT_EXECUTABLE}\" \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/AirDeck.exe\")"
+    )
 elseif(LINUX)
     # https://cmake.org/cmake/help/latest/prop_tgt/INSTALL_RPATH.html
-    set_target_properties(VGamepadPC PROPERTIES
+    set_target_properties(AirDeck PROPERTIES
         INSTALL_RPATH_USE_LINK_PATH TRUE
         INSTALL_RPATH "$ORIGIN/../lib"
         BUILD_WITH_INSTALL_RPATH FALSE
     )
+    qt_generate_deploy_app_script(
+        TARGET AirDeck
+        OUTPUT_SCRIPT deploy_script
+    )
+    message(STATUS "Deploy script generated: ${deploy_script}")
+    install(SCRIPT ${deploy_script})
 endif()
-
-# Qt's cross-platform deploy API (runs windeployqt on Windows)
-qt_generate_deploy_app_script(
-    TARGET VGamepadPC
-    OUTPUT_SCRIPT deploy_script
-    NO_UNSUPPORTED_PLATFORM_ERROR
-)
-# Qt's deploy script rejects relative prefixes (e.g. --prefix dist)
-install(CODE "
-    if(NOT IS_ABSOLUTE \"\${CMAKE_INSTALL_PREFIX}\")
-        file(REAL_PATH \"\${CMAKE_INSTALL_PREFIX}\" CMAKE_INSTALL_PREFIX)
-    endif()
-")
-install(SCRIPT ${deploy_script})
 
 # Platform-specific post-build steps
 if(WIN32)
@@ -227,8 +241,8 @@ if(WIN32)
     # This is done by adding a custom command as a post-build step
     # The CMake Cache variable WINDEPLOYQT_EXECUTABLE should contain the path to windeployqt
     add_custom_command(
-        TARGET VGamepadPC POST_BUILD
-        COMMAND ${WINDEPLOYQT_EXECUTABLE} $<TARGET_FILE:VGamepadPC>
+        TARGET AirDeck POST_BUILD
+        COMMAND ${WINDEPLOYQT_EXECUTABLE} $<TARGET_FILE:AirDeck>
         COMMENT "Running windeployqt to copy Qt dependencies to output directory"
         VERBATIM
     )
@@ -236,10 +250,10 @@ if(WIN32)
     # Configure the executable to use the manifest
     # Just place the manifest in the output directory and Windows will use it
     add_custom_command(
-        TARGET VGamepadPC POST_BUILD
+        TARGET AirDeck POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${APP_MANIFEST_FILE}
-            $<TARGET_FILE_DIR:VGamepadPC>/VGamepadPC.exe.manifest
+            $<TARGET_FILE_DIR:AirDeck>/AirDeck.exe.manifest
         COMMENT "Copying manifest file to output directory"
         VERBATIM
     )

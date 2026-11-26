@@ -6,7 +6,11 @@
 #include "../simulation/keyboardSim.hpp"
 #include "../simulation/mouseSim.hpp"
 
+#include <functional>
 #include <memory>
+#include <mutex>
+#include <vector>
+
 
 struct ParseResult
 {
@@ -25,15 +29,23 @@ struct ParseResult
 
 ParseResult parse_gamepad_state(const char *data, size_t len);
 
-/**
- * An executor Interface for handling gamepad state injection
- */
+// An executor Interface for handling gamepad state injection
 class ExecutorInterface
 {
   public:
 	virtual ~ExecutorInterface() = default;
 
 	virtual bool inject_gamepad_state(vgp_data_exchange_gamepad_reading const &reading) = 0;
+
+	// Releases any key or mouse button still held down, e.g. when the device disconnects
+	virtual void release_all() {}
+
+	// The 1 to 4 controller slot this executor occupies, or -1 when it has none
+	virtual int slot() const { return -1; }
+
+	// Called with the large and small motor strengths (0 to 255) when a game rumbles this controller.
+	// It runs on another thread, so the handler has to hand the work over.
+	virtual void setRumbleCallback(std::function<void(unsigned char, unsigned char)>) {}
 };
 
 class GamepadExecutor : public ExecutorInterface
@@ -54,6 +66,48 @@ class GamepadExecutor : public ExecutorInterface
 	GamepadInjector m_injector;
 };
 
+#ifdef _WIN32
+struct _VIGEM_CLIENT_T;
+struct _VIGEM_TARGET_T;
+
+/**
+ * @brief Presents the phone as a virtual Xbox 360 controller through the ViGEmBus driver.
+ *
+ * @details Each instance owns one controller, so every connected phone gets its own.
+ * The constructor throws std::runtime_error with a readable message when the driver is
+ * missing or no controller slot is free.
+ */
+class ViGEmExecutor : public ExecutorInterface
+{
+  public:
+	// ds4 = a DualShock 4 for games that cannot see more than four Xbox controllers
+	// expectedIndex: the XInput number (0 to 3) this Xbox pad should get, so player N is controller N.
+	// Windows hands out the lowest free number, so a pad that lands elsewhere is plugged in again.
+	explicit ViGEmExecutor(bool ds4 = false, int slot = -1, int expectedIndex = -1);
+	~ViGEmExecutor() override;
+
+	ViGEmExecutor(const ViGEmExecutor &) = delete;
+	ViGEmExecutor &operator=(const ViGEmExecutor &) = delete;
+
+	bool inject_gamepad_state(vgp_data_exchange_gamepad_reading const &reading) override;
+	void release_all() override;
+	int slot() const override;
+	void setRumbleCallback(std::function<void(unsigned char, unsigned char)> callback) override;
+	void emitRumble(unsigned char large, unsigned char weak);
+
+  private:
+	_VIGEM_CLIENT_T *m_client = nullptr;
+	_VIGEM_TARGET_T *m_pad = nullptr;
+	unsigned short m_buttons = 0;
+	bool m_ds4 = false;
+	int m_slot = -1;
+	int m_userIndex = -1;
+	quint32 m_held = 0;
+	std::mutex m_rumbleMutex;
+	std::function<void(unsigned char, unsigned char)> m_rumble;
+};
+#endif
+
 /**
  * @brief Executes gamepad input by converting it to keyboard and mouse actions.
  *
@@ -71,7 +125,7 @@ class KeyboardMouseExecutor : public ExecutorInterface
 	static constexpr double THRESHOLD = 0.5;
 
 	KeyboardMouseExecutor();
-	~KeyboardMouseExecutor() override = default;
+	~KeyboardMouseExecutor() override { release_all(); }
 
 	// Delete copy and move operations
 	KeyboardMouseExecutor(const KeyboardMouseExecutor &) = delete;
@@ -86,16 +140,21 @@ class KeyboardMouseExecutor : public ExecutorInterface
 	 * @return true if the input was processed successfully, false otherwise.
 	 */
 	bool inject_gamepad_state(vgp_data_exchange_gamepad_reading const &reading) override;
+	void release_all() override;
 
   private:
 	std::unique_ptr<KeyboardInjector> m_keyboardInjector;
 	std::unique_ptr<MouseInjector> m_mouseInjector;
+	struct HeldInput
+	{
+		ButtonInput input;
+		uintptr_t source;
+	};
+	std::vector<HeldInput> m_held;
 
-	void handleButtonDown(const ButtonInput &buttonInput);
-	void handleButtonUp(const ButtonInput &buttonInput);
-	void handleThumbstickInput(const ThumbstickInput &thumbstick,
-							   float x_value,
-							   float y_value,
-							   double threshold);
-	void handleTriggerInput(const TriggerInput &trigger, float trigger_value);
+	void handleButtonDown(const ButtonInput &buttonInput, uintptr_t source);
+	void handleButtonUp(const ButtonInput &buttonInput, uintptr_t source);
+	void handleThumbstickInput(const ThumbstickInput &thumbstick, float x_value, float y_value,
+							   double threshold, uintptr_t sourceBase);
+	void handleTriggerInput(const TriggerInput &trigger, float trigger_value, uintptr_t source);
 };

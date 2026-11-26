@@ -16,6 +16,8 @@ class Preferences : public QWidget
 
   signals:
 	void navigateBack();
+	// Emitted when the settings were saved, before navigateBack
+	void saved();
 
   public:
 	explicit Preferences(QWidget *parent = nullptr);

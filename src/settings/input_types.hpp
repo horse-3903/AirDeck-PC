@@ -44,18 +44,14 @@ struct TriggerInput
 	float threshold = 0.5f;		// Button press threshold (0.0 to 1.0)
 };
 
-/**
- * Thumbstick enum
- */
+// Thumbstick enum
 enum Thumbstick
 {
 	Thumbstick_Left,
 	Thumbstick_Right
 };
 
-/**
- * Trigger enum
- */
+// Trigger enum
 enum class Trigger
 {
 	Left,

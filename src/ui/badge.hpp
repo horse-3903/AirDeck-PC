@@ -12,15 +12,11 @@ class Badge : public QLabel
 	explicit Badge(QWidget *parent = nullptr);
 	~Badge() override = default;
 
-	/**
-	 * Load the badge image from a URL
-	 */
+	// Load the badge image from a URL
 	void loadBadge(const QString &imageUrl, const QString &linkUrl = "");
 
   protected:
-	/**
-	 * Override mousePressEvent to handle clicks
-	 */
+	// Override mousePressEvent to handle clicks
 	void mousePressEvent(QMouseEvent *event) override;
 
   private slots:

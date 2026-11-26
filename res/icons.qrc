@@ -4,5 +4,13 @@
         <file>logos/GamepadIcon.svg</file>
         <file>logos/GamepadIcon_transparent.png</file>
         <file>logos/SquareIcon.png</file>
+        <file>logos/HeroController.png</file>
+        <file>logos/HeroController.svg</file>
+        <file>logos/AppIcon.png</file>
+        <file>theme.qss</file>
+        <file>controllers/ps4.svg</file>
+        <file>controllers/xbox.svg</file>
+        <file>controllers/ds4-live.svg</file>
+        <file>controllers/xbox-live.svg</file>
     </qresource>
 </RCC>
