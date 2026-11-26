@@ -2,14 +2,14 @@
 
 # AirDeck-PC
 
-Windows server that turns phones into virtual game controllers, with a controller page that runs in any mobile browser.
+Windows server that turns an Android phone or iPhone into a virtual Xbox 360 gamepad over Wi-Fi, with a browser controller that needs no app.
 
 ![C++](https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square&logo=cplusplus&logoColor=white)
 ![Qt](https://img.shields.io/badge/Qt-6.8-41CD52?style=flat-square&logo=qt&logoColor=white)
 ![CMake](https://img.shields.io/badge/CMake-Ninja-064F8C?style=flat-square&logo=cmake&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%2B-0078D6?style=flat-square&logo=windows&logoColor=white)
 ![License](https://img.shields.io/github/license/horse-3903/AirDeck-PC?style=flat-square)
-![Last Commit](https://img.shields.io/github/last-commit/horse-3903/AirDeck-PC/modern-ui?style=flat-square)
+![Last Commit](https://img.shields.io/github/last-commit/horse-3903/AirDeck-PC?style=flat-square)
 
 [Releases](https://github.com/horse-3903/AirDeck-PC/releases) | [Android app](https://github.com/horse-3903/AirDeck-Mobile) | [Portfolio page](https://horse-3903.github.io/showcase/airdeck/) | [Upstream project](https://kitswas.github.io/VirtualGamePad/)
 
@@ -19,9 +19,9 @@ Windows server that turns phones into virtual game controllers, with a controlle
 
 ## Overview
 
-**AirDeck-PC** is the desktop half of AirDeck. It listens on a TCP port, takes controller input from phones over Wi-Fi, and turns it into input your PC treats as real: a virtual Xbox 360 pad, a Windows virtual gamepad, or plain keyboard and mouse events. AirDeck started as a fork of [kitswas/VirtualGamePad-PC](https://github.com/kitswas/VirtualGamePad-PC) 0.4.1 and was renamed once the changes became large. All the work lives on the `modern-ui` branch.
+**AirDeck-PC** is the desktop half of AirDeck. It listens on a TCP port, takes controller input from phones over Wi-Fi, and turns it into input your PC treats as real: a virtual Xbox 360 pad, a Windows virtual gamepad, or plain keyboard and mouse events. AirDeck started as a fork of [kitswas/VirtualGamePad-PC](https://github.com/kitswas/VirtualGamePad-PC) 0.4.1 and was renamed once the changes became large.
 
-The question behind the fork is how little a person has to do to use a phone as a controller. You can install the Android app, or you can open the server's address in a phone browser and play with nothing installed.
+The question behind the fork is how little a person has to do to use a phone as a controller. You can install the Android app, or you can open the server's address in a phone browser and play with nothing installed. It works as a ViGEm Xbox 360 emulator, a wireless gamepad for PC games, and a free alternative to a physical controller for local multiplayer.
 
 ---
 
@@ -33,7 +33,10 @@ The question behind the fork is how little a person has to do to use a phone as 
 - **Server page** - eight slot cards show who is connected, with address, protocol and output type. An input test view draws every stick, trigger and button live. Home, Restart and Stop sit in the header as icon buttons.
 - **Restart and stop in place** - Restart drops every client, releases the virtual controllers and listens again on the same port. Stop shuts the server down without leaving the page, and the same button then starts it again.
 - **QR codes and addresses** - separate QR codes for the app and the browser page, a ranked list of network adapters, and one-click address copying.
-- **Debug mode** - an option in Preferences, General. It writes connections, hellos, refusals and browser vibration results to `debug.log` in the app data folder, and lets one device hold several controllers. With it off, each device gets one.
+- **Game rumble** - vibration from the game reaches the phone, both in the Android app and in the browser controller, using the rumble events ViGEm reports for each virtual pad.
+- **Clean controller slate** - starting or restarting the server removes every leftover virtual pad on the machine, not only AirDeck's, so XInput numbers start at 1. Windows asks for administrator approval once for this, and the app stays responsive while it runs. If the first controller still gets a different number, the server restarts once on its own.
+- **Debug mode** - an option in Preferences, General. It writes everything the server does to `debug.log` in the app data folder: connections, HTTP requests, button changes, traffic, memory use and errors. The file is capped at 8 MiB with one rotated copy, repeated lines collapse and bursts are rate limited, so it cannot grow without bound.
+- **Several controllers per device** - a separate Preferences option, off by default, so one phone holds one controller.
 - **Tray and notifications** - closing the window keeps the server running in the tray, with a native toast that has a Stop server button.
 - **Keymap profiles** - per-game button and stick mappings for keyboard and mouse mode, with a Default profile that cannot be deleted.
 - **Screenshot mode** - `--ui-shots <folder>` saves a PNG of every page and dialog without touching the screen, which is how the interface gets reviewed.
@@ -83,7 +86,7 @@ The page at `res/web/controller.html` is one self-contained file. The server inj
 ### Installation
 
 ```bash
-git clone --recurse-submodules -b modern-ui https://github.com/horse-3903/AirDeck-PC.git
+git clone --recurse-submodules https://github.com/horse-3903/AirDeck-PC.git
 cd AirDeck-PC
 cmake -S . -B build-windows -G "Ninja Multi-Config" \
   -DCMAKE_PREFIX_PATH="C:/Qt/6.8.3/msvc2022_64" \
@@ -188,7 +191,9 @@ These live in `AirDeck.ini` next to the executable, and most are in Preferences.
 |---|---|---|
 | `server/port_v3` | `39268` | Port the server listens on. A value outside 1024 to 65535 picks a random port each run. |
 | `server/executor_type` | ViGEm | Input mode: ViGEm, InputInjector or keyboard and mouse. |
-| `server/debug` | `false` | Logs events to `debug.log` and allows several controllers per device. |
+| `server/debug` | `false` | Logs everything to `debug.log`, bounded in size. |
+| `server/multi_controller` | `false` | Lets one device hold several controllers. |
+| `app/run_as_admin` | `false` | Starts the app elevated, so pad cleanup never needs a prompt. |
 | `mouse_setting/mouse_sensitivity` | `100` | Pointer speed in keyboard and mouse mode. |
 
 ---
