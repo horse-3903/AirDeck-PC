@@ -207,6 +207,27 @@ body.nintendo .ico.ns { display: inline-block; }
   :root { --u: 1vw; --w: 1dvh; }
 }
 
+
+/* layout editing: each control can be moved and resized, hidden controls stay as ghosts while editing */
+[data-ed] { translate: calc(var(--dx, 0) * var(--u)) calc(var(--dy, 0) * var(--u)); scale: var(--sc, 1); }
+[data-ed].edhide { visibility: hidden; pointer-events: none; }
+body.editing [data-ed].edhide { visibility: visible; opacity: .3; pointer-events: auto; }
+body.editing [data-ed] { outline: 1px dashed var(--muted); outline-offset: calc(.5 * var(--u)); }
+body.editing [data-ed].edsel { outline: 2px solid var(--fg); }
+body.editing .hsw { display: none; }
+#edbar { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); width: min(560px, 96vw); display: none; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--sheet); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; z-index: 25; font-size: 14px; font-weight: 700; }
+body.editing #edbar { display: flex; }
+body.edtop #edbar { bottom: auto; top: 10px; }
+#edbar, #edbar * { touch-action: manipulation; }
+#edbar .edname { flex: 1 1 100%; color: var(--muted); }
+#edbar .edname i { font-style: normal; font-weight: 600; opacity: .7; float: right; }
+#edbar input[type=range] { flex: 1 1 140px; min-width: 120px; accent-color: var(--fg); }
+#edbar .edpct { width: 44px; text-align: right; }
+#edbar button { border: 1px solid var(--border); background: var(--card); color: var(--fg); border-radius: 10px; padding: 9px 12px; font: inherit; }
+#edbar button.go { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+#edbar button:disabled, #edbar input:disabled { opacity: .4; }
+
 /* settings sheet */
 #sheetWrap { position: fixed; inset: 0; background: var(--shadow); display: none; align-items: center;
     justify-content: center; z-index: 30; }
@@ -350,6 +371,15 @@ body.nintendo .ico.ns { display: inline-block; }
 </div>
 
 <div id="toast"></div>
+<div id="edbar">
+  <div class="edname" id="edName"></div>
+  <input type="range" id="edSize" min="50" max="200" step="5" value="100" disabled>
+  <span class="edpct" id="edPct">100%</span>
+  <button id="edHide" disabled>Hide</button>
+  <button id="edReset" disabled>Reset</button>
+  <button id="edDone" class="go">Done</button>
+</div>
+
 <div id="confirmWrap"><div id="confirmBox" role="dialog" aria-modal="true">
   <div class="cicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v4M15 3v4M7 7h10v4a5 5 0 0 1-10 0V7zM12 16v5"/><path d="M3 3l18 18"/></svg></div>
   <div class="ctitle">Disconnect controller?</div>
@@ -390,6 +420,11 @@ body.nintendo .ico.ns { display: inline-block; }
   <div class="row"><span>Left trigger<span class="hint" id="tlHint"></span></span><select id="trigL" class="sel"></select></div>
   <div class="row"><span>Right trigger<span class="hint" id="trHint"></span></span><select id="trigR" class="sel"></select></div>
   <div class="row"><span>Fullscreen<span class="hint" id="fsHint"></span></span><button class="btn2" id="fsBtn" style="flex:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span id="fsLabel">Enter</span></button></div>
+
+  <div class="sec">Layout</div>
+  <div class="row"><span>Controls<span class="hint">Drag controls to move them and resize each one.</span></span><button class="btn2" id="edBtn" style="flex:none">Edit layout</button></div>
+  <div class="row"><span>Saved layouts<span class="hint">Pick one to use it.</span></span><select id="laySel" class="sel"></select></div>
+  <div class="two"><button class="btn2" id="laySave">Save as</button><button class="btn2" id="layDel">Delete</button><button class="btn2" id="layReset">Reset</button></div>
 
   <div class="sec">Configuration</div>
   <div class="two"><button class="btn2" id="expBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Export</button><button class="btn2" id="impBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5M7 9l5-5 5 5M5 20h14"/></svg>Import</button></div>
@@ -911,7 +946,7 @@ body.nintendo .ico.ns { display: inline-block; }
   window.addEventListener("online", function () { if (wantConnection) reconnect(); });
   window.addEventListener("pagehide", function () { releaseAll(true); });
   window.addEventListener("blur", function () { releaseAll(true); });
-  document.addEventListener("touchmove", function (e) { if (!e.target.closest("#sheet")) e.preventDefault(); }, { passive: false });
+  document.addEventListener("touchmove", function (e) { if (!e.target.closest("#sheet, #edbar")) e.preventDefault(); }, { passive: false });
   document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
   document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   document.addEventListener("dblclick", function (e) { e.preventDefault(); });
@@ -948,7 +983,7 @@ body.nintendo .ico.ns { display: inline-block; }
     $("devSub").textContent = [osName, browserName].filter(Boolean).join("  \u00B7  ") || "Web browser";
   }
   function exportText() {
-    return JSON.stringify({ vgp: 1, name: settings.name, style: settings.style, vib: settings.vib, snap: settings.snap, trigL: settings.trigL, trigR: settings.trigR }, null, 2);
+    return JSON.stringify({ vgp: 1, name: settings.name, style: settings.style, vib: settings.vib, snap: settings.snap, trigL: settings.trigL, trigR: settings.trigR, layout: cleanLayout(layout), layouts: savedLayouts() }, null, 2);
   }
   function importText(t) {
     var o; try { o = JSON.parse(t); } catch (e) { toast("Not valid settings"); return false; }
@@ -960,6 +995,12 @@ body.nintendo .ico.ns { display: inline-block; }
     var ids = OFFERED;
     if (ids.indexOf(o.trigL) >= 0) { settings.trigL = o.trigL; store.set("vgp-trigL", o.trigL); }
     if (ids.indexOf(o.trigR) >= 0) { settings.trigR = o.trigR; store.set("vgp-trigR", o.trigR); }
+    if (o.layout && typeof o.layout === "object") { layout = cleanLayout(o.layout); paintAll(); persistLayout(); }
+    if (o.layouts && typeof o.layouts === "object") {
+      var all = savedLayouts();
+      Object.keys(o.layouts).slice(0, 30).forEach(function (n) { if (n.trim()) all[n.trim().slice(0, 24)] = cleanLayout(o.layouts[n]); });
+      store.set("vgp-layouts", JSON.stringify(all)); refreshLayouts("");
+    }
     applySettings(); toast("Settings imported"); return true;
   }
   function openMenu() { releaseAll(true); $("devText").classList.remove("editing"); applySettings(); $("sheetWrap").classList.add("open"); }
@@ -1026,6 +1067,116 @@ body.nintendo .ico.ns { display: inline-block; }
     r.onload = function () { if (importText(String(r.result))) $("ioBox").style.display = "none"; };
     r.readAsText(f); this.value = "";
   });
+
+  // ---- layout editing ----
+  // A layout is {id: {dx, dy, sc, hide}}: a shift in stage units, a size factor, and whether the control is hidden.
+  var ED = [["ls", "#ls", "Left stick"], ["rs", "#rs", "Right stick"], ["dpad", "#dpad, #dpadps, #dpadns", "D-pad"], ["face", "#face", "Face buttons"],
+            ["l1", "#l1", "Left bumper"], ["r1", "#r1", "Right bumper"], ["l2", "#l2", "Left trigger"], ["r2", "#r2", "Right trigger"],
+            ["sys", "#sys", "Select and Start"], ["top", "#top", "Status and settings"]];
+  var edLabel = {};
+  ED.forEach(function (d) { edLabel[d[0]] = d[2]; document.querySelectorAll(d[1]).forEach(function (el) { el.setAttribute("data-ed", d[0]); }); });
+  function clampN(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function cleanLayout(o) {
+    var out = {};
+    if (!o || typeof o !== "object") return out;
+    ED.forEach(function (d) {
+      var v = o[d[0]], e = {};
+      if (!v || typeof v !== "object") return;
+      if (isFinite(v.dx)) e.dx = clampN(+v.dx, -110, 110);
+      if (isFinite(v.dy)) e.dy = clampN(+v.dy, -50, 50);
+      if (isFinite(v.sc)) e.sc = clampN(+v.sc, 0.5, 2);
+      if (v.hide === true && d[0] !== "top") e.hide = true;
+      if (Object.keys(e).length) out[d[0]] = e;
+    });
+    return out;
+  }
+  function loadJson(key) { try { var v = JSON.parse(store.get(key, "")); return v && typeof v === "object" ? v : {}; } catch (e) { return {}; } }
+  var layout = cleanLayout(loadJson("vgp-layout"));
+  function savedLayouts() { return loadJson("vgp-layouts"); }
+  function persistLayout() { store.set("vgp-layout", JSON.stringify(cleanLayout(layout))); }
+  function paintOne(id) {
+    var v = layout[id] || {};
+    document.querySelectorAll('[data-ed="' + id + '"]').forEach(function (el) {
+      ["dx", "dy", "sc"].forEach(function (k) { if (v[k] !== undefined) el.style.setProperty("--" + k, v[k]); else el.style.removeProperty("--" + k); });
+      el.classList.toggle("edhide", !!v.hide);
+    });
+  }
+  function paintAll() { ED.forEach(function (d) { paintOne(d[0]); }); }
+  paintAll();
+
+  var editing = false, sel = null, drag = null;
+  function stageK() { return parseFloat(document.documentElement.style.getPropertyValue("--k")) || 1; }
+  function showSel() {
+    document.querySelectorAll(".edsel").forEach(function (e) { e.classList.remove("edsel"); });
+    var on = sel !== null, v = (sel && layout[sel]) || {};
+    if (on) document.querySelectorAll('[data-ed="' + sel + '"]').forEach(function (e) { e.classList.add("edsel"); });
+    $("edName").innerHTML = (on ? edLabel[sel] : "Tap a control to move it") + "<i>tap to move bar</i>";
+    $("edSize").disabled = !on; $("edHide").disabled = !on || sel === "top"; $("edReset").disabled = !on;
+    $("edSize").value = Math.round((v.sc || 1) * 100); $("edPct").textContent = Math.round((v.sc || 1) * 100) + "%";
+    $("edHide").textContent = v.hide ? "Show" : "Hide";
+  }
+  function enterEdit() { closeMenu(); releaseAll(true); editing = true; drag = null; document.body.classList.add("editing"); sel = null; showSel(); }
+  function leaveEdit() { editing = false; drag = null; sel = null; document.body.classList.remove("editing"); showSel(); persistLayout(); }
+  // While editing, touches on the controller only move things and never reach the controls
+  document.addEventListener("pointerdown", function (e) {
+    if (!editing) return;
+    if (e.target.closest && e.target.closest("#edbar")) return;
+    e.stopPropagation(); e.preventDefault();
+    var t = e.target.closest ? e.target.closest("[data-ed]") : null;
+    if (!t) { sel = null; showSel(); return; }
+    sel = t.getAttribute("data-ed"); showSel();
+    var v = layout[sel] || {}, q = P(e);
+    drag = { pid: e.pointerId, id: sel, x: q.x, y: q.y, dx: v.dx || 0, dy: v.dy || 0 };
+  }, true);
+  document.addEventListener("pointermove", function (e) {
+    if (!editing || !drag || e.pointerId !== drag.pid) return;
+    e.preventDefault();
+    var q = P(e), s = 9 * stageK(), v = layout[drag.id] || (layout[drag.id] = {});
+    v.dx = clampN(drag.dx + (q.x - drag.x) / s, -110, 110);
+    v.dy = clampN(drag.dy + (q.y - drag.y) / s, -50, 50);
+    paintOne(drag.id);
+  }, true);
+  var dragEnd = function (e) { if (drag && e.pointerId === drag.pid) { drag = null; persistLayout(); } };
+  document.addEventListener("pointerup", dragEnd, true); document.addEventListener("pointercancel", dragEnd, true);
+  $("edSize").addEventListener("input", function () {
+    if (!sel) return;
+    var v = layout[sel] || (layout[sel] = {}); v.sc = clampN(+this.value / 100, 0.5, 2);
+    $("edPct").textContent = Math.round(v.sc * 100) + "%"; paintOne(sel); persistLayout();
+  });
+  $("edHide").addEventListener("click", function () {
+    if (!sel || sel === "top") return;
+    var v = layout[sel] || (layout[sel] = {}); v.hide = !v.hide; paintOne(sel); showSel(); persistLayout();
+  });
+  $("edReset").addEventListener("click", function () { if (!sel) return; delete layout[sel]; paintOne(sel); showSel(); persistLayout(); });
+  $("edDone").addEventListener("click", leaveEdit);
+  $("edName").addEventListener("click", function () { document.body.classList.toggle("edtop"); });
+  $("edBtn").addEventListener("click", enterEdit);
+
+  function refreshLayouts(pick) {
+    var s = $("laySel"), all = savedLayouts();
+    s.innerHTML = "";
+    var cur = document.createElement("option"); cur.value = ""; cur.textContent = "Current layout"; s.appendChild(cur);
+    Object.keys(all).forEach(function (n) { var o = document.createElement("option"); o.value = n; o.textContent = n; s.appendChild(o); });
+    s.value = pick && all[pick] ? pick : "";
+    $("layDel").disabled = !s.value;
+  }
+  $("laySel").addEventListener("change", function () {
+    var n = this.value, all = savedLayouts();
+    if (n && all[n]) { layout = cleanLayout(all[n]); paintAll(); persistLayout(); toast("Layout applied"); }
+    $("layDel").disabled = !n;
+  });
+  $("laySave").addEventListener("click", function () {
+    var n = (window.prompt("Name this layout", "") || "").trim().slice(0, 24);
+    if (!n) return;
+    var all = savedLayouts(); all[n] = cleanLayout(layout); store.set("vgp-layouts", JSON.stringify(all)); refreshLayouts(n); toast("Layout saved");
+  });
+  $("layDel").addEventListener("click", function () {
+    var n = $("laySel").value, all = savedLayouts();
+    if (!n || !all[n]) return;
+    delete all[n]; store.set("vgp-layouts", JSON.stringify(all)); refreshLayouts(""); toast("Layout deleted");
+  });
+  $("layReset").addEventListener("click", function () { layout = {}; paintAll(); persistLayout(); refreshLayouts(""); toast("Layout reset"); });
+  refreshLayouts("");
   $("fsBtn").addEventListener("click", function () { if (document.fullscreenElement) document.exitFullscreen(); else enterFullscreen(false); setTimeout(applySettings, 300); });
   $("reconnBtn").addEventListener("click", function () { closeMenu(); reconnect(); });
   $("disconnBtn").addEventListener("click", function () { closeMenu(); disconnect(); toast("Disconnected. Open settings to reconnect."); });
