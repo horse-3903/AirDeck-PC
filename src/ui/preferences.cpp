@@ -1,4 +1,5 @@
 ﻿#include "preferences.hpp"
+#include "../debuglog.hpp"
 
 #include "../settings/input_types.hpp"
 #include "../settings/settings.hpp"
@@ -83,19 +84,26 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		connect(randomPort, &QCheckBox::toggled, ui->portSpinBox, [this](bool random) { ui->portSpinBox->setEnabled(!random); });
 	}
 	{
-		auto *debug = new QCheckBox(tr("Debug mode: log connections and allow several controllers per device"), this);
+		auto *debug = new QCheckBox(tr("Debug mode: logs everything"), this);
 		debug->setObjectName("debugModeCheck");
-		debug->setToolTip(tr("Writes events to debug.log in the app data folder. Without it, each device gets one controller."));
-		ui->generalTabLayout->insertWidget(ui->generalTabLayout->indexOf(ui->executorGroup) + 1, debug);
+		debug->setToolTip(tr("Writes every event to debug.log in the app data folder."));
+		ui->generalTabLayout->insertWidget(ui->generalTabLayout->indexOf(ui->executorGroup), debug);
 		debug->setChecked(SettingsSingleton::instance().qsettings()->value("server/debug", false).toBool());
+	}
+	{
+		auto *several = new QCheckBox(tr("Allow several controllers per device"), this);
+		several->setObjectName("multiControllerCheck");
+		several->setToolTip(tr("Without it, each phone or browser gets one controller."));
+		ui->generalTabLayout->insertWidget(ui->generalTabLayout->indexOf(ui->executorGroup), several);
+		several->setChecked(SettingsSingleton::instance().qsettings()->value("server/multi_controller", false).toBool());
 	}
 #ifdef _WIN32
 	{
-		auto *admin = new QCheckBox(tr("Always run as administrator (Windows asks for permission each time AirDeck starts)"), this);
+		auto *admin = new QCheckBox(tr("Always run as administrator"), this);
 		admin->setObjectName("runAsAdminCheck");
-		admin->setToolTip(tr("Lets AirDeck clear leftover virtual controllers by itself when the server starts or restarts. "
-							 "Off by default, and it applies the next time AirDeck starts."));
-		ui->generalTabLayout->insertWidget(ui->generalTabLayout->indexOf(ui->executorGroup) + 2, admin);
+		admin->setToolTip(tr("Windows asks for permission each time AirDeck starts. Lets AirDeck clear leftover virtual controllers "
+							 "without asking again. Off by default, and it applies the next time AirDeck starts."));
+		ui->generalTabLayout->insertWidget(ui->generalTabLayout->indexOf(ui->executorGroup), admin);
 		admin->setChecked(SettingsSingleton::instance().qsettings()->value("app/run_as_admin", false).toBool());
 	}
 #endif
@@ -249,7 +257,13 @@ Preferences::Preferences(QWidget *parent) : QWidget(parent), ui(new Ui::Preferen
 		settings.setMouseSensitivity(ui->pointerSlider->value() * 100);
 
 		if (auto *debug = findChild<QCheckBox *>("debugModeCheck"))
+		{
 			settings.qsettings()->setValue("server/debug", debug->isChecked());
+			DebugLog::write(debug->isChecked() ? QStringLiteral("Debug mode switched on") : QStringLiteral("Debug mode switching off"), true);
+			DebugLog::setEnabled(debug->isChecked());
+		}
+		if (auto *several = findChild<QCheckBox *>("multiControllerCheck"))
+			settings.qsettings()->setValue("server/multi_controller", several->isChecked());
 		if (auto *admin = findChild<QCheckBox *>("runAsAdminCheck"))
 			settings.qsettings()->setValue("app/run_as_admin", admin->isChecked());
 
@@ -672,6 +686,9 @@ void Preferences::restore_defaults()
 	if (auto *debug = findChild<QCheckBox *>("debugModeCheck"))
 		debug->setChecked(false);
 	settings.qsettings()->setValue("server/debug", false);
+	if (auto *several = findChild<QCheckBox *>("multiControllerCheck"))
+		several->setChecked(false);
+	settings.qsettings()->setValue("server/multi_controller", false);
 	if (auto *admin = findChild<QCheckBox *>("runAsAdminCheck"))
 		admin->setChecked(false);
 	settings.qsettings()->setValue("app/run_as_admin", false);

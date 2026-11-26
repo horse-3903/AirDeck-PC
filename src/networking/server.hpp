@@ -76,6 +76,10 @@ class Server : public QWidget
 		bool active = false;
 		bool ds4 = false;
 		quint32 held = 0;
+		// For the debug log
+		quint64 states = 0;
+		quint64 bytesIn = 0;
+		qint64 connectedAtMs = 0;
 		float lx = 0, ly = 0, rx = 0, ry = 0, lt = 0, rt = 0;
 	};
 	struct SlotCard
@@ -133,15 +137,20 @@ class Server : public QWidget
 	QPushButton *viewInput = nullptr;
 	QPushButton *homeBtn = nullptr;
 	QPushButton *restartBtn = nullptr;
-	QPushButton *fixPadsBtn = nullptr;
 	// One virtual Xbox pad per slot in XInput order, kept plugged in until the server stops or restarts
 	std::vector<std::unique_ptr<ExecutorInterface>> xboxPads;
-	void checkLeftoverPads();
+	// Unplugs every virtual Xbox pad on this PC, also ones left by other programs or by earlier removals.
+	// Windows asks for permission when AirDeck is not already running as administrator.
+	void releaseAllPads(std::function<void()> done);
+	// Game rumble for a controller slot, passed on to the phone or browser that plays it
+	void pushRumble(int slot, unsigned char large, unsigned char weak);
 	QLabel *tabIcon[2] = {nullptr, nullptr};
 	QLabel *tabText[2] = {nullptr, nullptr};
 	QLabel *tabCount = nullptr;
 	std::function<QPixmap(const QColor &)> tabPix[2];
 	bool restarting = false;
+	// Set after the server restarted itself because controller 1 did not match, so it only happens once in a row
+	bool numberingRetried = false;
 	void restartServer();
 	void restartNow();
 	void disconnectSlot(int slot);
@@ -153,6 +162,7 @@ class Server : public QWidget
 	bool listenServer();
 	void styleTabs();
 	bool debugEnabled() const;
+	bool multiControllerEnabled() const;
 	QString debugLogPath() const;
 	static QString webPageVersion();
 	void debugLog(const QString &line, bool force = false);

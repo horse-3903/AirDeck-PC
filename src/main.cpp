@@ -1,4 +1,5 @@
 #include "appdir.hpp"
+#include "debuglog.hpp"
 #include "platform/windows/console.hpp"
 #include "ui/mainwindow.hpp"
 #include "platform/toast.hpp"
@@ -48,6 +49,10 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext &context, con
 	QMutexLocker locker(&logFileMutex);
 	QTextStream textStream(&logFile);
 	textStream << txt << Qt::endl;
+
+	// Debug mode keeps a copy of everything in debug.log. Lines the server already wrote there are skipped.
+	if (DebugLog::enabled() && !msg.startsWith(QStringLiteral("[debug]")))
+		DebugLog::writeRaw(txt);
 
 	if (type == QtFatalMsg)
 		abort();
@@ -142,6 +147,15 @@ int main(int argc, char *argv[])
 	QApplication::setWindowIcon(QIcon(":/logos/AppIcon.png"));
 	QApplication::setApplicationVersion(APP_VERSION);
 	qInfo() << "App data directory:" << getAppDataDir();
+
+	// Debug mode is read once here and again whenever Preferences are saved
+	DebugLog::setEnabled(SettingsSingleton::instance().qsettings()->value("server/debug", false).toBool());
+	if (DebugLog::enabled())
+	{
+		qInfo() << "Debug mode is on. Version" << APP_VERSION << "on" << QSysInfo::prettyProductName() << QSysInfo::currentCpuArchitecture()
+				<< "Qt" << qVersion() << "elevated" << isElevated() << "arguments" << QCoreApplication::arguments();
+		qInfo() << "Debug log:" << DebugLog::path() << "settings file:" << SettingsSingleton::instance().qsettings()->fileName();
+	}
 
 	// Started elevated by the "Fix controller numbering" button: remove leftover virtual pads, then stop
 	for (int i = 1; i < argc; ++i)

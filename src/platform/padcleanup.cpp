@@ -5,11 +5,14 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
+#include <QProcess>
+#include <QRegularExpression>
 
 #include <windows.h>
 #include <cfgmgr32.h>
 #include <shellapi.h>
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -19,10 +22,33 @@ struct PadNode
 {
 	DEVINST node = 0;
 	QString id;
+	bool child = false;
+	bool orphan = false;
 };
 
-// Virtual pads are the Xbox 360 USB devices whose parent is the ViGEm bus (ROOT\SYSTEM\...). A real wired
-// Xbox 360 pad has the same hardware ID but hangs off a USB hub, so it is left alone.
+// The "parent" property of a device, readable even when that parent is no longer plugged in
+const DEVPROPKEY kParentKey = {{0x4340a6c5, 0x93fa, 0x4706, {0x97, 0x2c, 0x7b, 0x64, 0x80, 0x08, 0xa5, 0xa7}}, 8};
+
+QString parentIdOf(DEVINST node)
+{
+	DEVPROPTYPE type = 0;
+	wchar_t buffer[MAX_DEVICE_ID_LEN] = {};
+	ULONG size = sizeof(buffer);
+	if (CM_Get_DevNode_PropertyW(node, &kParentKey, &type, reinterpret_cast<PBYTE>(buffer), &size, 0) != CR_SUCCESS)
+		return {};
+	return QString::fromWCharArray(buffer);
+}
+
+// ViGEm numbers its pads 01, 02, ...; a real wired Xbox 360 pad has a long hub-assigned instance ID instead
+bool isVirtualInstance(const QString &id)
+{
+	static const QRegularExpression pattern(QStringLiteral(R"(^USB\\VID_045E&PID_028E\\\d+$)"),
+											QRegularExpression::CaseInsensitiveOption);
+	return pattern.match(id).hasMatch();
+}
+
+// Virtual Xbox 360 pads and the controller entries hanging off them. A pad removed the plain way can leave
+// those entries behind, still listed in Windows' game controllers, so they count and get removed too.
 std::vector<PadNode> virtualPadNodes()
 {
 	std::vector<PadNode> found;
@@ -36,18 +62,34 @@ std::vector<PadNode> virtualPadNodes()
 	for (const wchar_t *id = buffer.data(); *id != L'\0'; id += wcslen(id) + 1)
 	{
 		const QString text = QString::fromWCharArray(id);
-		if (!text.startsWith(QStringLiteral("USB\\VID_045E&PID_028E\\"), Qt::CaseInsensitive))
+		const bool isPad = text.startsWith(QStringLiteral("USB\\VID_045E&PID_028E\\"), Qt::CaseInsensitive);
+		const bool isChild = text.startsWith(QStringLiteral("USB\\VID_045E&PID_028E&IG_"), Qt::CaseInsensitive);
+		if (!isPad && !isChild)
 			continue;
 		DEVINST node = 0, parent = 0;
 		if (CM_Locate_DevNodeW(&node, const_cast<DEVINSTID_W>(id), CM_LOCATE_DEVNODE_NORMAL) != CR_SUCCESS)
 			continue;
-		if (CM_Get_Parent(&parent, node, 0) != CR_SUCCESS)
-			continue;
-		wchar_t parentId[MAX_DEVICE_ID_LEN] = {};
-		if (CM_Get_Device_IDW(parent, parentId, MAX_DEVICE_ID_LEN, 0) != CR_SUCCESS)
-			continue;
-		if (QString::fromWCharArray(parentId).startsWith(QStringLiteral("ROOT\\SYSTEM"), Qt::CaseInsensitive))
-			found.push_back({node, text});
+		if (isPad)
+		{
+			// A real wired Xbox 360 pad has the same hardware ID but hangs off a USB hub, so it is left alone
+			wchar_t parentId[MAX_DEVICE_ID_LEN] = {};
+			if (CM_Get_Parent(&parent, node, 0) != CR_SUCCESS ||
+				CM_Get_Device_IDW(parent, parentId, MAX_DEVICE_ID_LEN, 0) != CR_SUCCESS)
+				continue;
+			if (QString::fromWCharArray(parentId).startsWith(QStringLiteral("ROOT\\SYSTEM"), Qt::CaseInsensitive))
+				found.push_back({node, text, false, false});
+		}
+		else
+		{
+			const QString parentId = parentIdOf(node);
+			if (!isVirtualInstance(parentId))
+				continue;
+			DEVINST present = 0;
+			const bool parentPresent =
+				CM_Locate_DevNodeW(&present, const_cast<DEVINSTID_W>(reinterpret_cast<const wchar_t *>(parentId.utf16())),
+								   CM_LOCATE_DEVNODE_NORMAL) == CR_SUCCESS;
+			found.push_back({node, text, true, !parentPresent});
+		}
 	}
 	return found;
 }
@@ -57,29 +99,43 @@ QStringList findVirtualPads()
 {
 	QStringList ids;
 	for (const PadNode &pad : virtualPadNodes())
-		ids << pad.id;
+	{
+		// Entries of a live pad belong to it; only the pad itself or a stranded entry is something left over
+		if (!pad.child || pad.orphan)
+			ids << pad.id;
+	}
 	return ids;
 }
 
 int removeVirtualPads()
 {
+	auto nodes = virtualPadNodes();
 	int removed = 0;
-	for (const PadNode &pad : virtualPadNodes())
+	// Entries first, then the pads they hang off. Each group goes in parallel, since every removal takes a second or so.
+	for (const bool children : {true, false})
 	{
-		PNP_VETO_TYPE veto = PNP_VetoTypeUnknown;
-		wchar_t vetoName[MAX_PATH] = {};
-		CONFIGRET result = CM_Query_And_Remove_SubTreeW(pad.node, &veto, vetoName, MAX_PATH, CM_REMOVE_NO_RESTART);
-		if (result != CR_SUCCESS)
-			result = CM_Uninstall_DevNode(pad.node, 0);
-		if (result == CR_SUCCESS)
+		std::vector<std::pair<QProcess *, QString>> running;
+		for (const PadNode &pad : nodes)
 		{
-			++removed;
-			qInfo() << "Removed leftover virtual pad" << pad.id;
+			if (pad.child != children)
+				continue;
+			auto *process = new QProcess();
+			process->start(QStringLiteral("pnputil.exe"), {QStringLiteral("/remove-device"), pad.id, QStringLiteral("/subtree")});
+			running.emplace_back(process, pad.id);
 		}
-		else
+		for (auto &entry : running)
 		{
-			qWarning() << "Could not remove leftover virtual pad" << pad.id << "(code" << result << ", vetoed by"
-					   << QString::fromWCharArray(vetoName) << ")";
+			entry.first->waitForFinished(60000);
+			if (entry.first->exitStatus() == QProcess::NormalExit && entry.first->exitCode() == 0)
+			{
+				++removed;
+				qInfo() << "Removed virtual pad entry" << entry.second;
+			}
+			else
+			{
+				qWarning() << "Could not remove virtual pad entry" << entry.second;
+			}
+			delete entry.first;
 		}
 	}
 	return removed;
@@ -102,7 +158,7 @@ static bool runElevated(const QString &arguments, bool wait, DWORD *exitCode)
 	{
 		if (wait)
 		{
-			WaitForSingleObject(info.hProcess, 20000);
+			WaitForSingleObject(info.hProcess, 90000);
 			DWORD code = 1;
 			GetExitCodeProcess(info.hProcess, &code);
 			if (exitCode != nullptr)

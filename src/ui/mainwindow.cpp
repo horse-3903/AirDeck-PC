@@ -58,6 +58,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::stopServerAndQuit()
 {
+	qInfo() << "Quitting: stopping the server";
 	if (QWidget *server = findChild<QWidget *>("Server"))
 		QMetaObject::invokeMethod(server, "destroyServer", Qt::DirectConnection);
 	clearNativeToasts();

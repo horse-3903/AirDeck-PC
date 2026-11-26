@@ -582,6 +582,33 @@ static int probeXInputIndex(PVIGEM_CLIENT client, PVIGEM_TARGET pad)
 	return found;
 }
 
+static VOID CALLBACK x360RumbleCallback(PVIGEM_CLIENT, PVIGEM_TARGET, UCHAR large, UCHAR weak, UCHAR, LPVOID user)
+{
+	static_cast<ViGEmExecutor *>(user)->emitRumble(large, weak);
+}
+
+static VOID CALLBACK ds4RumbleCallback(PVIGEM_CLIENT, PVIGEM_TARGET, UCHAR large, UCHAR weak, DS4_LIGHTBAR_COLOR, LPVOID user)
+{
+	static_cast<ViGEmExecutor *>(user)->emitRumble(large, weak);
+}
+
+void ViGEmExecutor::setRumbleCallback(std::function<void(unsigned char, unsigned char)> callback)
+{
+	std::lock_guard<std::mutex> lock(m_rumbleMutex);
+	m_rumble = std::move(callback);
+}
+
+void ViGEmExecutor::emitRumble(unsigned char large, unsigned char weak)
+{
+	std::function<void(unsigned char, unsigned char)> callback;
+	{
+		std::lock_guard<std::mutex> lock(m_rumbleMutex);
+		callback = m_rumble;
+	}
+	if (callback)
+		callback(large, weak);
+}
+
 ViGEmExecutor::ViGEmExecutor(bool ds4, int slot, int expectedIndex) : m_ds4(ds4), m_slot(slot)
 {
 	m_client = vigem_alloc();
@@ -656,6 +683,12 @@ ViGEmExecutor::ViGEmExecutor(bool ds4, int slot, int expectedIndex) : m_ds4(ds4)
 			}
 		}
 	}
+
+	// A game rumbling this pad reaches the phone that plays it
+	if (m_ds4)
+		vigem_target_ds4_register_notification(m_client, m_pad, ds4RumbleCallback, this);
+	else
+		vigem_target_x360_register_notification(m_client, m_pad, x360RumbleCallback, this);
 }
 
 ViGEmExecutor::~ViGEmExecutor()
@@ -664,6 +697,10 @@ ViGEmExecutor::~ViGEmExecutor()
 	{
 		if (m_pad != nullptr)
 		{
+			if (m_ds4)
+				vigem_target_ds4_unregister_notification(m_pad);
+			else
+				vigem_target_x360_unregister_notification(m_pad);
 			vigem_target_remove(m_client, m_pad);
 			vigem_target_free(m_pad);
 		}

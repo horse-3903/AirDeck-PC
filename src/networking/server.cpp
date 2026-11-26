@@ -1,4 +1,5 @@
 #include "server.hpp"
+#include "../debuglog.hpp"
 
 #include "../../third-party-libs/QR-Code-generator/cpp/qrcodegen.hpp"
 #include "../platform/elevation.hpp"
@@ -34,12 +35,15 @@
 #include <QSvgRenderer>
 #include <functional>
 #include <QThread>
+#include <memory>
+#include <thread>
 #include <QTimer>
 #include <algorithm>
 
 
 #ifdef _WIN32
 #include <windows.h>
+#include <psapi.h>
 // Creating the Windows virtual gamepad can hit a native access violation on some systems
 // (see https://github.com/microsoft/microsoft-ui-xaml/issues/8639). C++ exceptions cannot catch
 // it, so creation is wrapped in structured exception handling to keep the server alive.
@@ -211,19 +215,6 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 			adminPill->setStyleSheet(pillStyle.arg("#8A6A1F", "#F2C14E"));
 			pillRow->addWidget(adminPill);
 		}
-		fixPadsBtn = new QPushButton(tr("Fix controller numbering"), this);
-		fixPadsBtn->setCursor(Qt::PointingHandCursor);
-		fixPadsBtn->setToolTip(tr("Virtual controllers from an earlier run are still plugged in, so new ones get the wrong "
-								  "number. Windows asks for permission to remove them."));
-		fixPadsBtn->setStyleSheet(
-			"QPushButton { color: #F2C14E; border: 1px solid #8A6A1F; border-radius: 4px; padding: 4px 12px; "
-			"background: transparent; font-weight: 600; } QPushButton:hover { background: #2A220F; }");
-		fixPadsBtn->hide();
-		connect(fixPadsBtn, &QPushButton::clicked, this, [this]() {
-			removeVirtualPadsElevated();
-			checkLeftoverPads();
-		});
-		pillRow->addWidget(fixPadsBtn);
 		pillRow->addStretch();
 		auto *titleColumn = new QVBoxLayout();
 		titleColumn->setSpacing(6);
@@ -513,7 +504,6 @@ Server::Server(QWidget *parent) : QWidget(parent), ui(new Ui::Server)
 	}
 
 	initServer();
-	QTimer::singleShot(1200, this, [this]() { checkLeftoverPads(); });
 
 	// The home screen connects to statusChanged after construction, so announce the state again
 	QTimer::singleShot(0, this, [this]() { updateStatus(); });
@@ -567,6 +557,51 @@ void Server::initServer()
 		setServerState(2);
 		return;
 	}
+	// Nobody connects until stray pads are gone, or the new pad would be removed with them
+	debugLog(QStringLiteral("Listening on port %1, input method %2").arg(tcpServer->serverPort()).arg(static_cast<int>(serverMode)));
+	{
+		auto *traffic = new QTimer(this);
+		connect(traffic, &QTimer::timeout, this, [this]() {
+			if (!DebugLog::enabled())
+				return;
+			for (auto &c : clients)
+			{
+				if (c->states == 0)
+					continue;
+				debugLog(QStringLiteral("Traffic from slot %1 \"%2\": %3 states in 5 s").arg(c->slot).arg(c->name).arg(c->states));
+				c->states = 0;
+			}
+		});
+		traffic->start(5000);
+
+		auto *status = new QTimer(this);
+		connect(status, &QTimer::timeout, this, [this]() {
+			if (!DebugLog::enabled())
+				return;
+			static const qint64 startedMs = QDateTime::currentMSecsSinceEpoch();
+			qint64 workingSetMb = -1;
+#ifdef _WIN32
+			PROCESS_MEMORY_COUNTERS counters{};
+			counters.cb = sizeof(counters);
+			if (GetProcessMemoryInfo(GetCurrentProcess(), &counters, sizeof(counters)))
+				workingSetMb = static_cast<qint64>(counters.WorkingSetSize / (1024 * 1024));
+#endif
+			int active = 0;
+			qint64 buffered = 0;
+			for (const auto &c : clients)
+			{
+				active += c->active ? 1 : 0;
+				buffered += c->buffer.size();
+			}
+			debugLog(QStringLiteral("Status: %1 connection(s), %2 active, %3 Xbox pad(s), %4 s up, memory %5 MB, %6 bytes buffered, log %7 KB")
+						 .arg(clients.size()).arg(active).arg(xboxPads.size())
+						 .arg((QDateTime::currentMSecsSinceEpoch() - startedMs) / 1000)
+						 .arg(workingSetMb).arg(buffered).arg(QFileInfo(DebugLog::path()).size() / 1024));
+		});
+		status->start(30000);
+	}
+	tcpServer->pauseAccepting();
+	releaseAllPads([this]() { tcpServer->resumeAccepting(); });
 	ui->IPList->setFixedHeight(120);
 	ui->QRViewer->setFixedHeight(290);
 	// Same container size for the App and Browser codes
@@ -785,7 +820,12 @@ void Server::showTab(int index)
 
 bool Server::debugEnabled() const
 {
-	return SettingsSingleton::instance().qsettings()->value("server/debug", false).toBool();
+	return DebugLog::enabled();
+}
+
+bool Server::multiControllerEnabled() const
+{
+	return SettingsSingleton::instance().qsettings()->value("server/multi_controller", false).toBool();
 }
 
 QString Server::webPageVersion()
@@ -806,13 +846,10 @@ QString Server::debugLogPath() const
 
 void Server::debugLog(const QString &line, bool force)
 {
-	if (!debugEnabled() && !force)
+	if (!DebugLog::enabled() && !force)
 		return;
 	qInfo().noquote() << "[debug]" << line;
-	QDir().mkpath(QFileInfo(debugLogPath()).absolutePath());
-	QFile file(debugLogPath());
-	if (file.open(QIODevice::Append | QIODevice::Text))
-		QTextStream(&file) << QDateTime::currentDateTime().toString(Qt::ISODateWithMs) << "  " << line << QChar(10);
+	DebugLog::write(line, force);
 }
 
 QString Server::deviceKey(const Client &client) const
@@ -933,23 +970,71 @@ void Server::restartServer()
 	restartNow();
 }
 
-void Server::checkLeftoverPads()
+void Server::pushRumble(int slot, unsigned char large, unsigned char weak)
 {
-	if (fixPadsBtn == nullptr)
-		return;
-	bool leftovers = false;
-	// Our own pads are only just gone, so wait until nothing of ours is plugged in
-	if (serverMode == ExecutorType::VigemExecutor && xboxPads.empty() && clients.empty())
+	qInfo() << "Game rumble for controller" << slot << "large" << large << "weak" << weak;
+	for (auto &client : clients)
 	{
-		leftovers = !findVirtualPads().isEmpty();
-		if (leftovers && isElevated())
+		if (!client->active || client->slot != slot)
+			continue;
+		if (client->protocol == Client::Protocol::Native)
 		{
-			// With administrator rights there is no need to ask
-			removeVirtualPads();
-			leftovers = !findVirtualPads().isEmpty();
+			client->socket->write("VGPRUMBLE:" + QByteArray::number(large) + "," + QByteArray::number(weak) + "\n");
 		}
+		else if (client->protocol == Client::Protocol::WebSocket)
+		{
+			QJsonObject message;
+			message["t"] = "rumble";
+			message["l"] = large;
+			message["s"] = weak;
+			sendWebJson(*client, message);
+		}
+		return;
 	}
-	fixPadsBtn->setVisible(leftovers);
+}
+
+// Unplugging pads can take several seconds and Windows asks for permission, so it runs off the interface thread
+// and the caller carries on from `done` once the pads are gone.
+void Server::releaseAllPads(std::function<void()> done)
+{
+	if (serverMode != ExecutorType::VigemExecutor)
+	{
+		done();
+		return;
+	}
+	QPointer<Server> self(this);
+	auto attempts = std::make_shared<int>(0);
+	auto check = std::make_shared<std::function<void()>>();
+	*check = [self, attempts, check, done]() {
+		if (!self)
+			return;
+		// Pads this server just dropped take a moment to disappear
+		if (!findVirtualPads().isEmpty() && ++*attempts <= 6)
+		{
+			QTimer::singleShot(150, self, *check);
+			return;
+		}
+		const QStringList left = findVirtualPads();
+		*check = nullptr;
+		if (left.isEmpty())
+		{
+			done();
+			return;
+		}
+		qInfo() << "Unplugging" << left.size() << "virtual pad entries still on this PC";
+		const bool elevated = isElevated();
+		std::thread([self, done, elevated]() {
+			if (elevated)
+				removeVirtualPads();
+			else
+				removeVirtualPadsElevated();
+			QMetaObject::invokeMethod(qApp, [self, done]() {
+				if (self)
+					done();
+			}, Qt::QueuedConnection);
+		}).detach();
+	};
+	(*check)();
 }
 
 void Server::applySettings()
@@ -998,6 +1083,7 @@ void Server::restartNow()
 	updateStatus();
 
 	QTimer::singleShot(700, this, [this, lock]() {
+		releaseAllPads([this, lock]() {
 		if (!listenServer())
 		{
 			ui->statusLabel->setText(tr("Restart failed"));
@@ -1025,13 +1111,16 @@ void Server::restartNow()
 		lock(true);
 		updateStatus();
 		debugLog(QStringLiteral("Server restarted on port %1").arg(tcpServer->serverPort()));
-		QTimer::singleShot(1200, this, [this]() { checkLeftoverPads(); });
+		});
 	});
 }
 
 void Server::noteInput(Client &client, const vgp_data_exchange_gamepad_reading &reading)
 {
+	const quint32 before = client.held;
 	client.held = (client.held | reading.buttons_down) & ~reading.buttons_up;
+	if (client.held != before)
+		debugLog(QStringLiteral("Slot %1 buttons 0x%2 -> 0x%3").arg(client.slot).arg(before, 0, 16).arg(client.held, 0, 16));
 	client.lx = reading.left_thumbstick_x;
 	client.ly = reading.left_thumbstick_y;
 	client.rx = reading.right_thumbstick_x;
@@ -1227,14 +1316,14 @@ ExecutorInterface *Server::executorFor(Client &client)
 
 bool Server::activate(Client &client, QString *failure)
 {
-	if (!debugEnabled())
+	if (!multiControllerEnabled())
 	{
 		const QString key = deviceKey(client);
 		for (const auto &other : clients)
 		{
 			if (other.get() != &client && other->active && deviceKey(*other) == key)
 			{
-				*failure = tr("This device already has a controller connected. Debug mode allows several.");
+				*failure = tr("This device already has a controller connected. Allow several controllers per device in Preferences to add more.");
 				return false;
 			}
 		}
@@ -1288,6 +1377,9 @@ bool Server::activate(Client &client, QString *failure)
 			try
 			{
 				client.executor = std::make_unique<ViGEmExecutor>(true, chosenSlot, -1);
+				client.executor->setRumbleCallback([this, chosenSlot](unsigned char l, unsigned char s) {
+					QMetaObject::invokeMethod(this, [this, chosenSlot, l, s]() { pushRumble(chosenSlot, l, s); }, Qt::QueuedConnection);
+				});
 			}
 			catch (const std::exception &e)
 			{
@@ -1312,7 +1404,13 @@ bool Server::activate(Client &client, QString *failure)
 			try
 			{
 				while (static_cast<int>(xboxPads.size()) < wanted)
-					xboxPads.push_back(std::make_unique<ViGEmExecutor>(false, -1, static_cast<int>(xboxPads.size())));
+				{
+					const int padSlot = static_cast<int>(xboxPads.size()) + 1;
+					xboxPads.push_back(std::make_unique<ViGEmExecutor>(false, -1, padSlot - 1));
+					xboxPads.back()->setRumbleCallback([this, padSlot](unsigned char l, unsigned char s) {
+						QMetaObject::invokeMethod(this, [this, padSlot, l, s]() { pushRumble(padSlot, l, s); }, Qt::QueuedConnection);
+					});
+				}
 			}
 			catch (const std::exception &e)
 			{
@@ -1323,6 +1421,24 @@ bool Server::activate(Client &client, QString *failure)
 			if (client.pad->slot() != wanted)
 				qWarning() << "Player" << wanted << "is XInput controller" << client.pad->slot()
 						   << "because another virtual pad is still plugged in";
+			// The first controller should be controller 1 for Windows too. If not, start over once: the restart
+			// clears stray pads. A second mismatch in a row is left alone so this cannot loop.
+			if (wanted == 1 && client.pad->slot() > 0)
+			{
+				if (client.pad->slot() == 1)
+				{
+					numberingRetried = false;
+				}
+				else if (!numberingRetried)
+				{
+					numberingRetried = true;
+					debugLog(QStringLiteral("Controller 1 is XInput controller %1, restarting the server").arg(client.pad->slot()));
+					QTimer::singleShot(800, this, [this]() {
+						if (!restarting)
+							restartNow();
+					});
+				}
+			}
 			chosenSlot = wanted;
 		}
 		client.ds4 = useDs4;
@@ -1383,7 +1499,12 @@ void Server::handleConnection()
 
 	auto client = std::make_unique<Client>();
 	client->socket = socket;
+	client->connectedAtMs = QDateTime::currentMSecsSinceEpoch();
 	clients.push_back(std::move(client));
+	debugLog(QStringLiteral("Connection from %1:%2 accepted, %3 open").arg(socket->peerAddress().toString()).arg(socket->peerPort()).arg(clients.size()));
+	connect(socket, &QAbstractSocket::errorOccurred, this, [this, socket](QAbstractSocket::SocketError error) {
+		debugLog(QStringLiteral("Socket error from %1: %2 (%3)").arg(socket->peerAddress().toString(), socket->errorString()).arg(static_cast<int>(error)));
+	});
 
 	connect(socket, &QAbstractSocket::disconnected, this, [this, socket]() {
 		const auto it = std::find_if(clients.begin(), clients.end(),
@@ -1391,6 +1512,16 @@ void Server::handleConnection()
 		bool wasActive = false;
 		if (it != clients.end())
 		{
+			const Client &closing = **it;
+			static const char *const protocols[] = {"undecided", "app", "http", "websocket"};
+			debugLog(QStringLiteral("Closed connection from %1: %2, slot %3, \"%4\", open %5 s, %6 states, %7 bytes in, %8")
+						 .arg(socket->peerAddress().toString(), QString::fromLatin1(protocols[static_cast<int>(closing.protocol)]))
+						 .arg(closing.slot)
+						 .arg(closing.name)
+						 .arg((QDateTime::currentMSecsSinceEpoch() - closing.connectedAtMs) / 1000)
+						 .arg(closing.states)
+						 .arg(closing.bytesIn)
+						 .arg(socket->errorString()));
 			wasActive = (*it)->active;
 			if ((*it)->executor)
 				(*it)->executor->release_all();
@@ -1426,7 +1557,17 @@ void Server::serveClient()
 	if (clientIt == clients.end())
 		return;
 	Client &client = **clientIt;
-	client.buffer.append(socket->readAll());
+	const QByteArray incoming = socket->readAll();
+	client.bytesIn += static_cast<quint64>(incoming.size());
+	client.buffer.append(incoming);
+	// Nothing legitimate is this large, so a client that sends it is cut off instead of filling memory
+	if (client.buffer.size() > (1 << 20))
+	{
+		qWarning() << "Dropping" << socket->peerAddress().toString() << "after" << client.buffer.size() << "unread bytes";
+		client.buffer.clear();
+		socket->disconnectFromHost();
+		return;
+	}
 
 	if (client.protocol == Client::Protocol::Unknown)
 	{
@@ -1520,6 +1661,7 @@ void Server::serveNative(Client &client)
 		}
 
 		requestCount++;
+		client.states++;
 		if (lastRequestTime.isValid())
 		{
 			int elapsed = lastRequestTime.msecsTo(currentTime);
@@ -1547,6 +1689,7 @@ void Server::serveHttp(Client &client)
 
 	const QList<QByteArray> lines = head.split('\n');
 	const QByteArray path = lines.value(0).trimmed().split(' ').value(1);
+	debugLog(QStringLiteral("HTTP %1 from %2").arg(QString::fromLatin1(lines.value(0).trimmed().left(200)), client.socket->peerAddress().toString()));
 	QHash<QByteArray, QByteArray> headers;
 	for (int i = 1; i < lines.size(); ++i)
 	{
@@ -1555,8 +1698,10 @@ void Server::serveHttp(Client &client)
 			headers.insert(lines[i].left(colon).trimmed().toLower(), lines[i].mid(colon + 1).trimmed());
 	}
 
+	debugLog(QStringLiteral("Browser is %1").arg(QString::fromLatin1(headers.value("user-agent").left(300))));
 	if (headers.value("upgrade").toLower() == "websocket" && headers.contains("sec-websocket-key"))
 	{
+		debugLog(QStringLiteral("WebSocket upgrade from %1").arg(client.socket->peerAddress().toString()));
 		static const QByteArray magic("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 		const QByteArray accept =
 			QCryptographicHash::hash(headers.value("sec-websocket-key") + magic, QCryptographicHash::Sha1)
@@ -1714,6 +1859,7 @@ void Server::handleWebMessage(Client &client, const QByteArray &payload)
 	reading.left_trigger = trigger("lt");
 	reading.right_trigger = trigger("rt");
 	requestCount++;
+	client.states++;
 	noteInput(client, reading);
 	activeExecutor->inject_gamepad_state(reading);
 }

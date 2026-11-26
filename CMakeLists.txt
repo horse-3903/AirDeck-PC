@@ -111,6 +111,8 @@ set(PROJECT_SOURCES
     src/platform/toast.hpp
     src/platform/padcleanup.cpp
     src/platform/padcleanup.hpp
+    src/debuglog.cpp
+    src/debuglog.hpp
     src/ui/toastpopup.hpp
     src/ui/controllertester.hpp
     src/ui/slotcolors.hpp
@@ -167,6 +169,7 @@ if(WIN32)
         ViGEmClient
         setupapi
         cfgmgr32
+        psapi
         shell32
     )
 elseif(LINUX)

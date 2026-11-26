@@ -6,7 +6,9 @@
 #include "../simulation/keyboardSim.hpp"
 #include "../simulation/mouseSim.hpp"
 
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 
@@ -40,6 +42,10 @@ class ExecutorInterface
 
 	// The 1 to 4 controller slot this executor occupies, or -1 when it has none
 	virtual int slot() const { return -1; }
+
+	// Called with the large and small motor strengths (0 to 255) when a game rumbles this controller.
+	// It runs on another thread, so the handler has to hand the work over.
+	virtual void setRumbleCallback(std::function<void(unsigned char, unsigned char)>) {}
 };
 
 class GamepadExecutor : public ExecutorInterface
@@ -86,6 +92,8 @@ class ViGEmExecutor : public ExecutorInterface
 	bool inject_gamepad_state(vgp_data_exchange_gamepad_reading const &reading) override;
 	void release_all() override;
 	int slot() const override;
+	void setRumbleCallback(std::function<void(unsigned char, unsigned char)> callback) override;
+	void emitRumble(unsigned char large, unsigned char weak);
 
   private:
 	_VIGEM_CLIENT_T *m_client = nullptr;
@@ -95,6 +103,8 @@ class ViGEmExecutor : public ExecutorInterface
 	int m_slot = -1;
 	int m_userIndex = -1;
 	quint32 m_held = 0;
+	std::mutex m_rumbleMutex;
+	std::function<void(unsigned char, unsigned char)> m_rumble;
 };
 #endif
 
